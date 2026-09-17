@@ -1,0 +1,2635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="stockanalyzer" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>StockAnalyzer Pro V2</title>
+
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" type="image/png" href="stockanalyzer.png" />
+<link rel="apple-touch-icon" href="stockanalyzer.png" />
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+:root {
+    --bg: #000000; --bg-card: #1c1c1e; --bg-elev: #2c2c2e; --bg-input: #2c2c2e;
+    --border: #38383a; --separator: #2c2c2e;
+    --text: #ffffff; --text-2: #8e8e93; --text-3: #636366;
+    --blue: #0a84ff; --green: #30d158; --red: #ff453a; --orange: #ff9f0a;
+    --yellow: #ffd60a; --purple: #bf5af2;
+    --radius-lg: 16px; --radius: 12px; --radius-sm: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.45; overscroll-behavior: none; }
+
+.toast { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%) translateY(20px); background: rgba(28,28,30,0.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); color: #fff; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 500; z-index: 2000; max-width: 90vw; opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.08); }
+.toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast-success { border-color: rgba(48,209,88,0.4); }
+.toast-error { border-color: rgba(255,69,58,0.4); }
+.toast-warn { border-color: rgba(255,159,10,0.4); }
+
+.splash { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.4s ease, visibility 0.4s ease; padding: 24px; }
+.splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.splash-content { display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center; }
+.splash-greeting { font-size: 16px; color: var(--text-2); font-weight: 400; letter-spacing: 0.02em; animation: splashFadeIn 0.5s ease-out 0.2s backwards; }
+@keyframes splashFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.splash-title { font-size: 40px; font-weight: 800; letter-spacing: -0.045em; line-height: 1; animation: splashFadeIn 0.5s ease-out 0.3s backwards; display: flex; gap: 0; }
+.splash-title .stock, .splash-title .analyzer { background: linear-gradient(135deg, #8e8e93, #32d4e0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.splash-loader { margin-top: 36px; width: 40px; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; animation: splashFadeIn 0.5s ease-out 0.4s backwards; }
+.splash-loader::after { content: ''; display: block; width: 40%; height: 100%; background: #32d4e0; border-radius: 2px; animation: splashLoader 1.4s ease-in-out infinite; }
+@keyframes splashLoader { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+.splash-hint { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); font-size: 10px; color: var(--text-3); letter-spacing: 0.12em; text-transform: uppercase; animation: splashFadeIn 0.5s ease-out 0.5s backwards; }
+
+.pin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); display: flex; align-items: flex-end; justify-content: center; z-index: 1100; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
+.pin-modal.visible { opacity: 1; visibility: visible; }
+.pin-modal .pin-content { width: 100%; max-width: 420px; background: #000; border-radius: 24px 24px 0 0; padding: 32px 24px calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1); display: flex; flex-direction: column; align-items: center; }
+.pin-modal.visible .pin-content { transform: translateY(0); }
+.pin-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; text-align: center; color: #fff; }
+.pin-subtitle { font-size: 13px; color: var(--text-2); margin: 0 0 28px; text-align: center; }
+.pin-dots { display: flex; gap: 16px; margin-bottom: 36px; height: 16px; }
+.pin-dot { width: 14px; height: 14px; border-radius: 50%; background: transparent; border: 2px solid #48484a; transition: all 0.2s ease; }
+.pin-dot.filled { background: #32d4e0; border-color: #32d4e0; transform: scale(1.15); }
+.pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; width: 100%; max-width: 280px; margin: 0 auto; }
+.pin-key { aspect-ratio: 1; width: 100%; background: #2c2c2e; border: none; color: #fff; border-radius: 50%; font-size: 26px; font-weight: 400; cursor: pointer; transition: background 0.15s, transform 0.1s; min-height: auto; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; user-select: none; }
+.pin-key:hover { background: #3a3a3c; }
+.pin-key:active { background: #48484a; transform: scale(0.92); }
+.pin-key.empty { background: transparent; cursor: default; pointer-events: none; }
+.pin-key.backspace { background: transparent; font-size: 22px; color: var(--text-2); }
+.pin-key.backspace:hover { background: #2c2c2e; color: #fff; }
+.pin-error { font-size: 13px; color: #ff453a; margin-top: 18px; height: 18px; text-align: center; font-weight: 500; }
+.pin-forgot { font-size: 12px; color: var(--text-2); margin-top: 18px; background: transparent; border: none; cursor: pointer; padding: 8px 16px; min-height: auto; width: auto; border-radius: 8px; }
+.pin-forgot:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+@keyframes pinShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-10px); } 40% { transform: translateX(10px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(6px); } }
+.pin-dots.shake { animation: pinShake 0.4s ease; }
+body:not(.unlocked) .app { display: none !important; }
+
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; background: var(--bg); }
+.topbar { flex-shrink: 0; background: rgba(0,0,0,0.9); backdrop-filter: saturate(1.5) blur(20px); -webkit-backdrop-filter: saturate(1.5) blur(20px); border-bottom: 1px solid var(--separator); padding: calc(var(--safe-top) + 12px) 16px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 10; }
+.topbar .brand { display: flex; align-items: center; gap: 10px; }
+.topbar .brand img { width: 28px; height: 28px; border-radius: 7px; object-fit: cover; flex-shrink: 0; }
+.topbar h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; margin: 0; display: flex; align-items: center; }
+.topbar h1 .stock, .topbar h1 .analyzer { background: linear-gradient(135deg, #8e8e93, #32d4e0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.topbar .right-cluster { display: flex; align-items: center; gap: 6px; }
+.status-badge { font-size: 10px; font-weight: 600; color: var(--text-2); background: var(--bg-elev); padding: 5px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.status-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; }
+.status-badge.running::before { background: var(--green); box-shadow: 0 0 8px rgba(48,209,88,0.6); animation: pulse 1.2s ease-in-out infinite; }
+.status-badge.done::before { background: var(--green); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.regime-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; padding: 5px 10px; border-radius: 20px; letter-spacing: 0.04em; white-space: nowrap; }
+.regime-badge.risk-on  { background: rgba(48,209,88,0.15); color: var(--green); }
+.regime-badge.risk-off { background: rgba(255,69,58,0.15); color: var(--red); }
+
+.scroll-area { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; position: relative; }
+.scroll-area::-webkit-scrollbar { width: 6px; }
+.scroll-area::-webkit-scrollbar-thumb { background: #2a2a2c; border-radius: 3px; }
+.content { padding: 14px 14px 24px; max-width: 720px; margin: 0 auto; width: 100%; }
+
+.tabbar { flex-shrink: 0; background: rgba(28,28,30,0.95); backdrop-filter: saturate(1.5) blur(20px); -webkit-backdrop-filter: saturate(1.5) blur(20px); border-top: 1px solid var(--separator); padding: 6px 6px calc(var(--safe-bottom) + 4px); display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; z-index: 10; }
+.tab-btn { background: transparent; border: none; color: var(--text-3); font-family: inherit; font-size: 10px; font-weight: 500; padding: 8px 2px; border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 48px; transition: color 0.15s, background 0.15s; width: 100%; margin: 0; }
+.tab-btn:active { background: rgba(255,255,255,0.05); }
+.tab-btn.active { color: #32d4e0; }
+.tab-btn .label { font-size: 10px; }
+
+.card { background: var(--bg-card); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px; }
+.card-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px; }
+.card-sub { font-size: 12px; color: var(--text-2); margin: 0 0 12px; }
+label { display: block; font-size: 12px; color: var(--text-2); margin-bottom: 6px; font-weight: 500; }
+input, select, textarea { width: 100%; padding: 12px 14px; background: var(--bg-input); border: 1px solid transparent; color: var(--text); border-radius: 10px; font-size: 16px; font-family: inherit; margin-bottom: 10px; outline: none; transition: border-color 0.15s, background 0.15s; -webkit-appearance: none; appearance: none; min-height: 44px; }
+input:focus, select:focus { border-color: #32d4e0; background: #2a2a2c; }
+input::placeholder { color: var(--text-3); }
+select { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%238e8e93' d='M6 8L0 2l1.4-1.4L6 5.2 10.6.6 12 2z'/></svg>"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 34px; }
+button { width: 100%; padding: 12px 14px; background: var(--bg-elev); border: none; color: var(--text); border-radius: 10px; font-size: 15px; font-weight: 500; font-family: inherit; cursor: pointer; margin-bottom: 8px; transition: background 0.15s, opacity 0.15s, transform 0.1s; min-height: 44px; touch-action: manipulation; }
+button:hover { background: #3a3a3c; }
+button:active { transform: scale(0.98); opacity: 0.8; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: #32d4e0; color: #001417; font-weight: 600; }
+.btn-primary:hover { background: #28bccc; }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.btn-row button { margin-bottom: 0; }
+
+.watchlist { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; min-height: 30px; align-items: center; }
+.watchlist-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; background: var(--bg-elev); border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s, border-color 0.15s; border: 1px solid transparent; }
+.watchlist-chip:hover { background: #3a3a3c; border-color: rgba(50,212,224,0.4); }
+.watchlist-chip .chip-x { background: transparent; border: none; color: var(--text-3); padding: 2px 6px; min-height: auto; width: auto; margin: 0; font-size: 14px; line-height: 1; cursor: pointer; border-radius: 50%; }
+.watchlist-chip .chip-x:hover { color: var(--red); background: rgba(255,69,58,0.15); }
+
+.result-card { background: var(--bg-elev); border-radius: 14px; padding: 14px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s, transform 0.1s; border: 1px solid transparent; }
+.result-card:active { transform: scale(0.99); background: #333335; }
+.result-card.selected { border-color: rgba(50,212,224,0.4); background: rgba(50,212,224,0.08); }
+.result-card .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.result-card .sym { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
+.result-card .price { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.result-card .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 10px; margin-bottom: 10px; }
+.result-card .field .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); font-weight: 600; margin-bottom: 2px; }
+.result-card .field .val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.result-card .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--separator); flex-wrap: wrap; }
+.signal-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.signal-buy { background: rgba(48,209,88,0.15); color: var(--green); }
+.signal-sell { background: rgba(255,69,58,0.15); color: var(--red); }
+.signal-hold { background: rgba(142,142,147,0.15); color: var(--text-2); }
+
+.error-list { display: none; background: rgba(255,159,10,0.10); border: 1px solid rgba(255,159,10,0.30); border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: 12px; color: var(--orange); }
+.error-list.visible { display: block; }
+.error-list .etitle { font-weight: 600; margin-bottom: 4px; }
+.error-list ul { margin: 4px 0 0 0; padding-left: 16px; }
+.error-list li { margin-bottom: 2px; color: #ffce80; }
+.error-list li b { color: var(--orange); }
+
+.chart-canvas-wrapper { position: relative; width: 100%; height: 260px; background: #0d0d0f; border-radius: 10px; padding: 8px 4px 4px 4px; }
+.chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.chart-header .left { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.chart-header .symbol { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+.chart-header .price { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart-header .change { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart-header .change.pos { color: var(--green); }
+.chart-header .change.neg { color: var(--red); }
+.chart-controls { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.chart-toggle { width: auto; margin: 0; padding: 7px 12px; font-size: 11px; background: var(--bg-elev); color: var(--text-2); border-radius: 8px; font-weight: 500; border: 1px solid transparent; transition: all 0.15s; min-height: 32px; }
+.chart-toggle.active { background: rgba(50,212,224,0.15); color: #32d4e0; border-color: rgba(50,212,224,0.3); }
+.chart-stats-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.chart-stat { background: var(--bg-elev); padding: 6px 10px; border-radius: 8px; font-size: 11px; color: var(--text-2); display: flex; gap: 5px; align-items: baseline; }
+.chart-stat b { color: var(--text); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--separator); font-size: 10px; color: var(--text-2); }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-line { width: 14px; height: 2px; border-radius: 1px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.trades-window { display: flex; gap: 4px; margin-top: 8px; margin-bottom: 4px; }
+.trades-window button { flex: 1; padding: 6px 8px; font-size: 11px; background: var(--bg-elev); color: var(--text-2); border: 1px solid transparent; border-radius: 8px; min-height: 32px; margin: 0; font-weight: 500; }
+.trades-window button.active { background: rgba(50,212,224,0.15); color: #32d4e0; border-color: rgba(50,212,224,0.3); }
+
+.chart-subpanel { position: relative; margin-top: 8px; height: 90px; background: #0d0d0f; border-radius: 10px; padding: 8px 4px 4px 4px; }
+.chart-subpanel-label { position: absolute; top: 8px; left: 12px; font-size: 9px; color: var(--text-3); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; z-index: 2; pointer-events: none; }
+.chart-subpanel canvas { position: relative; z-index: 1; }
+
+/* ====== PANEL DE SETUPS ====== */
+.entries-panel { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--separator); }
+.entries-title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 4px; }
+.entries-sub { font-size: 11px; color: var(--text-2); margin: 0 0 12px; }
+
+/* Recomendación del análisis */
+.rec-card { background: linear-gradient(135deg, rgba(50,212,224,0.10), rgba(50,212,224,0.02)); border: 1px solid rgba(50,212,224,0.28); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.rec-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.rec-title { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 2px; }
+.rec-sub { font-size: 11px; color: var(--text-2); }
+.rec-prices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.rec-price { }
+.rec-price .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); font-weight: 700; margin-bottom: 2px; }
+.rec-price .val { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.rec-price.entry .val { color: #fff; }
+.rec-price.stop  .val { color: var(--red); }
+.rec-price.t1    .val { color: var(--green); }
+.rec-price.t2    .val { color: var(--green); }
+.rec-price .sub { font-size: 9px; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.rec-sizing { font-size: 11px; color: var(--text-2); display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.rec-sizing b { color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Tarjetas de setup */
+.entry-card { background: var(--bg-elev); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 3px solid var(--text-3); }
+.entry-card.ready   { border-left-color: var(--green); }
+.entry-card.waiting { border-left-color: var(--orange); }
+
+.entry-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.entry-name { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 2px; }
+.entry-desc { font-size: 11px; color: var(--text-2); line-height: 1.4; }
+.entry-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.entry-status { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.06em; }
+.entry-status.ready   { background: rgba(48,209,88,0.18); color: var(--green); }
+.entry-status.waiting { background: rgba(255,159,10,0.18); color: var(--orange); }
+.entry-quality { font-size: 9px; font-weight: 700; color: var(--text-3); letter-spacing: 0.05em; }
+
+.entry-prices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--separator); }
+.ep-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); font-weight: 700; margin-bottom: 2px; }
+.ep-value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.entry-price-item.stop   .ep-value { color: var(--red); }
+.entry-price-item.target .ep-value { color: var(--green); }
+.ep-sub { font-size: 9px; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums; line-height: 1.3; }
+
+.entry-checks { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.check-item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.check-icon { font-weight: 700; width: 12px; flex-shrink: 0; }
+.check-item.ok .check-icon { color: var(--green); }
+.check-item.no { color: var(--text-3); }
+.check-item.no .check-icon { color: var(--text-3); }
+.check-label { flex: 1; }
+.check-detail { font-family: ui-monospace, monospace; font-size: 10px; color: var(--text-2); }
+
+.entry-exit-plan { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px 10px; font-size: 10px; color: var(--text-2); line-height: 1.5; margin-bottom: 10px; }
+.entry-exit-plan b { color: var(--text); font-weight: 700; }
+
+.entry-sizing { font-size: 11px; color: var(--text-2); padding-top: 10px; border-top: 1px solid var(--separator); display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.entry-sizing b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.entry-badge-mini { font-size: 10px; font-weight: 700; color: var(--green); }
+
+/* Posiciones cartera */
+.pos-panel { background: var(--bg-card); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+.pos-form { display: grid; grid-template-columns: 1.1fr 0.8fr 0.9fr; gap: 6px; margin-bottom: 10px; }
+.pos-form input { margin-bottom: 0; padding: 10px; font-size: 14px; min-height: 40px; }
+.pos-form button { grid-column: span 3; margin-top: 4px; padding: 10px; font-size: 13px; background: #32d4e0; color: #001417; font-weight: 600; min-height: 40px; }
+.pos-list { display: flex; flex-direction: column; gap: 8px; }
+.pos-item { background: var(--bg-elev); border-radius: 12px; padding: 12px; font-size: 12px; display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: start; }
+.pos-item.ok { border-left: 3px solid var(--green); }
+.pos-item.warn { border-left: 3px solid var(--orange); }
+.pos-item.danger { border-left: 3px solid var(--red); }
+.pos-symbol { font-weight: 700; font-size: 14px; }
+.pos-remove { background: transparent; color: var(--text-3); padding: 4px 8px; margin: 0; width: auto; font-size: 18px; line-height: 1; border-radius: 6px; min-height: auto; }
+.pos-remove:hover { background: rgba(255,69,58,0.15); color: var(--red); }
+.pos-meta { color: var(--text-2); grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; }
+.pos-meta b { color: var(--text); font-weight: 600; }
+.pos-status { grid-column: 1 / -1; font-size: 11px; padding-top: 8px; border-top: 1px solid var(--separator); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.pos-status .label { color: var(--text-2); font-weight: 500; }
+.pos-status .value { color: var(--text); font-weight: 600; text-align: right; }
+
+.api-card { background: var(--bg-card); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+.api-card .title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-2); font-weight: 600; margin-bottom: 8px; }
+.api-num { font-size: 28px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.api-num small { font-size: 13px; color: var(--text-3); font-weight: 400; }
+.api-bar { height: 4px; background: var(--bg-elev); border-radius: 2px; overflow: hidden; margin: 10px 0 6px; }
+.api-bar-fill { height: 100%; background: var(--green); transition: width 0.3s, background 0.3s; border-radius: 2px; }
+.api-bar-fill.warn { background: var(--orange); }
+.api-bar-fill.danger { background: var(--red); }
+.api-msg { font-size: 11px; color: var(--green); }
+.api-msg.warn { color: var(--orange); }
+.api-msg.danger { color: var(--red); }
+
+.progress-bar { width: 100%; height: 4px; background: var(--bg-elev); border-radius: 2px; overflow: hidden; margin: 8px 0 12px; display: none; }
+.progress-fill { height: 100%; background: #32d4e0; transition: width 0.3s ease; width: 0%; }
+
+.small { font-size: 11px; color: var(--text-2); }
+.empty-state { color: var(--text-3); text-align: center; padding: 32px 16px; font-size: 13px; line-height: 1.5; }
+.empty-state .icon { font-size: 32px; opacity: 0.3; display: block; margin-bottom: 8px; }
+.hint-box { background: var(--bg-elev); border-radius: 10px; padding: 12px 14px; font-size: 12px; color: var(--text-2); line-height: 1.5; margin-top: 16px; }
+.hint-box b { color: var(--text); font-weight: 600; display: block; margin-bottom: 6px; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeIn 0.2s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (min-width: 900px) {
+    .content { max-width: 900px; padding: 20px 24px 32px; }
+    .chart-canvas-wrapper { height: 380px; }
+    .chart-subpanel { height: 130px; }
+    .tabbar { grid-template-columns: repeat(5, 200px); justify-content: center; }
+}
+
+.loading-screen { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; z-index: 1200; padding: 24px; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
+.loading-screen.visible { opacity: 1; visibility: visible; }
+.loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+.loading-content { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; max-width: 320px; text-align: center; }
+.loading-status { font-size: 12px; color: var(--text-2); letter-spacing: 0.02em; height: 16px; margin-top: 6px; }
+.loading-progress { width: 100%; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-top: 14px; }
+.loading-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #8e8e93, #32d4e0); border-radius: 2px; transition: width 0.15s linear; }
+.loading-percent { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; margin-top: 2px; }
+
+/* ===== Spinner genérico ===== */
+.spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    box-sizing: border-box;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Spinner dentro del botón primario */
+.btn-primary.loading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: wait;
+    opacity: 0.9;
+}
+.btn-primary.loading:active { transform: none; opacity: 0.9; }
+.btn-primary .spinner.btn-spinner {
+    width: 16px; height: 16px;
+    border-color: rgba(0,20,23,0.25);
+    border-top-color: #001417;
+}
+
+/* Status badge: punto → anillo girando */
+.status-badge.running::before {
+    background: transparent;
+    border: 2px solid rgba(48,209,88,0.25);
+    border-top-color: var(--green);
+    width: 10px; height: 10px;
+    box-sizing: border-box;
+    box-shadow: none;
+    animation: spin 0.8s linear infinite;
+}
+
+/* ===== PRO OVERLAY: misma interfaz, más contexto operativo ===== */
+.regime-badge.neutral { background: rgba(255,159,10,0.15); color: var(--orange); }
+.regime-detail { font-size:10px; color:var(--text-3); margin-top:4px; }
+.score-ring { width:54px; height:54px; border-radius:50%; display:grid; place-items:center; background:conic-gradient(#32d4e0 var(--score,0%), #2c2c2e 0); position:relative; flex-shrink:0; }
+.score-ring::after { content:''; position:absolute; inset:5px; border-radius:50%; background:var(--bg-card); }
+.score-ring span { position:relative; z-index:1; font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; }
+.rec-riskbar { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:10px; }
+.rec-riskcell { background:rgba(255,255,255,.035); border-radius:8px; padding:7px 8px; }
+.rec-riskcell .k { font-size:8px; color:var(--text-3); text-transform:uppercase; letter-spacing:.06em; font-weight:700; }
+.rec-riskcell .v { font-size:12px; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums; }
+.score-breakdown { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; margin-top:10px; }
+.score-component { background:rgba(255,255,255,.035); border-radius:8px; padding:7px 6px; text-align:center; }
+.score-component .k { font-size:8px; color:var(--text-3); text-transform:uppercase; letter-spacing:.04em; }
+.score-component .v { font-size:11px; font-weight:700; margin-top:2px; }
+.result-card .scoreline { display:flex; align-items:center; gap:10px; }
+.result-card .score-meta { flex:1; }
+.result-card .score-label { font-size:9px; color:var(--text-2); text-transform:uppercase; letter-spacing:.06em; }
+.result-card .score-value { font-size:20px; font-weight:800; line-height:1; }
+.gate-note { margin-top:10px; padding:9px 10px; border-radius:9px; background:rgba(255,159,10,.07); border:1px solid rgba(255,159,10,.16); color:var(--text-2); font-size:10px; line-height:1.45; }
+.gate-note b { color:var(--text); }
+@media (max-width:520px){ .rec-riskbar{grid-template-columns:repeat(2,1fr)} .score-breakdown{grid-template-columns:repeat(5,1fr)} .score-component{padding:6px 3px} }
+</style>
+</head>
+
+<body>
+
+<div class="splash" id="splash">
+    <div class="splash-content">
+        <div class="splash-greeting" id="splashGreeting">Buenos días</div>
+        <div class="splash-title"><span class="stock">Stock</span><span class="analyzer">Analyzer</span></div>
+        <div class="splash-loader"></div>
+    </div>
+    <div class="splash-hint">Acceso seguro</div>
+</div>
+
+<div class="pin-modal" id="pinModal">
+    <div class="pin-content">
+        <h2 class="pin-title" id="pinTitle">Introduce tu PIN</h2>
+        <p class="pin-subtitle" id="pinSubtitle">4 dígitos</p>
+        <div class="pin-dots" id="pinDots"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
+        <div class="pin-pad" id="pinPad"></div>
+        <div class="pin-error" id="pinError"></div>
+        <button class="pin-forgot" id="pinForgot" style="display:none;">¿Olvidaste tu PIN?</button>
+    </div>
+</div>
+
+<div class="loading-screen" id="loadingScreen">
+    <div class="loading-content">
+        <div class="loading-status" id="loadingStatus">Iniciando…</div>
+        <div class="loading-progress"><div class="loading-progress-fill" id="loadingProgressFill"></div></div>
+        <div class="loading-percent" id="loadingPercent">0%</div>
+    </div>
+</div>
+
+<div class="app">
+    <div class="topbar">
+        <div class="brand">
+            <img src="stockanalyzer.png" alt="" onerror="this.style.display='none'"/>
+            <h1><span class="stock">Stock</span><span class="analyzer">Analyzer</span></h1>
+        </div>
+        <div class="right-cluster">
+            <span class="regime-badge" id="regimeBadge" style="display:none;"></span>
+            <span class="status-badge" id="statusBadge">Listo</span>
+        </div>
+    </div>
+
+    <div class="scroll-area" id="scrollArea">
+        <div class="content">
+
+            <div class="tab-panel active" data-tab="analysis">
+                <div class="card">
+                    <div class="card-title">Análisis técnico</div>
+                    <div class="card-sub">EMA · RSI · MACD · Bollinger · ADX · Régimen · Setups con stop/target</div>
+
+                    <label>Watchlist</label>
+                    <div class="watchlist" id="watchlistChips"></div>
+
+                    <label>Tickers</label>
+                    <input id="ticker" placeholder="AAPL,TSLA,SPY"/>
+                    <button onclick="addCurrentToWatchlist()" style="background:rgba(50,212,224,0.1); color:#32d4e0; font-weight:600; font-size:13px; margin-top:-2px;">+ Guardar en watchlist</button>
+
+                    <label style="margin-top:8px;">Días de histórico</label>
+                    <select id="outputsize">
+                        <option value="500">500 días</option>
+                        <option value="1000" selected>1000 días</option>
+                        <option value="2000">2000 días</option>
+                    </select>
+
+                   <button class="btn-primary" id="analyzeBtn" onclick="run()">Analizar</button>
+                    <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+                    <div class="error-list" id="errorList"></div>
+                </div>
+
+                <div class="hint-box">
+                    <b>Cómo se construyen los setups</b>
+                    • <b>Ruptura Donchian 20:</b> cierre sobre máximo de 20 sesiones + volumen P80 + cierre fuerte<br>
+                    • <b>Pullback EMA20/50:</b> retroceso a media con estructura HH/HL y volumen decreciente<br>
+                    • <b>Rebote SMA200:</b> toque de la media larga con tendencia intacta<br>
+                    • <b>Cruce dorado EMA20/50:</b> cruce en ≤3 sesiones con ADX y volumen<br>
+                    • <b>Ruptura Bollinger + Vol:</b> expansión de volatilidad confirmada<br><br>
+                    <b>Stops, sizing y filtros</b>
+                    • Stop estructural bajo swing/EMA con colchón ATR<br>
+                    • T1/T2 se calculan contra resistencias, R y ATR<br>
+                    • Riesgo por trade limitado por la cuenta y por distancia en ATR<br>
+                    • <b>Quality</b> mide confirmación del setup; <b>Score</b> mide estado técnico<br>
+                    • El sistema no trata el Score como probabilidad de éxito: requiere backtest
+                </div>
+            </div>
+
+            <div class="tab-panel" data-tab="results">
+                <div class="card">
+                    <div class="card-title">Lectura de mercado</div>
+                    <div class="card-sub" id="topDetails">Sin análisis</div>
+                    <div id="topBreakdown"></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Ranking técnico</div>
+                    <div class="card-sub">Ordenado por puntuación (0–100)</div>
+                    <div id="resultCards">
+                        <div class="empty-state">Sin datos.<br>Configura tickers y pulsa Analizar.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-panel" data-tab="chart">
+                <div class="card" id="priceChartCard" style="display:none;">
+                    <div class="chart-header">
+                        <div class="left">
+                            <span class="symbol" id="chartSymbol">—</span>
+                            <span class="price" id="chartPrice">$0.00</span>
+                            <span class="change" id="chartChange">+0.00%</span>
+                        </div>
+                    </div>
+                    <div class="small" id="chartPeriod" style="margin-bottom:10px;"></div>
+
+                    <div class="chart-controls">
+                        <button class="chart-toggle active" data-chart-style="line" onclick="setChartStyle('line')">Línea</button>
+                        <button class="chart-toggle" data-chart-style="candles" onclick="setChartStyle('candles')">Velas</button>
+                        <button class="chart-toggle active" data-series="ema20" onclick="toggleSeries('ema20')">EMA20</button>
+                        <button class="chart-toggle active" data-series="ema50" onclick="toggleSeries('ema50')">EMA50</button>
+                        <button class="chart-toggle active" data-series="ema200" onclick="toggleSeries('ema200')">EMA200</button>
+                        <button class="chart-toggle" data-series="sma200" onclick="toggleSeries('sma200')">SMA200</button>
+                        <button class="chart-toggle active" data-series="bb" onclick="toggleSeries('bb')">Bollinger</button>
+                        <button class="chart-toggle active" data-series="donchian" onclick="toggleSeries('donchian')">Donchian</button>
+                        <button class="chart-toggle" data-series="channel" onclick="toggleSeries('channel')">Canal</button>
+                        <button class="chart-toggle active" data-series="volume" onclick="toggleSeries('volume')">Vol</button>
+                    </div>
+
+                    <div class="trades-window" id="tradesWindow">
+                        <button data-window="30">30d</button>
+                        <button data-window="90" class="active">90d</button>
+                        <button data-window="365">1 año</button>
+                        <button data-window="all">Todo</button>
+                    </div>
+
+                    <div class="chart-canvas-wrapper">
+                        <canvas id="priceChartCanvas"></canvas>
+                    </div>
+
+                    <div class="chart-subpanel">
+                        <div class="chart-subpanel-label">RSI 14</div>
+                        <canvas id="rsiChartCanvas"></canvas>
+                    </div>
+
+                    <div class="chart-subpanel">
+                        <div class="chart-subpanel-label">MACD (12, 26, 9)</div>
+                        <canvas id="macdChartCanvas"></canvas>
+                    </div>
+
+                    <div class="chart-stats-row">
+                        <div class="chart-stat">Precio <b id="csPrice">—</b></div>
+                        <div class="chart-stat">EMA20 <b id="csEma20">—</b></div>
+                        <div class="chart-stat">EMA50 <b id="csEma50">—</b></div>
+                        <div class="chart-stat">EMA200 <b id="csEma200">—</b></div>
+                        <div class="chart-stat">RSI <b id="csRsi">—</b></div>
+                        <div class="chart-stat">ADX <b id="csAdx">—</b></div>
+                        <div class="chart-stat">ATR <b id="csAtr">—</b></div>
+                        <div class="chart-stat">Score <b id="csScore">—</b></div>
+                    </div>
+
+                    <div class="entries-panel" id="entriesPanel" style="display:none;">
+                        <div class="entries-title">Setups de entrada y salida</div>
+                        <div class="entries-sub" id="entriesSub">—</div>
+                        <div id="entriesContainer"></div>
+                    </div>
+
+                    <div class="chart-legend">
+                        <div class="legend-item"><span class="legend-line" style="background:#ffd60a;"></span>EMA20</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#ff9f0a;"></span>EMA50</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#0a84ff;"></span>EMA200</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#8e8e93;"></span>SMA200</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#636366;"></span>Bollinger</div>
+                        <div class="legend-item"><span class="legend-line" style="background:#32d4e0;"></span>Donchian</div>
+                        <div class="legend-item"><span class="legend-line" style="background:var(--purple);"></span>Canal</div>
+                    </div>
+                </div>
+
+                <div class="card" id="chartEmpty">
+                    <div class="empty-state">Selecciona una tarjeta en la pestaña Resultados<br>para ver el gráfico técnico y los setups.</div>
+                </div>
+            </div>
+
+            <div class="tab-panel" data-tab="portfolio">
+                <div class="card">
+                    <div class="card-title">Mi cartera</div>
+                    <div class="card-sub">Posiciones reales (las que tienes en el bróker)</div>
+                    <div class="pos-panel">
+                        <h3 style="font-size:13px;font-weight:600;margin:0 0 10px;">Registrar posición</h3>
+                        <div class="pos-form">
+                            <input id="posSymbol" placeholder="AAPL"/>
+                            <input id="posShares" type="number" placeholder="5" step="any"/>
+                            <input id="posEntry" type="number" placeholder="332.23" step="any"/>
+                            <button onclick="addManualPosition()">Añadir</button>
+                        </div>
+                        <div class="pos-list" id="manualPositionsList">
+                            <div class="empty-state" style="padding:16px;">Sin posiciones</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Exportar</div>
+                    <div class="card-sub">Descarga tus posiciones en JSON</div>
+                    <button onclick="exportPositions()" style="font-size:13px;">Exportar JSON</button>
+                </div>
+            </div>
+
+            <div class="tab-panel" data-tab="setup">
+                <div class="card">
+                    <div class="card-title">Configuración</div>
+                    <div class="card-sub">Credenciales de acceso a la API</div>
+                    <label>TwelveData API Key</label>
+                    <input id="apikey" type="password" placeholder="Pega tu API Key"/>
+                    <button onclick="saveKey()">Guardar API Key</button>
+                </div>
+                <div class="api-card">
+                    <div class="title">Consultas API hoy</div>
+                    <div class="api-num"><span id="apiCallsCount">0</span><small> / 800</small></div>
+                    <div class="api-bar"><div class="api-bar-fill" id="apiProgressFill" style="width:0%"></div></div>
+                    <div id="apiStatusMsg" class="api-msg">Disponible</div>
+                    <button onclick="resetApiCounter()" style="margin-top:10px; font-size:12px;">Reiniciar contador</button>
+                </div>
+                <div class="card">
+                    <div class="card-title">Gestión de riesgo</div>
+                    <div class="card-sub">Para el cálculo de tamaño de posición</div>
+                    <label>Tamaño de cuenta ($)</label>
+                    <input id="accountSize" type="number" placeholder="10000" step="any"/>
+                    <label>Riesgo por operación (%)</label>
+                    <input id="riskPct" type="number" placeholder="1" step="0.1"/>
+                    <label>Máximo de cuenta por posición (%)</label>
+                    <input id="maxPositionPct" type="number" placeholder="20" step="1"/>
+                    <button onclick="saveRiskConfig()">Guardar</button>
+                </div>
+                <div class="card">
+                    <div class="card-title">Caché</div>
+                    <div class="card-sub">Precio: 5 min · Régimen: 1 día</div>
+                    <button onclick="clearCache()" style="font-size:13px;">Limpiar caché</button>
+                </div>
+                <div class="card">
+                    <div class="card-title">Seguridad</div>
+                    <div class="card-sub">Bloqueo por PIN</div>
+                    <button onclick="resetPin()" style="font-size:13px;">Cambiar PIN</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <nav class="tabbar">
+        <button class="tab-btn active" data-tab-btn="analysis" onclick="showMobileTab('analysis')"><span class="label">Análisis</span></button>
+        <button class="tab-btn" data-tab-btn="results" onclick="showMobileTab('results')"><span class="label">Resultados</span></button>
+        <button class="tab-btn" data-tab-btn="chart" onclick="showMobileTab('chart')"><span class="label">Gráfico</span></button>
+        <button class="tab-btn" data-tab-btn="portfolio" onclick="showMobileTab('portfolio')"><span class="label">Cartera</span></button>
+        <button class="tab-btn" data-tab-btn="setup" onclick="showMobileTab('setup')"><span class="label">Config</span></button>
+    </nav>
+</div>
+
+<script>
+/* =========================================================
+   CONFIG
+========================================================= */
+const API_LIMIT_PER_MIN = 8;
+const API_DAILY_LIMIT = 800;
+const MAX_RETRIES = 3;
+const ATR_PERIOD = 14;
+const RSI_PERIOD = 14;
+const SPLASH_MS = 900;
+const LOADING_MS = 700;
+const PIN_LENGTH = 4;
+const PIN_STORAGE_KEY = 'sa_pin_hash';
+const PIN_SALT = 'stockanalyzer_v1_salt';
+const WATCHLIST_KEY = 'sa_watchlist';
+const MAX_POSITION_PCT_DEFAULT = 20;
+const MAX_RISK_PCT_DEFAULT = 2;
+
+const DONCHIAN_ENTRY = 20;
+const DONCHIAN_EXIT = 10;
+const SMA_TREND = 200;
+
+const MIN_BARS = 250;
+
+// Pesos por categoría para quality (todos iguales hasta backtest)
+const CHECK_WEIGHTS = {
+    regime: 12, trend: 15, structure: 12, volume: 10,
+    momentum: 8, strength: 8, timing: 10, health: 10
+};
+
+let lastSymbolsData = null;
+let lastFetchedData = {};
+let priceChart = null;
+let priceChartStructureKey = null;
+let rsiChart = null;
+let macdChart = null;
+let currentChartSymbol = null;
+let chartStyle = 'line';
+let visibleWindow = 90;
+let seriesVisibility = {
+    ema20: true, ema50: true, ema200: true, sma200: false,
+    bb: true, donchian: true, channel: false, volume: true
+};
+let pinBuffer = '';
+let pinState = 'verify';
+let pinFirstEntry = '';
+let pinAttempts = 0;
+
+/* =========================================================
+   UTILS
+========================================================= */
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtPct = n => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+const hasChartJs = () => typeof Chart !== 'undefined';
+const today = () => new Date().toISOString().split('T')[0];
+
+function safeSetItem(key, value) {
+    try { localStorage.setItem(key, value); return true; }
+    catch(e) { console.warn(`[localStorage] fallo en "${key}"`); return false; }
+}
+
+function toast(message, type = 'info', duration = 2800) {
+    const el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.textContent = message;
+    document.body.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('visible'));
+    setTimeout(() => {
+        el.classList.remove('visible');
+        setTimeout(() => el.remove(), 300);
+    }, duration);
+}
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW failed:', err));
+    });
+}
+
+/* =========================================================
+   WATCHLIST
+========================================================= */
+function getWatchlist() {
+    try { const raw = localStorage.getItem(WATCHLIST_KEY); return raw ? JSON.parse(raw) : []; }
+    catch(_) { return []; }
+}
+function saveWatchlist(list) { safeSetItem(WATCHLIST_KEY, JSON.stringify(list)); }
+function addToWatchlist(sym) {
+    sym = (sym || '').toUpperCase().trim();
+    if (!sym) return;
+    const list = getWatchlist();
+    if (list.includes(sym)) { toast(`${sym} ya está en watchlist`, 'warn'); return; }
+    list.push(sym); saveWatchlist(list); renderWatchlist(); toast(`${sym} añadido`, 'success');
+}
+function removeFromWatchlist(sym) {
+    const list = getWatchlist().filter(s => s !== sym);
+    saveWatchlist(list); renderWatchlist();
+}
+function renderWatchlist() {
+    const box = document.getElementById('watchlistChips'); if (!box) return;
+    const list = getWatchlist();
+    if (!list.length) { box.innerHTML = '<span class="small" style="opacity:0.6;">Sin símbolos guardados</span>'; return; }
+    box.innerHTML = list.map(s =>
+        `<span class="watchlist-chip" onclick="analyzeWatchlistSymbol('${escapeHtml(s)}')">
+            ${escapeHtml(s)}
+            <button class="chip-x" onclick="event.stopPropagation(); removeFromWatchlist('${escapeHtml(s)}')">×</button>
+        </span>`
+    ).join('');
+}
+function addCurrentToWatchlist() {
+    const raw = (document.getElementById('ticker').value || '').trim();
+    if (!raw) { toast('Introduce un ticker primero', 'warn'); return; }
+    raw.split(',').map(s => s.trim()).filter(Boolean).forEach(s => addToWatchlist(s));
+}
+function analyzeWatchlistSymbol(sym) {
+    document.getElementById('ticker').value = sym;
+    toast(`Analizando ${sym}…`, 'info', 1500);
+    run();
+}
+
+/* =========================================================
+   PIN
+========================================================= */
+function getGreeting() {
+    const h = new Date().getHours();
+    if (h >= 6 && h < 12) return 'Buenos días';
+    if (h >= 12 && h < 20) return 'Buenas tardes';
+    return 'Buenas noches';
+}
+function hashPin(pin) {
+    const str = PIN_SALT + pin; let hash = 0;
+    for (let i = 0; i < str.length; i++) { hash = ((hash << 5) - hash) + str.charCodeAt(i); hash |= 0; }
+    return 'h' + Math.abs(hash).toString(36);
+}
+function hasPinSet() { return !!localStorage.getItem(PIN_STORAGE_KEY); }
+function buildPinPad() {
+    const pad = document.getElementById('pinPad');
+    if (!pad || pad.dataset.built === '1') return;
+    pad.dataset.built = '1';
+    const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+    pad.innerHTML = keys.map(k => {
+        if (k === '') return `<button class="pin-key empty" disabled></button>`;
+        if (k === '⌫') return `<button class="pin-key backspace" data-key="backspace">⌫</button>`;
+        return `<button class="pin-key" data-key="${k}">${k}</button>`;
+    }).join('');
+    pad.querySelectorAll('[data-key]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const key = btn.dataset.key;
+            if (key === 'backspace') { pinBuffer = pinBuffer.slice(0, -1); updatePinDots(); }
+            else if (pinBuffer.length < PIN_LENGTH) {
+                pinBuffer += key; updatePinDots();
+                if (pinBuffer.length === PIN_LENGTH) setTimeout(handlePinComplete, 180);
+            }
+        });
+    });
+}
+function updatePinDots() { document.querySelectorAll('#pinDots .pin-dot').forEach((d, i) => d.classList.toggle('filled', i < pinBuffer.length)); }
+function showPinError(msg) {
+    const err = document.getElementById('pinError'); if (err) err.textContent = msg;
+    const dots = document.getElementById('pinDots');
+    if (dots) { dots.classList.add('shake'); setTimeout(() => dots.classList.remove('shake'), 400); }
+    if (navigator.vibrate) { try { navigator.vibrate([40, 60, 40]); } catch(_) {} }
+}
+function clearPinError() { const err = document.getElementById('pinError'); if (err) err.textContent = ''; }
+function setPinTitle(t, s) { const a = document.getElementById('pinTitle'); const b = document.getElementById('pinSubtitle'); if (a) a.textContent = t; if (b) b.textContent = s; }
+function startPinFlow() {
+    buildPinPad(); pinBuffer = ''; pinFirstEntry = ''; updatePinDots(); clearPinError();
+    const forgot = document.getElementById('pinForgot');
+    if (!hasPinSet()) { pinState = 'setup-create'; setPinTitle('Crea tu PIN', '4 dígitos para proteger la app'); if (forgot) forgot.style.display = 'none'; }
+    else { pinState = 'verify'; setPinTitle('Introduce tu PIN', '4 dígitos'); if (forgot) forgot.style.display = 'block'; }
+    const modal = document.getElementById('pinModal'); if (modal) modal.classList.add('visible');
+}
+function handlePinComplete() {
+    if (pinState === 'verify') {
+        const stored = localStorage.getItem(PIN_STORAGE_KEY);
+        if (hashPin(pinBuffer) === stored) unlockApp();
+        else { pinAttempts++; showPinError(`PIN incorrecto (intento ${pinAttempts})`); pinBuffer = ''; setTimeout(() => updatePinDots(), 350); }
+    } else if (pinState === 'setup-create') {
+        pinFirstEntry = pinBuffer; pinBuffer = ''; updatePinDots(); clearPinError();
+        pinState = 'setup-confirm'; setPinTitle('Confirma tu PIN', 'Vuelve a introducirlo');
+    } else if (pinState === 'setup-confirm') {
+        if (pinBuffer === pinFirstEntry) { safeSetItem(PIN_STORAGE_KEY, hashPin(pinBuffer)); unlockApp(); }
+        else {
+            showPinError('Los PIN no coinciden');
+            pinBuffer = ''; pinFirstEntry = '';
+            setTimeout(() => { updatePinDots(); pinState = 'setup-create'; setPinTitle('Crea tu PIN', '4 dígitos para proteger la app'); }, 450);
+        }
+    }
+}
+function unlockApp() {
+    const modal = document.getElementById('pinModal'); if (modal) modal.classList.remove('visible');
+    const loading = document.getElementById('loadingScreen'); if (loading) loading.classList.add('visible');
+    runLoadingSequence(() => {
+        if (loading) { loading.classList.add('hidden'); setTimeout(() => { loading.style.display = 'none'; }, 400); }
+        document.body.classList.add('unlocked');
+        try { initApp(); } catch(e) { console.error('initApp error:', e); }
+    });
+}
+function runLoadingSequence(done) {
+    const statusEl = document.getElementById('loadingStatus');
+    const fillEl = document.getElementById('loadingProgressFill');
+    const percentEl = document.getElementById('loadingPercent');
+    const steps = [{ at: 0.00, label: 'Iniciando…' }, { at: 0.45, label: 'Cargando cartera…' }, { at: 0.80, label: 'Listo' }];
+    const start = performance.now(); let lastStep = -1;
+    function tick(now) {
+        const t = Math.min(1, (now - start) / LOADING_MS); const pct = Math.round(t * 100);
+        if (fillEl) fillEl.style.width = pct + '%'; if (percentEl) percentEl.textContent = pct + '%';
+        let currentStep = 0; for (let i = 0; i < steps.length; i++) if (t >= steps[i].at) currentStep = i;
+        if (currentStep !== lastStep && statusEl) { statusEl.textContent = steps[currentStep].label; lastStep = currentStep; }
+        if (t < 1) requestAnimationFrame(tick); else setTimeout(done, 120);
+    }
+    requestAnimationFrame(tick);
+}
+function resetPin() { if (confirm('¿Cambiar el PIN? La app se bloqueará y pedirá crear uno nuevo.')) { localStorage.removeItem(PIN_STORAGE_KEY); location.reload(); } }
+function boot() {
+    const g = document.getElementById('splashGreeting'); if (g) g.textContent = getGreeting();
+    setTimeout(() => {
+        const splash = document.getElementById('splash'); if (splash) splash.classList.add('hidden');
+        setTimeout(() => { if (splash) splash.style.display = 'none'; }, 500);
+        startPinFlow();
+    }, SPLASH_MS);
+}
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'pinForgot') {
+        if (confirm('Esto eliminará tu PIN actual y tendrás que crear uno nuevo. ¿Continuar?')) {
+            localStorage.removeItem(PIN_STORAGE_KEY);
+            pinState = 'setup-create'; pinBuffer = ''; pinFirstEntry = '';
+            updatePinDots(); clearPinError();
+            setPinTitle('Crea tu PIN', '4 dígitos para proteger la app');
+            e.target.style.display = 'none';
+        }
+    }
+});
+
+/* =========================================================
+   TABS
+========================================================= */
+function showMobileTab(name) {
+    try {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        const panel = document.querySelector(`.tab-panel[data-tab="${name}"]`);
+        const btn = document.querySelector(`.tab-btn[data-tab-btn="${name}"]`);
+        if (panel) panel.classList.add('active');
+        if (btn) btn.classList.add('active');
+        const scrollArea = document.getElementById('scrollArea'); if (scrollArea) scrollArea.scrollTop = 0;
+        if (name === 'chart') setTimeout(() => {
+            try { if (priceChart) priceChart.resize(); } catch(_) {}
+            try { if (rsiChart) rsiChart.resize(); } catch(_) {}
+            try { if (macdChart) macdChart.resize(); } catch(_) {}
+        }, 100);
+    } catch(e) { console.error('showMobileTab error:', e); }
+}
+
+/* =========================================================
+   INDICADORES BASE
+========================================================= */
+function sma(values, period) {
+    const out = new Array(values.length).fill(null);
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+        sum += values[i];
+        if (i >= period) sum -= values[i - period];
+        if (i >= period - 1) out[i] = sum / period;
+    }
+    return out;
+}
+
+function ema(values, period) {
+    const out = new Array(values.length).fill(null);
+    if (values.length < period) return out;
+    const k = 2 / (period + 1);
+    let sum = 0;
+    for (let i = 0; i < period; i++) sum += values[i];
+    out[period - 1] = sum / period;
+    for (let i = period; i < values.length; i++) {
+        if (out[i-1] != null) out[i] = values[i] * k + out[i-1] * (1 - k);
+    }
+    return out;
+}
+
+function rsi(values, period = RSI_PERIOD) {
+    const out = new Array(values.length).fill(null);
+    if (values.length < period + 1) return out;
+    let gains = 0, losses = 0;
+    for (let i = 1; i <= period; i++) {
+        const diff = values[i] - values[i-1];
+        if (diff >= 0) gains += diff; else losses -= diff;
+    }
+    let avgGain = gains / period, avgLoss = losses / period;
+    out[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+    for (let i = period + 1; i < values.length; i++) {
+        const diff = values[i] - values[i-1];
+        const gain = diff > 0 ? diff : 0;
+        const loss = diff < 0 ? -diff : 0;
+        avgGain = (avgGain * (period - 1) + gain) / period;
+        avgLoss = (avgLoss * (period - 1) + loss) / period;
+        out[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+    }
+    return out;
+}
+
+function macd(values, fast = 12, slow = 26, signalPeriod = 9) {
+    const emaFast = ema(values, fast);
+    const emaSlow = ema(values, slow);
+    const macdLine = values.map((_, i) =>
+        emaFast[i] != null && emaSlow[i] != null ? emaFast[i] - emaSlow[i] : null
+    );
+    const signalLine = new Array(values.length).fill(null);
+    const firstValid = macdLine.findIndex(v => v != null);
+    if (firstValid !== -1) {
+        const validMacd = macdLine.slice(firstValid);
+        const emaSignal = ema(validMacd, signalPeriod);
+        for (let i = 0; i < emaSignal.length; i++) {
+            signalLine[firstValid + i] = emaSignal[i];
+        }
+    }
+    const hist = macdLine.map((v, i) =>
+        v != null && signalLine[i] != null ? v - signalLine[i] : null
+    );
+    return { macd: macdLine, signal: signalLine, hist };
+}
+
+function bollinger(values, period = 20, mult = 2) {
+    const middle = sma(values, period);
+    const upper = new Array(values.length).fill(null);
+    const lower = new Array(values.length).fill(null);
+    for (let i = period - 1; i < values.length; i++) {
+        let sum = 0;
+        for (let j = i - period + 1; j <= i; j++) sum += Math.pow(values[j] - middle[i], 2);
+        const std = Math.sqrt(sum / period);
+        upper[i] = middle[i] + mult * std;
+        lower[i] = middle[i] - mult * std;
+    }
+    return { upper, middle, lower };
+}
+
+function adxCalc(data, period = 14) {
+    const n = data.length;
+    if (n < period * 2 + 1) return { adx: new Array(n).fill(null), plusDI: new Array(n).fill(0), minusDI: new Array(n).fill(0) };
+    const tr = new Array(n).fill(0);
+    const plusDM = new Array(n).fill(0);
+    const minusDM = new Array(n).fill(0);
+    for (let i = 1; i < n; i++) {
+        const h = data[i].high, l = data[i].low, pc = data[i-1].close;
+        const ph = data[i-1].high, pl = data[i-1].low;
+        tr[i] = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
+        const up = h - ph;
+        const down = pl - l;
+        plusDM[i] = (up > down && up > 0) ? up : 0;
+        minusDM[i] = (down > up && down > 0) ? down : 0;
+    }
+    const smTR = new Array(n).fill(0);
+    const smPlus = new Array(n).fill(0);
+    const smMinus = new Array(n).fill(0);
+    for (let i = 1; i <= period; i++) {
+        smTR[period] += tr[i];
+        smPlus[period] += plusDM[i];
+        smMinus[period] += minusDM[i];
+    }
+    for (let i = period + 1; i < n; i++) {
+        smTR[i] = smTR[i-1] - smTR[i-1] / period + tr[i];
+        smPlus[i] = smPlus[i-1] - smPlus[i-1] / period + plusDM[i];
+        smMinus[i] = smMinus[i-1] - smMinus[i-1] / period + minusDM[i];
+    }
+    const plusDI = new Array(n).fill(0);
+    const minusDI = new Array(n).fill(0);
+    for (let i = period; i < n; i++) {
+        plusDI[i] = smTR[i] > 0 ? (smPlus[i] / smTR[i]) * 100 : 0;
+        minusDI[i] = smTR[i] > 0 ? (smMinus[i] / smTR[i]) * 100 : 0;
+    }
+    const dx = new Array(n).fill(0);
+    for (let i = period; i < n; i++) {
+        const sum = plusDI[i] + minusDI[i];
+        dx[i] = sum > 0 ? Math.abs(plusDI[i] - minusDI[i]) / sum * 100 : 0;
+    }
+    const adxOut = new Array(n).fill(null);
+    let firstSum = 0;
+    for (let i = period; i < period * 2 && i < n; i++) firstSum += dx[i];
+    if (period * 2 - 1 < n) {
+        adxOut[period * 2 - 1] = firstSum / period;
+        for (let i = period * 2; i < n; i++) {
+            adxOut[i] = (adxOut[i-1] * (period - 1) + dx[i]) / period;
+        }
+    }
+    return { adx: adxOut, plusDI, minusDI };
+}
+
+function atrSeries(data, period = ATR_PERIOD) {
+    const out = new Array(data.length).fill(null);
+    if (data.length < period + 1) return out;
+    const trs = [0];
+    for (let i = 1; i < data.length; i++) {
+        const h = data[i].high, l = data[i].low, pc = data[i-1].close;
+        trs.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
+    }
+    let sum = 0;
+    for (let i = 1; i <= period; i++) sum += trs[i];
+    out[period] = sum / period;
+    for (let i = period + 1; i < data.length; i++) out[i] = (out[i-1] * (period - 1) + trs[i]) / period;
+    return out;
+}
+
+function donchianHighSeries(data, period) {
+    const out = new Array(data.length).fill(null);
+    for (let i = period - 1; i < data.length; i++) {
+        let max = -Infinity;
+        for (let j = i - period + 1; j <= i; j++) if (data[j].high > max) max = data[j].high;
+        out[i] = max;
+    }
+    return out;
+}
+function donchianLowSeries(data, period) {
+    const out = new Array(data.length).fill(null);
+    for (let i = period - 1; i < data.length; i++) {
+        let min = Infinity;
+        for (let j = i - period + 1; j <= i; j++) if (data[j].low < min) min = data[j].low;
+        out[i] = min;
+    }
+    return out;
+}
+
+function calculateTrendChannel(data) {
+    const n = data.length;
+    if (n < 15) return null;
+    let sx = 0, sy = 0, sxy = 0, sx2 = 0;
+    for (let i = 0; i < n; i++) {
+        const c = data[i].close;
+        sx += i; sy += c; sxy += i * c; sx2 += i * i;
+    }
+    const denom = n * sx2 - sx * sx;
+    if (Math.abs(denom) < 1e-10) return null;
+    const slope = (n * sxy - sx * sy) / denom;
+    const intercept = (sy - slope * sx) / n;
+    let maxAbove = -Infinity, maxBelow = Infinity;
+    for (let i = 0; i < n; i++) {
+        const lineY = slope * i + intercept;
+        const hDev = data[i].high - lineY;
+        const lDev = data[i].low - lineY;
+        if (hDev > maxAbove) maxAbove = hDev;
+        if (lDev < maxBelow) maxBelow = lDev;
+    }
+    const upper = new Array(n);
+    const lower = new Array(n);
+    for (let i = 0; i < n; i++) {
+        const lineY = slope * i + intercept;
+        upper[i] = lineY + maxAbove;
+        lower[i] = lineY + maxBelow;
+    }
+    const avgPrice = sy / n;
+    const slopePct = (slope * n / avgPrice) * 100;
+    let tipo = 'lateral';
+    if (slopePct > 5) tipo = 'alcista';
+    else if (slopePct < -5) tipo = 'bajista';
+    return { upper, lower, slope, intercept, tipo, slopePct };
+}
+
+function buildPointSeries(values, labels) {
+    const pts = [];
+    for (let i = 0; i < values.length; i++) {
+        const v = values[i];
+        if (v != null && isFinite(v)) pts.push({ x: labels[i], y: v });
+    }
+    return pts;
+}
+
+/* =========================================================
+   HELPERS ESTRUCTURALES
+========================================================= */
+// Percentil de volumen del propio ticker (0..1)
+function volumePercentile(volumes, lookback = 60) {
+    const recent = volumes.slice(-lookback).filter(v => v > 0).sort((a, b) => a - b);
+    if (recent.length < 20) return null;
+    const last = volumes[volumes.length - 1];
+    const rank = recent.filter(v => v <= last).length;
+    return rank / recent.length;
+}
+
+// Detección de swings (fuerza N barras a cada lado)
+function findSwings(data, lookback = 90, strength = 3) {
+    const n = data.length;
+    const start = Math.max(strength, n - lookback);
+    const end = n - strength - 1;
+    const highs = [], lows = [];
+    for (let i = start; i <= end; i++) {
+        let isHigh = true, isLow = true;
+        for (let j = 1; j <= strength; j++) {
+            if (data[i].high <= data[i-j].high || data[i].high <= data[i+j].high) isHigh = false;
+            if (data[i].low  >= data[i-j].low  || data[i].low  >= data[i+j].low)  isLow = false;
+        }
+        if (isHigh) highs.push({ price: data[i].high, index: i });
+        if (isLow)  lows.push({ price: data[i].low,  index: i });
+    }
+    return { highs, lows };
+}
+
+// Swing low confirmado más reciente (al menos `strength` barras de antigüedad)
+function recentSwingLow(data, strength = 3, lookback = 30) {
+    const { lows } = findSwings(data, lookback + strength, strength);
+    if (!lows.length) return null;
+    const minAge = strength;
+    const valid = lows.filter(l => (data.length - 1 - l.index) >= minAge);
+    if (!valid.length) return null;
+    return valid[valid.length - 1];
+}
+
+// Estructura HH/HL con votación
+function isUptrendStructure(data, lookback = 60) {
+    const { highs, lows } = findSwings(data, lookback, 3);
+    if (highs.length < 2 || lows.length < 2) return false;
+    const nH = Math.min(3, highs.length);
+    const nL = Math.min(3, lows.length);
+    const rH = highs.slice(-nH), rL = lows.slice(-nL);
+    let hhCount = 0, hlCount = 0;
+    for (let i = 1; i < rH.length; i++) if (rH[i].price > rH[i-1].price) hhCount++;
+    for (let i = 1; i < rL.length; i++) if (rL[i].price > rL[i-1].price) hlCount++;
+    const hhNeed = Math.max(1, Math.ceil((rH.length - 1) * 0.5));
+    const hlNeed = Math.max(1, Math.ceil((rL.length - 1) * 0.5));
+    return hhCount >= hhNeed && hlCount >= hlNeed;
+}
+
+// Pullback con volumen decreciente (sano)
+function pullbackVolumeHealthy(data, pullbackBars = 3, impulseBars = 10) {
+    const n = data.length;
+    if (n < pullbackBars + impulseBars + 5) return false;
+    const recent = data.slice(-pullbackBars);
+    const impulse = data.slice(-pullbackBars - impulseBars, -pullbackBars);
+    if (impulse.length < 5) return false;
+    const avgR = recent.reduce((a, b) => a + (b.volume || 0), 0) / recent.length;
+    const avgI = impulse.reduce((a, b) => a + (b.volume || 0), 0) / impulse.length;
+    if (avgI <= 0) return false;
+    return avgR < avgI * 0.75;
+}
+
+// Cierre en el tercio superior del rango del día
+function strongClose(data, idx = null) {
+    const d = idx == null ? data[data.length - 1] : data[idx];
+    const range = d.high - d.low;
+    if (range <= 0) return false;
+    return (d.close - d.low) / range >= 0.66;
+}
+
+// Resistencias: swing highs por encima del precio + máximo absoluto, deduplicadas
+function findResistances(data, price, maxLookback = 200) {
+    const { highs } = findSwings(data, maxLookback, 3);
+    const raw = [];
+    for (const h of highs) if (h.price > price * 1.005) raw.push(h.price);
+    const slice = data.slice(-maxLookback);
+    const absMax = slice.reduce((m, d) => Math.max(m, d.high), -Infinity);
+    if (isFinite(absMax) && absMax > price * 1.005) raw.push(absMax);
+    raw.sort((a, b) => a - b);
+    const dedup = [];
+    for (const v of raw) {
+        if (!dedup.length || v > dedup[dedup.length - 1] * 1.015) dedup.push(v);
+    }
+    return dedup;
+}
+
+// Stop estructural: bajo swing low confirmado, colchón 0.5 ATR, mín 1 ATR, máx 2.5 ATR
+function computeStructuralStop(data, price, atr, emaRef = null) {
+    const buffer = 0.5 * atr;
+    const stopMax = price - 2.5 * atr;    // máximo permitido (más profundo)
+    const minDist = price - 1.0 * atr;    // mínimo permitido (más cerca)
+    const candidates = [];
+
+    const swing = recentSwingLow(data, 3, 30);
+    if (swing) {
+        const s = swing.price - buffer;
+        if (s < price && s <= minDist && s >= stopMax) candidates.push({ price: s, source: 'swing' });
+    }
+    if (emaRef != null && isFinite(emaRef)) {
+        const s = emaRef - buffer;
+        if (s < price && s <= minDist && s >= stopMax) candidates.push({ price: s, source: 'ema' });
+    }
+    if (!candidates.length) return { price: stopMax, source: 'atr' };
+    candidates.sort((a, b) => b.price - a.price); // el más cercano al precio
+    return candidates[0];
+}
+
+// Targets estructurales: T1 en la resistencia más cercana que dé ≥1.5R, T2 en la siguiente
+function computeTargets(data, price, stop, atr) {
+    const risk = price - stop;
+    if (risk <= 0) return null;
+    const resistances = findResistances(data, price, 200);
+    const minT1 = price + 1.5 * risk;
+    const maxT1 = price + 3.0 * risk;
+
+    let t1, t1Source;
+    const t1r = resistances.find(r => r >= minT1 && r <= maxT1);
+    if (t1r) { t1 = t1r; t1Source = 'resistance'; }
+    else {
+        t1 = Math.min(price + 2.0 * atr, maxT1);
+        if (t1 < minT1) t1 = minT1;
+        t1Source = 'atr';
+    }
+
+    const minT2 = price + 2.5 * risk;
+    const t2r = resistances.find(r => r >= minT2);
+    let t2, t2Source;
+    if (t2r) { t2 = t2r; t2Source = 'resistance'; }
+    else { t2 = price + 3.0 * atr; t2Source = 'atr'; }
+    if (t2 <= t1) t2 = t1 * 1.02;
+
+    return { t1, t2, t1Source, t2Source, risk };
+}
+
+// Quality ponderado por categoría
+function weightedQuality(checks) {
+    let total = 0, earned = 0;
+    for (const c of checks) {
+        const w = CHECK_WEIGHTS[c.category] || 5;
+        total += w;
+        if (c.ok) earned += w;
+    }
+    return total > 0 ? Math.round((earned / total) * 100) : 0;
+}
+
+// Plan de salida por defecto
+function makeExitPlan(risk) {
+    return {
+        partials: '50% en T1 → stop a BE · 25% en T2',
+        trailing: 'Swing low 20 barras',
+        timeStop: '20 sesiones si no toca T1',
+        invalidation: 'Cierre < stop, o RSI<40 + MACD bajista'
+    };
+}
+
+// Construye el objeto setup final
+function buildSetup({ id, name, desc, status, checks, entry, stop, stopSource, targets, risk, exitPlan }) {
+    const quality = weightedQuality(checks);
+    const riskInAtr = 0; // compatibilidad; finalizeSetup calcula el valor real con ATR
+    const rrT1 = (targets.t1 - entry) / risk;
+    const rrT2 = (targets.t2 - entry) / risk;
+    return {
+        id, name, desc, status, quality,
+        entry, stop, stopSource,
+        t1: targets.t1, t1Source: targets.t1Source,
+        t2: targets.t2, t2Source: targets.t2Source,
+        risk, rrT1, rrT2,
+        checks, exitPlan
+    };
+}
+
+/* =========================================================
+   SCORE TÉCNICO 0-100
+========================================================= */
+function computeTechnicalScore(tech, price, structureOk = null) {
+    // Score de estado, no probabilidad de éxito. Evita sumar repetidamente la misma señal.
+    const parts = { trend: 0, momentum: 0, strength: 0, participation: 0, structure: 0 };
+    if (tech.ema20 != null && tech.ema50 != null && tech.ema200 != null) {
+        const stack = (price > tech.ema20) + (tech.ema20 > tech.ema50) + (tech.ema50 > tech.ema200);
+        parts.trend = stack === 3 ? 30 : stack === 2 ? 20 : stack === 1 ? 10 : 0;
+    }
+    if (tech.rsi != null) {
+        if (tech.rsi >= 50 && tech.rsi <= 70) parts.momentum += 12;
+        else if (tech.rsi > 70 && tech.rsi <= 80) parts.momentum += 7;
+        else if (tech.rsi >= 30 && tech.rsi < 50) parts.momentum += 4;
+    }
+    if (tech.macdBull) parts.momentum += 8;
+    if (tech.adx != null) {
+        if (tech.adx >= 25 && tech.plusDI > tech.minusDI) parts.strength = 20;
+        else if (tech.adx >= 20 && tech.plusDI > tech.minusDI) parts.strength = 13;
+        else if (tech.adx >= 20) parts.strength = 7;
+    }
+    if (tech.volRatio != null) {
+        if (tech.volRatio >= 1.5 && tech.dayChange > 0) parts.participation = 15;
+        else if (tech.volRatio >= 1.1 && tech.dayChange >= 0) parts.participation = 9;
+        else if (tech.volRatio >= 0.8) parts.participation = 5;
+    }
+    if (structureOk === true) parts.structure = 15;
+    else if (structureOk === false) parts.structure = 4;
+    else parts.structure = 8;
+    const score = parts.trend + parts.momentum + parts.strength + parts.participation + parts.structure;
+    return { score: Math.max(0, Math.min(100, Math.round(score))), parts };
+}
+
+function classifyTrend(tech, price) {
+    if (tech.ema20 == null || tech.ema50 == null || tech.ema200 == null) return 'SIN DATOS';
+    const stack = (price > tech.ema20) + (tech.ema20 > tech.ema50) + (tech.ema50 > tech.ema200);
+    if (stack === 3) return 'ALCISTA';
+    if (stack === 0) return 'BAJISTA';
+    return 'LATERAL';
+}
+
+function classifyScore(score) {
+    if (score >= 75) return { text: 'MUY FUERTE', color: 'var(--green)' };
+    if (score >= 60) return { text: 'FUERTE', color: 'var(--green)' };
+    if (score >= 45) return { text: 'NEUTRAL', color: 'var(--text-2)' };
+    if (score >= 30) return { text: 'DÉBIL', color: 'var(--orange)' };
+    return { text: 'MUY DÉBIL', color: 'var(--red)' };
+}
+
+function classifyRsi(rsi) {
+    if (rsi == null) return '—';
+    if (rsi >= 70) return 'SOBRECOMPRA';
+    if (rsi <= 30) return 'SOBREVENTA';
+    if (rsi >= 50) return 'ALCISTA';
+    return 'BAJISTA';
+}
+
+/* =========================================================
+   RÉGIMEN DE MERCADO
+========================================================= */
+async function getMarketRegime(key) {
+    const ck = `regime_SPY_${today()}`;
+    try { const cached = localStorage.getItem(ck); if (cached) return JSON.parse(cached); } catch(_) {}
+    const data = await fetchAllData('SPY', key, 260);
+    if (data.length < 210) throw new Error('SPY insuficiente');
+    const closes = data.map(d => d.close);
+    const sma50Arr = sma(closes, 50), sma200Arr = sma(closes, 200);
+    const last = closes.length - 1;
+    const sma50Now = sma50Arr[last], sma200Now = sma200Arr[last];
+    const slopeLookback = 20;
+    const sma200Prev = sma200Arr[last - slopeLookback];
+    const price = closes[last];
+    const distPct = ((price - sma200Now) / sma200Now) * 100;
+    const slopePct = sma200Prev ? ((sma200Now - sma200Prev) / sma200Prev) * 100 : 0;
+    let regime = 'NEUTRAL';
+    if (price > sma200Now && sma50Now > sma200Now && slopePct > 0.5) regime = 'STRONG_RISK_ON';
+    else if (price > sma200Now && slopePct >= 0) regime = 'RISK_ON';
+    else if (price < sma200Now && sma50Now < sma200Now && slopePct < -0.5) regime = 'STRONG_RISK_OFF';
+    else if (price < sma200Now && slopePct <= 0) regime = 'RISK_OFF';
+    const result = { regime, price, sma50: sma50Now, sma200: sma200Now, distPct, slopePct };
+    safeSetItem(ck, JSON.stringify(result));
+    return result;
+}
+function setRegimeBadge(regime) {
+    const el = document.getElementById('regimeBadge');
+    if (!el || !regime) return;
+    el.style.display = 'inline-flex';
+    const cls = regime.regime.includes('ON') ? 'risk-on' : regime.regime.includes('OFF') ? 'risk-off' : 'neutral';
+    const label = { STRONG_RISK_ON:'RISK-ON+', RISK_ON:'RISK-ON', NEUTRAL:'NEUTRAL', RISK_OFF:'RISK-OFF', STRONG_RISK_OFF:'RISK-OFF+' }[regime.regime] || regime.regime;
+    el.className = 'regime-badge ' + cls;
+    el.textContent = `● ${label}`;
+    el.title = `SPY $${regime.price.toFixed(2)} · SMA50 $${regime.sma50.toFixed(2)} · SMA200 $${regime.sma200.toFixed(2)} · distancia ${regime.distPct >= 0 ? '+' : ''}${regime.distPct.toFixed(1)}% · pendiente SMA200 20d ${regime.slopePct >= 0 ? '+' : ''}${regime.slopePct.toFixed(2)}%`;
+}
+
+/* =========================================================
+   SETUPS
+========================================================= */
+function buildCtx(data, tech, regime) {
+    const n = data.length, last = n - 1;
+    const closes = data.map(d => d.close);
+    const volumes = data.map(d => d.volume || 0);
+    const ema20Arr = ema(closes, 20);
+    const ema50Arr = ema(closes, 50);
+    const ema200Arr = ema(closes, 200);
+    const sma200Arr = sma(closes, 200);
+    const rsiArr = rsi(closes, RSI_PERIOD);
+    const adxObj = adxCalc(data, 14);
+    const dh20 = donchianHighSeries(data, 20);
+    const dl10 = donchianLowSeries(data, 10);
+    const bb = bollinger(closes, 20, 2);
+    return {
+        data, closes, volumes, last,
+        price: tech.price, atr: tech.atr,
+        e20: ema20Arr[last], e50: ema50Arr[last], e200: ema200Arr[last],
+        s200: sma200Arr[last],
+        r: rsiArr[last],
+        adx: adxObj.adx[last],
+        plusDI: adxObj.plusDI[last],
+        minusDI: adxObj.minusDI[last],
+        dh20, dl10, bb,
+        volPct: volumePercentile(volumes, 60),
+        regime
+    };
+}
+
+function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, stopSource, atr, data, regime, momentumSetup }) {
+    const risk = entry - stop;
+    if (!isFinite(risk) || risk <= 0) return null;
+    const riskInAtr = risk / atr;
+    // Gate duro: riesgo fuera de rango
+    if (riskInAtr > 3.0) return null;
+    if (riskInAtr < 0.8) return null;
+    // Gate duro: momentum en RISK-OFF
+    if (momentumSetup && (regime?.regime === 'RISK_OFF' || regime?.regime === 'STRONG_RISK_OFF')) return null;
+
+    const targets = computeTargets(data, entry, stop, atr);
+    if (!targets) return null;
+    const rrT1 = (targets.t1 - entry) / risk;
+    // Gate duro: R:R mínimo
+    if (rrT1 < 1.5) return null;
+
+    // Measured move como T2 alternativo en rupturas
+    if (id === 'donchian' || id === 'bb_breakout') {
+        const slice20 = data.slice(-20);
+        const rHigh = slice20.reduce((m, d) => Math.max(m, d.high), -Infinity);
+        const rLow  = slice20.reduce((m, d) => Math.min(m, d.low),  Infinity);
+        const measured = entry + (rHigh - rLow);
+        if (isFinite(measured) && measured > targets.t2) {
+            targets.t2 = measured;
+            targets.t2Source = 'measured';
+        }
+    }
+
+    const quality = weightedQuality(checks);
+    const status = primaryConfirmed && quality >= 65 ? 'READY' : 'WAITING';
+    return {
+        id, name, desc, status, quality,
+        entry, stop, stopSource,
+        t1: targets.t1, t1Source: targets.t1Source,
+        t2: targets.t2, t2Source: targets.t2Source,
+        risk, riskInAtr, rrT1,
+        rrT2: (targets.t2 - entry) / risk,
+        checks, exitPlan: makeExitPlan(risk)
+    };
+}
+
+function regimeCheck(regime) {
+    if (!regime) return [];
+    const bullish = regime.regime === 'RISK_ON' || regime.regime === 'STRONG_RISK_ON';
+    return [{ label: 'Régimen favorable', ok: bullish, detail: regime.regime.replaceAll('_','-'), category: 'regime' }];
+}
+
+/* --- Setup 1: Ruptura Donchian 20 --- */
+function setupDonchian(ctx) {
+    const { data, last, price, atr, e20, e50, e200, adx, plusDI, minusDI, r, dh20, volPct, regime } = ctx;
+    const dhPrev = dh20[last - 1];
+    if (dhPrev == null) return null;
+    const breakout = data[last].close > dhPrev;
+    if (!breakout) return null;         // gate: sin ruptura no es este setup
+    if (!(e50 > e200)) return null;     // gate: tendencia de fondo alcista
+
+    const checks = [
+        { label: 'Cierre > Donchian High 20', ok: true, detail: `$${dhPrev.toFixed(2)}`, category: 'trend' },
+        { label: 'Cierre fuerte (>66% rango)', ok: strongClose(data), detail: '', category: 'timing' },
+        { label: 'EMA50 > EMA200', ok: e50 > e200, detail: '', category: 'trend' },
+        { label: 'Precio > EMA20', ok: price > e20, detail: '', category: 'trend' },
+        { label: 'Estructura HH/HL', ok: isUptrendStructure(data, 60), detail: '', category: 'structure' },
+        { label: 'ADX > 20', ok: adx != null && adx > 20, detail: adx != null ? adx.toFixed(1) : '—', category: 'strength' },
+        { label: '+DI > −DI', ok: plusDI > minusDI, detail: '', category: 'strength' },
+        { label: 'Volumen P80 propio', ok: volPct != null && volPct >= 0.8, detail: volPct != null ? `P${Math.round(volPct*100)}` : '—', category: 'volume' },
+        { label: 'RSI 50-80', ok: r != null && r >= 50 && r <= 80, detail: r != null ? r.toFixed(1) : '—', category: 'momentum' },
+        ...regimeCheck(regime)
+    ];
+
+    const stopObj = computeStructuralStop(data, price, atr, e20);
+    return finalizeSetup({
+        id: 'donchian', name: 'Ruptura Donchian 20',
+        desc: 'Cierre sobre el máximo de 20 sesiones con volumen y estructura',
+        primaryConfirmed: true, momentumSetup: true,
+        checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
+        atr, data, regime
+    });
+}
+
+/* --- Setup 2: Pullback a EMA20/50 --- */
+function setupPullback(ctx) {
+    const { data, last, price, atr, e20, e50, e200, adx, r, regime } = ctx;
+    const stack = e20 > e50 && e50 > e200;
+    if (!stack) return null;
+
+    // Toque reciente de EMA20 o EMA50 (últimas 5 barras)
+    let touched = false;
+    for (let i = Math.max(0, last - 4); i <= last; i++) {
+        const ref = (e20 != null && data[i].low <= e20 * 1.005) ? e20
+                  : (e50 != null && data[i].low <= e50 * 1.005) ? e50 : null;
+        if (ref != null && data[i].close >= ref * 0.995) { touched = true; break; }
+    }
+
+    const structureOk = isUptrendStructure(data, 60);
+    const volHealthy = pullbackVolumeHealthy(data);
+
+    const checks = [
+        { label: 'EMA20 > EMA50 > EMA200', ok: true, detail: '', category: 'trend' },
+        { label: 'Toque EMA20/50 (≤5 sesiones)', ok: touched, detail: '', category: 'timing' },
+        { label: 'Precio > EMA20', ok: price > e20, detail: e20 != null ? `$${e20.toFixed(2)}` : '—', category: 'trend' },
+        { label: 'Estructura HH/HL', ok: structureOk, detail: '', category: 'structure' },
+        { label: 'Volumen decreciente en pullback', ok: volHealthy, detail: '', category: 'health' },
+        { label: 'RSI 40-65', ok: r != null && r >= 40 && r <= 65, detail: r != null ? r.toFixed(1) : '—', category: 'momentum' },
+        { label: 'ADX > 20', ok: adx != null && adx > 20, detail: adx != null ? adx.toFixed(1) : '—', category: 'strength' },
+        ...regimeCheck(regime)
+    ];
+
+    const stopObj = computeStructuralStop(data, price, atr, e50);
+    return finalizeSetup({
+        id: 'pullback', name: 'Pullback a EMA20/50',
+        desc: 'Retroceso a media en tendencia alcista con estructura y volumen a favor',
+        primaryConfirmed: touched && structureOk,
+        momentumSetup: false,
+        checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
+        atr, data, regime
+    });
+}
+
+/* --- Setup 3: Rebote SMA200 --- */
+function setupSma200(ctx) {
+    const { data, last, price, atr, e20, s200, r, regime } = ctx;
+    if (s200 == null) return null;
+    const above = price > s200;
+    if (!above) return null;
+
+    // Toque de SMA200 en las últimas 7 barras
+    let touched = false;
+    for (let i = Math.max(0, last - 6); i <= last; i++) {
+        if (data[i].low <= s200 * 1.005) { touched = true; break; }
+    }
+    if (!touched) return null;
+
+    const greenDay = data[last].close > data[last - 1].close;
+    const structureOk = isUptrendStructure(data, 90);
+    const volHealthy = pullbackVolumeHealthy(data);
+
+    const checks = [
+        { label: 'Precio > SMA200', ok: true, detail: `$${s200.toFixed(2)}`, category: 'trend' },
+        { label: 'Toque SMA200 (≤7 sesiones)', ok: true, detail: '', category: 'timing' },
+        { label: 'Cierre verde', ok: greenDay, detail: '', category: 'momentum' },
+        { label: 'RSI < 50', ok: r != null && r < 50, detail: r != null ? r.toFixed(1) : '—', category: 'momentum' },
+        { label: 'Estructura HH/HL', ok: structureOk, detail: '', category: 'structure' },
+        { label: 'Volumen decreciente en pullback', ok: volHealthy, detail: '', category: 'health' },
+        ...regimeCheck(regime)
+    ];
+
+    const stopObj = computeStructuralStop(data, price, atr, s200);
+    return finalizeSetup({
+        id: 'sma200', name: 'Rebote en SMA200',
+        desc: 'Retroceso a la media de 200 con tendencia larga intacta',
+        primaryConfirmed: touched && greenDay,
+        momentumSetup: false,
+        checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
+        atr, data, regime
+    });
+}
+
+/* --- Setup 4: Cruce dorado EMA20/50 --- */
+function setupGoldenCross(ctx) {
+    const { data, last, price, atr, e50, e200, adx, volPct, regime } = ctx;
+    const ema20Arr = ctx.ema20Arr, ema50Arr = ctx.ema50Arr;
+    // Necesitamos acceso a las series; recalculamos si no están en ctx
+    const closes = data.map(d => d.close);
+    const e20s = ema(closes, 20), e50s = ema(closes, 50);
+    let crossIdx = -1;
+    for (let i = last; i >= Math.max(1, last - 2); i--) {
+        if (e20s[i] != null && e50s[i] != null && e20s[i-1] != null && e50s[i-1] != null) {
+            if (e20s[i] > e50s[i] && e20s[i-1] <= e50s[i-1]) { crossIdx = i; break; }
+        }
+    }
+    if (crossIdx === -1) return null;
+    if (!(e50 > e200)) return null;
+
+    const adxObj = adxCalc(data, 14);
+    const adxPrev = adxObj.adx[last - 5];
+    const adxRising = adx != null && adxPrev != null && adx > adxPrev;
+
+    const checks = [
+        { label: 'Cruce EMA20/50 (≤3 ses.)', ok: true, detail: '', category: 'trend' },
+        { label: 'EMA50 > EMA200', ok: true, detail: '', category: 'trend' },
+        { label: 'ADX > 20 y subiendo', ok: adx != null && adx > 20 && adxRising, detail: adx != null ? adx.toFixed(1) : '—', category: 'strength' },
+        { label: 'Volumen P75 propio', ok: volPct != null && volPct >= 0.75, detail: volPct != null ? `P${Math.round(volPct*100)}` : '—', category: 'volume' },
+        { label: 'MACD > Signal', ok: (() => { const m = macd(closes, 12, 26, 9); return m.macd[last] != null && m.signal[last] != null && m.macd[last] > m.signal[last]; })(), detail: '', category: 'momentum' },
+        ...regimeCheck(regime)
+    ];
+
+    const stopObj = computeStructuralStop(data, price, atr, null);
+    return finalizeSetup({
+        id: 'golden_cross', name: 'Cruce dorado EMA20/50',
+        desc: 'Cruce reciente de medias con confirmación de fuerza y volumen',
+        primaryConfirmed: true, momentumSetup: true,
+        checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
+        atr, data, regime
+    });
+}
+
+/* --- Setup 5: Ruptura Bollinger + Volumen --- */
+function setupBbBreakout(ctx) {
+    const { data, last, price, atr, adx, r, bb, volPct, regime } = ctx;
+    const closes = data.map(d => d.close);
+    const bbUp = bb.upper[last], bbMid = bb.middle[last];
+    if (bbUp == null) return null;
+    const breakout = closes[last] > bbUp;
+    if (!breakout) return null;
+
+    const macdObj = macd(closes, 12, 26, 9);
+    const macdBull = macdObj.macd[last] != null && macdObj.signal[last] != null && macdObj.macd[last] > macdObj.signal[last];
+
+    const checks = [
+        { label: 'Cierre > BB superior', ok: true, detail: `$${bbUp.toFixed(2)}`, category: 'trend' },
+        { label: 'Volumen P85 propio', ok: volPct != null && volPct >= 0.85, detail: volPct != null ? `P${Math.round(volPct*100)}` : '—', category: 'volume' },
+        { label: 'MACD > Signal', ok: macdBull, detail: '', category: 'momentum' },
+        { label: 'ADX > 20', ok: adx != null && adx > 20, detail: adx != null ? adx.toFixed(1) : '—', category: 'strength' },
+        { label: 'RSI 55-80', ok: r != null && r >= 55 && r <= 80, detail: r != null ? r.toFixed(1) : '—', category: 'momentum' },
+        { label: 'Estructura HH/HL', ok: isUptrendStructure(data, 60), detail: '', category: 'structure' },
+        ...regimeCheck(regime)
+    ];
+
+    const stopObj = computeStructuralStop(data, price, atr, null);
+    // Override stop: no más arriba que la BB media (si está por debajo del precio)
+    if (bbMid != null && bbMid < price && bbMid > stopObj.price) {
+        return finalizeSetup({
+            id: 'bb_breakout', name: 'Ruptura Bollinger + Volumen',
+            desc: 'Expansión de volatilidad confirmada con volumen y MACD',
+            primaryConfirmed: true, momentumSetup: true,
+            checks, entry: price, stop: bbMid, stopSource: 'ema',
+            atr, data, regime
+        });
+    }
+    return finalizeSetup({
+        id: 'bb_breakout', name: 'Ruptura Bollinger + Volumen',
+        desc: 'Expansión de volatilidad confirmada con volumen y MACD',
+        primaryConfirmed: true, momentumSetup: true,
+        checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
+        atr, data, regime
+    });
+}
+
+/* --- Orquestador --- */
+function computeEntries(data, tech, regime) {
+    if (!tech.atr || !isFinite(tech.atr)) return [];
+    if (data.length < MIN_BARS) return [];
+
+    const ctx = buildCtx(data, tech, regime);
+    const setups = [
+        setupDonchian(ctx),
+        setupPullback(ctx),
+        setupSma200(ctx),
+        setupGoldenCross(ctx),
+        setupBbBreakout(ctx)
+    ].filter(Boolean);
+
+    setups.sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'READY' ? -1 : 1;
+        return b.quality - a.quality;
+    });
+    return setups;
+}
+
+/* =========================================================
+   RENDER SETUPS
+========================================================= */
+function getRiskConfig() {
+    const size = parseFloat(localStorage.getItem('sa_account_size'));
+    const pct = parseFloat(localStorage.getItem('sa_risk_pct'));
+    const maxPos = parseFloat(localStorage.getItem('sa_max_position_pct'));
+    return {
+        size: isFinite(size) && size > 0 ? size : 10000,
+        pct: isFinite(pct) && pct > 0 ? Math.min(pct, MAX_RISK_PCT_DEFAULT) : 1,
+        maxPositionPct: isFinite(maxPos) && maxPos > 0 ? Math.min(maxPos, 100) : MAX_POSITION_PCT_DEFAULT
+    };
+}
+function saveRiskConfig() {
+    const s = parseFloat(document.getElementById('accountSize').value);
+    const p = parseFloat(document.getElementById('riskPct').value);
+    const m = parseFloat(document.getElementById('maxPositionPct').value);
+    if (isFinite(s) && s > 0) safeSetItem('sa_account_size', s);
+    if (isFinite(p) && p > 0) safeSetItem('sa_risk_pct', Math.min(p, MAX_RISK_PCT_DEFAULT));
+    if (isFinite(m) && m > 0) safeSetItem('sa_max_position_pct', Math.min(m, 100));
+    toast('Configuración de riesgo guardada', 'success');
+    if (currentChartSymbol) renderEntries(currentChartSymbol);
+}
+function loadRiskConfig() {
+    const c = getRiskConfig();
+    const sEl = document.getElementById('accountSize'); if (sEl) sEl.value = c.size;
+    const pEl = document.getElementById('riskPct'); if (pEl) pEl.value = c.pct;
+    const mEl = document.getElementById('maxPositionPct'); if (mEl) mEl.value = c.maxPositionPct;
+}
+
+function sourceLabel(src) {
+    switch (src) {
+        case 'swing': return 'bajo swing';
+        case 'ema': return 'bajo media';
+        case 'atr': return 'ATR';
+        case 'resistance': return 'resistencia';
+        case 'measured': return 'measured move';
+        default: return src;
+    }
+}
+
+function renderRecommendation(symbol, entries, accountSize, riskPct) {
+    if (!entries.length) return '';
+    const best = entries[0];
+    const dollarRisk = accountSize * riskPct / 100;
+    const rawShares = Math.max(0, Math.floor(dollarRisk / best.risk));
+    const maxShares = Math.max(0, Math.floor((accountSize * getRiskConfig().maxPositionPct / 100) / best.entry));
+    const shares = Math.min(rawShares, maxShares);
+    const cost = shares * best.entry;
+    const statusText = best.status === 'READY' ? 'LISTO PARA OPERAR' : 'EN FORMACIÓN';
+    const statusClass = best.status === 'READY' ? 'ready' : 'waiting';
+    return `
+        <div class="rec-card">
+            <div class="rec-head">
+                <div>
+                    <div class="rec-title">${escapeHtml(symbol)} · ${escapeHtml(best.name)}</div>
+                    <div class="rec-sub">${statusText} · Quality <b style="color:var(--text);">${best.quality}/100</b> · Riesgo ${best.riskInAtr.toFixed(2)} ATR</div>
+                </div>
+                <span class="entry-status ${statusClass}">${best.status === 'READY' ? 'READY' : 'WAIT'}</span>
+            </div>
+            <div class="rec-prices">
+                <div class="rec-price entry">
+                    <div class="lbl">Entrada</div>
+                    <div class="val">$${best.entry.toFixed(2)}</div>
+                </div>
+                <div class="rec-price stop">
+                    <div class="lbl">Stop</div>
+                    <div class="val">$${best.stop.toFixed(2)}</div>
+                    <div class="sub">${sourceLabel(best.stopSource)} · ${((best.entry - best.stop) / best.entry * 100).toFixed(2)}%</div>
+                </div>
+                <div class="rec-price t1">
+                    <div class="lbl">T1</div>
+                    <div class="val">$${best.t1.toFixed(2)}</div>
+                    <div class="sub">${sourceLabel(best.t1Source)} · R:R ${best.rrT1.toFixed(1)}</div>
+                </div>
+                <div class="rec-price t2">
+                    <div class="lbl">T2</div>
+                    <div class="val">$${best.t2.toFixed(2)}</div>
+                    <div class="sub">${sourceLabel(best.t2Source)} · R:R ${best.rrT2.toFixed(1)}</div>
+                </div>
+            </div>
+            <div class="rec-sizing">
+                <span><b>${shares}</b> acc · <b>$${cost.toFixed(0)}</b> (${(cost / accountSize * 100).toFixed(1)}% cuenta) · riesgo <b>$${(shares * best.risk).toFixed(0)}</b> (${riskPct}% de $${accountSize.toLocaleString()})</span>
+            </div>
+            <div class="rec-riskbar">
+                <div class="rec-riskcell"><div class="k">Riesgo/trade</div><div class="v">${riskPct.toFixed(1)}%</div></div>
+                <div class="rec-riskcell"><div class="k">Distancia stop</div><div class="v">${((best.entry-best.stop)/best.entry*100).toFixed(2)}%</div></div>
+                <div class="rec-riskcell"><div class="k">Riesgo ATR</div><div class="v">${best.riskInAtr.toFixed(2)}×</div></div>
+                <div class="rec-riskcell"><div class="k">R:R T1</div><div class="v">${best.rrT1.toFixed(1)}R</div></div>
+            </div>
+        </div>
+    `;
+}
+
+function renderEntries(symbol) {
+    const panel = document.getElementById('entriesPanel');
+    const container = document.getElementById('entriesContainer');
+    const sub = document.getElementById('entriesSub');
+    if (!panel || !container) return;
+    const live = lastSymbolsData?.[symbol];
+    const entries = live?.entries || [];
+
+    panel.style.display = 'block';
+    if (!entries.length) {
+        if (sub) sub.textContent = 'Sin setups activos. Comprueba régimen, tendencia y estructura.';
+        container.innerHTML = `<div class="empty-state" style="padding:20px; font-size:12px;">No hay setups que cumplan los filtros.<br>Revisa tendencia, régimen, estructura y R:R mínimo.</div>`;
+        return;
+    }
+
+    const readyCount = entries.filter(e => e.status === 'READY').length;
+    const { size: accountSize, pct: riskPct } = getRiskConfig();
+    if (sub) sub.textContent = `${entries.length} setup${entries.length > 1 ? 's' : ''} · ${readyCount} listo${readyCount !== 1 ? 's' : ''} para operar`;
+
+    const recHtml = renderRecommendation(symbol, entries, accountSize, riskPct);
+    const dollarRisk = accountSize * riskPct / 100;
+
+    const setupsHtml = entries.map(e => {
+        const statusClass = e.status === 'READY' ? 'ready' : 'waiting';
+        const statusText = e.status === 'READY' ? 'LISTO' : 'FORMÁNDOSE';
+        const stopPct = ((e.entry - e.stop) / e.entry * 100).toFixed(2);
+        const rawShares = Math.max(0, Math.floor(dollarRisk / e.risk));
+        const maxShares = Math.max(0, Math.floor((accountSize * getRiskConfig().maxPositionPct / 100) / e.entry));
+        const shares = Math.min(rawShares, maxShares);
+        const cost = shares * e.entry;
+        const costPct = (cost / accountSize * 100).toFixed(1);
+
+        const checksHtml = e.checks.map(c => `
+            <div class="check-item ${c.ok ? 'ok' : 'no'}">
+                <span class="check-icon">${c.ok ? '✓' : '○'}</span>
+                <span class="check-label">${escapeHtml(c.label)}</span>
+                ${c.detail ? `<span class="check-detail">${escapeHtml(c.detail)}</span>` : ''}
+            </div>`).join('');
+
+        return `
+            <div class="entry-card ${statusClass}">
+                <div class="entry-head">
+                    <div>
+                        <div class="entry-name">${escapeHtml(e.name)}</div>
+                        <div class="entry-desc">${escapeHtml(e.desc)}</div>
+                    </div>
+                    <div class="entry-badges">
+                        <span class="entry-status ${statusClass}">${statusText}</span>
+                        <span class="entry-quality">Q${e.quality}</span>
+                    </div>
+                </div>
+                <div class="entry-prices">
+                    <div class="entry-price-item">
+                        <div class="ep-label">Entrada</div>
+                        <div class="ep-value">$${e.entry.toFixed(2)}</div>
+                    </div>
+                    <div class="entry-price-item stop">
+                        <div class="ep-label">Stop</div>
+                        <div class="ep-value">$${e.stop.toFixed(2)}</div>
+                        <div class="ep-sub">−${stopPct}%<br>${sourceLabel(e.stopSource)}</div>
+                    </div>
+                    <div class="entry-price-item target">
+                        <div class="ep-label">T1</div>
+                        <div class="ep-value">$${e.t1.toFixed(2)}</div>
+                        <div class="ep-sub">R:R ${e.rrT1.toFixed(1)}<br>${sourceLabel(e.t1Source)}</div>
+                    </div>
+                    <div class="entry-price-item target">
+                        <div class="ep-label">T2</div>
+                        <div class="ep-value">$${e.t2.toFixed(2)}</div>
+                        <div class="ep-sub">R:R ${e.rrT2.toFixed(1)}<br>${sourceLabel(e.t2Source)}</div>
+                    </div>
+                </div>
+                <div class="entry-checks">${checksHtml}</div>
+                <div class="entry-exit-plan">
+                    <b>Plan:</b> ${e.exitPlan.partials} · Trailing: ${e.exitPlan.trailing} · Time stop: ${e.exitPlan.timeStop} · Invalidación: ${e.exitPlan.invalidation}
+                </div>
+                <div class="entry-sizing">
+                    <span><b>${shares}</b> acc · <b>$${cost.toFixed(0)}</b> (${costPct}%) · riesgo <b>$${(shares * e.risk).toFixed(0)}</b> · ${e.riskInAtr.toFixed(2)} ATR</span>
+                </div>
+            </div>`;
+    }).join('');
+
+    container.innerHTML = recHtml + setupsHtml;
+}
+
+/* =========================================================
+   CARTERA
+========================================================= */
+let manualPositions = [];
+function saveManualPositions() { safeSetItem("sa_manual_positions", JSON.stringify(manualPositions)); }
+function loadManualPositions() {
+    try { const raw = localStorage.getItem("sa_manual_positions"); if (raw) manualPositions = JSON.parse(raw) || []; }
+    catch(e) { manualPositions = []; }
+}
+function addManualPosition() {
+    const symbolEl = document.getElementById("posSymbol");
+    const sharesEl = document.getElementById("posShares");
+    const entryEl = document.getElementById("posEntry");
+    const symbol = symbolEl.value.trim().toUpperCase();
+    const shares = parseFloat(sharesEl.value);
+    const entry = parseFloat(entryEl.value);
+    if (!symbol || !isFinite(shares) || shares <= 0 || !isFinite(entry) || entry <= 0) { toast("Rellena símbolo, acciones y precio correctamente.", "error"); return; }
+    const id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    manualPositions.push({ id, symbol, shares, entry, entryDate: new Date().toISOString() });
+    saveManualPositions();
+    symbolEl.value = ""; sharesEl.value = ""; entryEl.value = "";
+    renderManualPositions();
+    toast(`${symbol} añadido a cartera`, "success");
+}
+function removeManualPosition(id) {
+    manualPositions = manualPositions.filter(p => p.id !== id);
+    saveManualPositions(); renderManualPositions();
+}
+function renderManualPositions() {
+    const container = document.getElementById("manualPositionsList"); if (!container) return;
+    if (!manualPositions.length) { container.innerHTML = '<div class="empty-state" style="padding:16px;">Sin posiciones</div>'; return; }
+    container.innerHTML = manualPositions.map(p => {
+        const live = lastSymbolsData?.[p.symbol];
+        const price = live?.price ?? p.entry;
+        const atr = live?.atr ?? null;
+        const liveStop = live?.entries?.find(e => e.status === 'READY')?.stop;
+        const stop = liveStop ?? (atr ? price - 2 * atr : null);
+        const pnlPct = ((price - p.entry) / p.entry) * 100;
+        const pnlDollar = (price - p.entry) * p.shares;
+        const score = live?.score ?? null;
+        let state = "warn", statusText = "Sin análisis", statusDetail = "Analiza el ticker";
+        if (live) {
+            if (stop && price <= stop) { state = "danger"; statusText = "STOP TÉCNICO"; statusDetail = `≤ $${stop.toFixed(2)}`; }
+            else if (live.trend === 'BAJISTA') { state = "danger"; statusText = "TENDENCIA BAJISTA"; statusDetail = `Score ${score}`; }
+            else if (live.trend === 'LATERAL') { state = "warn"; statusText = "LATERAL"; statusDetail = `Score ${score}`; }
+            else { state = "ok"; statusText = "TENDENCIA ALCISTA"; statusDetail = `Score ${score}`; }
+        }
+        const pnlClass = pnlPct >= 0 ? "pos" : "neg";
+        return `
+            <div class="pos-item ${state}">
+                <div>
+                    <div class="pos-symbol">${escapeHtml(p.symbol)}</div>
+                    <div class="pos-meta" style="margin-top:2px;"><span><b>${p.shares}</b> @ <b>$${p.entry.toFixed(2)}</b></span></div>
+                </div>
+                <button class="pos-remove" onclick="removeManualPosition('${escapeHtml(String(p.id))}')">×</button>
+                <div class="pos-meta">
+                    <span>Actual: <b>$${price.toFixed(2)}</b></span>
+                    <span class="${pnlClass}" style="font-weight:600;">${fmtPct(pnlPct)} · ${pnlDollar >= 0 ? '+' : ''}$${pnlDollar.toFixed(2)}</span>
+                    ${stop ? `<span>Stop ATR: <b style="color:${state==='danger'?'var(--red)':'var(--text)'}">$${stop.toFixed(2)}</b></span>` : ''}
+                </div>
+                <div class="pos-status">
+                    <span class="label">${statusText}</span>
+                    <span class="value">${statusDetail}</span>
+                </div>
+            </div>`;
+    }).join("");
+}
+function exportPositions() {
+    const data = { positions: manualPositions, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `stockanalyzer_positions_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Posiciones exportadas", "success");
+}
+
+/* =========================================================
+   CHART CONTROLS
+========================================================= */
+function setChartStyle(style) {
+    chartStyle = style;
+    document.querySelectorAll('[data-chart-style]').forEach(b => b.classList.toggle('active', b.dataset.chartStyle === style));
+    if (currentChartSymbol) renderPriceChart(currentChartSymbol);
+}
+function toggleSeries(name) {
+    seriesVisibility[name] = !seriesVisibility[name];
+    document.querySelectorAll(`.chart-toggle[data-series="${name}"]`).forEach(b => b.classList.toggle("active", seriesVisibility[name]));
+    if (currentChartSymbol) renderPriceChart(currentChartSymbol);
+}
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#tradesWindow button');
+    if (!btn) return;
+    document.querySelectorAll('#tradesWindow button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const w = btn.dataset.window;
+    visibleWindow = w === 'all' ? Infinity : parseInt(w);
+    if (currentChartSymbol) renderPriceChart(currentChartSymbol);
+});
+
+/* =========================================================
+   RESULT CARDS
+========================================================= */
+function renderResultCards(results) {
+    const container = document.getElementById("resultCards"); if (!container) return;
+    if (!results.length) { container.innerHTML = '<div class="empty-state"><span class="icon">📊</span>Sin datos.</div>'; return; }
+    container.innerHTML = results.map((r, i) => {
+        const cls = classifyScore(r.score);
+        const trend = r.trend;
+        const trendClass = trend === 'ALCISTA' ? 'signal-buy' : trend === 'BAJISTA' ? 'signal-sell' : 'signal-hold';
+        const rsiTxt = r.rsi != null ? r.rsi.toFixed(1) : '—';
+        const adxTxt = r.adx != null ? r.adx.toFixed(1) : '—';
+        const chg20 = r.change20 != null ? r.change20 : 0;
+        const chg20Color = chg20 >= 0 ? 'var(--green)' : 'var(--red)';
+        const readyEntries = (r.entries || []).filter(e => e.status === 'READY').length;
+        const totalEntries = (r.entries || []).length;
+        const entryBadge = readyEntries
+            ? `<span class="entry-badge-mini">● ${readyEntries} setup${readyEntries > 1 ? 's' : ''}</span>`
+            : (totalEntries ? `<span class="small" style="opacity:0.5;">${totalEntries} en formación</span>` : '');
+        return `
+            <div class="result-card" data-idx="${i}">
+                <div class="head">
+                    <span class="sym">${escapeHtml(r.symbol)}</span>
+                    <span class="price">$${r.price.toFixed(2)}</span>
+                </div>
+                <div class="grid">
+                    <div class="field">
+                        <div class="lbl">Score</div>
+                        <div class="val" style="color:${cls.color};">${r.score}</div>
+                    </div>
+                    <div class="field">
+                        <div class="lbl">RSI 14</div>
+                        <div class="val">${rsiTxt}</div>
+                    </div>
+                    <div class="field">
+                        <div class="lbl">ADX 14</div>
+                        <div class="val">${adxTxt}</div>
+                    </div>
+                    <div class="field">
+                        <div class="lbl">Δ 20d</div>
+                        <div class="val" style="color:${chg20Color};">${chg20 >= 0 ? '+' : ''}${chg20.toFixed(1)}%</div>
+                    </div>
+                </div>
+                ${r.scoreParts ? `<div class="score-breakdown">
+                    <div class="score-component"><div class="k">Trend</div><div class="v">${r.scoreParts.trend}</div></div>
+                    <div class="score-component"><div class="k">Mom</div><div class="v">${r.scoreParts.momentum}</div></div>
+                    <div class="score-component"><div class="k">Fuerza</div><div class="v">${r.scoreParts.strength}</div></div>
+                    <div class="score-component"><div class="k">Vol</div><div class="v">${r.scoreParts.participation}</div></div>
+                    <div class="score-component"><div class="k">Estr</div><div class="v">${r.scoreParts.structure}</div></div>
+                </div>` : ''}
+                <div class="foot">
+                    <span class="signal-badge ${trendClass}">${trend}</span>
+                    <span class="small">MACD <b style="color:${r.macdBull ? 'var(--green)' : 'var(--red)'};">${r.macdBull ? 'Bull' : 'Bear'}</b></span>
+                    <span class="small">Vol <b style="color:${r.volRatio > 1.3 ? 'var(--orange)' : 'var(--text)'};">${r.volRatio != null ? r.volRatio.toFixed(2) + '×' : '—'}</b></span>
+                    ${entryBadge}
+                </div>
+            </div>`;
+    }).join("");
+}
+document.addEventListener("click", (e) => {
+    const card = e.target.closest(".result-card");
+    if (!card) return;
+    const idx = +card.dataset.idx;
+    const r = window.currentResults?.[idx];
+    if (!r) return;
+    document.querySelectorAll(".result-card").forEach(c => c.classList.remove("selected"));
+    card.classList.add("selected");
+    renderPriceChart(r.symbol);
+    showMobileTab("chart");
+});
+
+/* =========================================================
+   PRICE CHART
+========================================================= */
+function renderPriceChart(symbol) {
+    if (!hasChartJs()) return;
+    const fullData = lastFetchedData[symbol];
+    if (!fullData || fullData.length < 20) return;
+    currentChartSymbol = symbol;
+
+    const card = document.getElementById("priceChartCard");
+    const empty = document.getElementById("chartEmpty");
+    if (card) card.style.display = "block";
+    if (empty) empty.style.display = "none";
+
+    const totalLen = fullData.length;
+    const startIdx = visibleWindow === Infinity ? 0 : Math.max(0, totalLen - visibleWindow);
+    const data = fullData.slice(startIdx);
+    const dates = data.map(d => new Date(d.datetime + 'T12:00:00').toLocaleDateString("es-ES", { day: "2-digit", month: "short" }));
+
+    const closesFull = fullData.map(d => d.close);
+    const ema20Full = ema(closesFull, 20);
+    const ema50Full = ema(closesFull, 50);
+    const ema200Full = ema(closesFull, 200);
+    const sma200Full = sma(closesFull, SMA_TREND);
+    const bbFull = bollinger(closesFull, 20, 2);
+    const rsiFull = rsi(closesFull, RSI_PERIOD);
+    const macdFull = macd(closesFull, 12, 26, 9);
+    const adxFull = adxCalc(fullData, 14);
+    const atrFull = atrSeries(fullData, ATR_PERIOD);
+    const dhFull = donchianHighSeries(fullData, DONCHIAN_ENTRY);
+    const dlFull = donchianLowSeries(fullData, DONCHIAN_EXIT);
+    const channel = calculateTrendChannel(data);
+
+    const closes = closesFull.slice(startIdx);
+    const volumes = data.map(d => d.volume || 0);
+    const ema20 = ema20Full.slice(startIdx);
+    const ema50 = ema50Full.slice(startIdx);
+    const ema200 = ema200Full.slice(startIdx);
+    const sma200 = sma200Full.slice(startIdx);
+    const bbU = bbFull.upper.slice(startIdx);
+    const bbM = bbFull.middle.slice(startIdx);
+    const bbL = bbFull.lower.slice(startIdx);
+    const rsiS = rsiFull.slice(startIdx);
+    const macdLine = macdFull.macd.slice(startIdx);
+    const macdSig = macdFull.signal.slice(startIdx);
+    const macdHist = macdFull.hist.slice(startIdx);
+    const dhSeries = dhFull.slice(startIdx);
+    const dlSeries = dlFull.slice(startIdx);
+
+    const last = closes[closes.length - 1];
+    const first = closes[0];
+    const changePct = ((last - first) / first) * 100;
+
+    document.getElementById("chartSymbol").textContent = symbol;
+    document.getElementById("chartPrice").textContent = `$${last.toFixed(2)}`;
+    const changeEl = document.getElementById("chartChange");
+    changeEl.textContent = `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
+    changeEl.className = `change ${changePct >= 0 ? 'pos' : 'neg'}`;
+
+    const periodLabel = visibleWindow === Infinity ? 'Todo' :
+                        visibleWindow === 30 ? '30 días' :
+                        visibleWindow === 90 ? '90 días' :
+                        visibleWindow === 365 ? '1 año' : `${visibleWindow} días`;
+    const live = lastSymbolsData?.[symbol];
+    document.getElementById("chartPeriod").textContent =
+        `${periodLabel} · ${data.length} sesiones · Score ${live?.score ?? '—'} · ${live?.trend ?? ''}`;
+
+    const atr = atrFull[atrFull.length - 1];
+    const lastEma20 = ema20[ema20.length - 1];
+    const lastEma50 = ema50[ema50.length - 1];
+    const lastEma200 = ema200[ema200.length - 1];
+    const lastRsi = rsiS[rsiS.length - 1];
+    const lastAdx = adxFull.adx[adxFull.adx.length - 1];
+
+    document.getElementById("csPrice").textContent = `$${last.toFixed(2)}`;
+    document.getElementById("csEma20").textContent = lastEma20 != null ? `$${lastEma20.toFixed(2)}` : '—';
+    document.getElementById("csEma50").textContent = lastEma50 != null ? `$${lastEma50.toFixed(2)}` : '—';
+    document.getElementById("csEma200").textContent = lastEma200 != null ? `$${lastEma200.toFixed(2)}` : '—';
+    document.getElementById("csRsi").textContent = lastRsi != null ? lastRsi.toFixed(1) : '—';
+    document.getElementById("csAdx").textContent = lastAdx != null ? lastAdx.toFixed(1) : '—';
+    document.getElementById("csAtr").textContent = atr != null ? `$${atr.toFixed(2)}` : '—';
+    document.getElementById("csScore").textContent = live?.score ?? '—';
+
+    const datasets = [];
+
+    if (chartStyle === 'candles') {
+        const N = data.length;
+        const bodyPct = N <= 40 ? 0.90 : N <= 90 ? 0.85 : N <= 180 ? 0.75 : 0.62;
+        const wickPct = N <= 40 ? 0.18 : N <= 90 ? 0.16 : N <= 180 ? 0.12 : 0.08;
+        datasets.push({
+            type: 'bar', label: 'Mechas', data: data.map(d => [d.low, d.high]),
+            backgroundColor: data.map(d => d.close >= d.open ? 'rgba(48,209,88,0.85)' : 'rgba(255,69,58,0.85)'),
+            borderWidth: 0, grouped: false, barPercentage: wickPct, categoryPercentage: 1.0, yAxisID: 'y', order: 0
+        });
+        datasets.push({
+            type: 'bar', label: 'Velas', data: data.map(d => [d.open, d.close]),
+            backgroundColor: data.map(d => d.close >= d.open ? 'rgba(48,209,88,0.95)' : 'rgba(255,69,58,0.95)'),
+            borderWidth: 0, grouped: false, barPercentage: bodyPct, categoryPercentage: 1.0, yAxisID: 'y', order: 1
+        });
+    } else {
+        datasets.push({
+            label: "Precio", data: closes, borderColor: "#0a84ff",
+            backgroundColor: "rgba(10,132,255,0.06)", borderWidth: 2,
+            pointRadius: 0, fill: true, tension: 0.15, order: 0, yAxisID: "y"
+        });
+    }
+
+    const pushPoint = (label, arr, color, order, dash, width) => {
+        const pts = buildPointSeries(arr, dates);
+        if (pts.length > 1) {
+            datasets.push({
+                type: 'line', label, data: pts,
+                borderColor: color, borderWidth: width || 1.6,
+                borderDash: dash || [], pointRadius: 0, fill: false,
+                order: order, yAxisID: 'y',
+                parsing: { xAxisKey: 'x', yAxisKey: 'y' }
+            });
+        }
+    };
+    if (seriesVisibility.ema20) pushPoint('EMA20', ema20, '#ffd60a', 2);
+    if (seriesVisibility.ema50) pushPoint('EMA50', ema50, '#ff9f0a', 2);
+    if (seriesVisibility.ema200) pushPoint('EMA200', ema200, '#0a84ff', 2);
+    if (seriesVisibility.sma200) pushPoint('SMA200', sma200, '#8e8e93', 2, [5, 4]);
+
+    if (seriesVisibility.bb) {
+        const bbUPts = buildPointSeries(bbU, dates);
+        const bbLPts = buildPointSeries(bbL, dates);
+        const bbMPts = buildPointSeries(bbM, dates);
+        if (bbUPts.length > 1 && bbLPts.length > 1) {
+            datasets.push({
+                type: 'line', label: 'BB Inferior', data: bbLPts,
+                borderColor: "rgba(142,142,147,0.55)", borderWidth: 1,
+                borderDash: [3, 3], pointRadius: 0, fill: false, order: 3,
+                yAxisID: 'y', parsing: { xAxisKey: 'x', yAxisKey: 'y' }
+            });
+            datasets.push({
+                type: 'line', label: 'BB Superior', data: bbUPts,
+                borderColor: "rgba(142,142,147,0.55)", borderWidth: 1,
+                borderDash: [3, 3], pointRadius: 0,
+                backgroundColor: "rgba(142,142,147,0.06)",
+                fill: '-1', order: 3,
+                yAxisID: 'y', parsing: { xAxisKey: 'x', yAxisKey: 'y' }
+            });
+            if (bbMPts.length > 1) {
+                datasets.push({
+                    type: 'line', label: 'BB Media', data: bbMPts,
+                    borderColor: "rgba(142,142,147,0.8)", borderWidth: 1,
+                    pointRadius: 0, fill: false, order: 3,
+                    yAxisID: 'y', parsing: { xAxisKey: 'x', yAxisKey: 'y' }
+                });
+            }
+        }
+    }
+
+    if (seriesVisibility.donchian) {
+        pushPoint('Donchian High 20d', dhSeries, '#32d4e0', 4, [4, 3], 1.4);
+        pushPoint('Donchian Low 10d', dlSeries, '#1a8a99', 4, [4, 3], 1.2);
+    }
+
+    if (seriesVisibility.channel && channel) {
+        const upPts = buildPointSeries(channel.upper, dates);
+        const loPts = buildPointSeries(channel.lower, dates);
+        if (upPts.length > 1 && loPts.length > 1) {
+            datasets.push({
+                type: 'line', label: `Canal Inf`,
+                data: loPts, borderColor: "#bf5af2", borderWidth: 2, borderDash: [6, 4],
+                pointRadius: 0, fill: false, order: 5,
+                yAxisID: 'y', parsing: { xAxisKey: 'x', yAxisKey: 'y' }
+            });
+            datasets.push({
+                type: 'line', label: `Canal Sup`,
+                data: upPts, borderColor: "#bf5af2", backgroundColor: 'rgba(191,90,242,0.12)',
+                borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: '-1', order: 5,
+                yAxisID: 'y', parsing: { xAxisKey: 'x', yAxisKey: 'y' }
+            });
+        }
+    }
+
+    let priceMin = Infinity, priceMax = -Infinity;
+    for (const d of data) {
+        if (d.low < priceMin) priceMin = d.low;
+        if (d.high > priceMax) priceMax = d.high;
+    }
+    const extras = [];
+    if (seriesVisibility.bb) { for (const v of bbU) if (v != null) extras.push(v); for (const v of bbL) if (v != null) extras.push(v); }
+    if (seriesVisibility.ema20) for (const v of ema20) if (v != null) extras.push(v);
+    if (seriesVisibility.ema50) for (const v of ema50) if (v != null) extras.push(v);
+    if (seriesVisibility.ema200) for (const v of ema200) if (v != null) extras.push(v);
+    if (seriesVisibility.sma200) for (const v of sma200) if (v != null) extras.push(v);
+    if (seriesVisibility.channel && channel) for (const v of channel.upper) if (v != null) extras.push(v);
+    const rangeHalf = (priceMax - priceMin) * 0.5 || priceMax * 0.05;
+    const lowBound = priceMin - rangeHalf;
+    const highBound = priceMax + rangeHalf;
+    for (const v of extras) {
+        if (v == null || v <= 0) continue;
+        if (v < lowBound || v > highBound) continue;
+        if (v < priceMin) priceMin = v;
+        if (v > priceMax) priceMax = v;
+    }
+    const yPad = (priceMax - priceMin) * 0.06 || priceMax * 0.03;
+    const yMin = Math.max(0, priceMin - yPad);
+    const yMax = priceMax + yPad;
+
+    const scales = {
+        x: { grid: { color: "rgba(255,255,255,0.03)" },
+             ticks: { color: "#636366", font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+        y: {
+            position: "right", beginAtZero: false, min: yMin, max: yMax,
+            grid: { color: "rgba(255,255,255,0.04)" },
+            ticks: { color: "#636366", font: { size: 9 }, callback: v => `$${v.toFixed(0)}` }
+        }
+    };
+    if (seriesVisibility.volume) {
+        const maxVol = volumes.reduce((a, b) => Math.max(a, b), 0);
+        scales.yVol = { position: "left", display: false, min: 0, max: maxVol * 4, grid: { display: false } };
+        datasets.push({
+            type: "bar", label: "Volumen", data: volumes,
+            backgroundColor: "rgba(142,142,147,0.35)", borderWidth: 0,
+            yAxisID: "yVol", order: 8, grouped: false, categoryPercentage: 1.0, barPercentage: 0.7
+        });
+    }
+
+    const structureKey = `${symbol}|${chartStyle}|${seriesVisibility.volume}|${seriesVisibility.ema20}|${seriesVisibility.ema50}|${seriesVisibility.ema200}|${seriesVisibility.sma200}|${seriesVisibility.bb}|${seriesVisibility.donchian}|${seriesVisibility.channel}|${visibleWindow}`;
+
+    if (priceChart && priceChartStructureKey === structureKey) {
+        priceChart.data.labels = dates;
+        priceChart.data.datasets = datasets;
+        priceChart.options.scales = scales;
+        priceChart.update('none');
+    } else {
+        try { if (priceChart) priceChart.destroy(); } catch(_) {}
+        try {
+            priceChart = new Chart(document.getElementById("priceChartCanvas").getContext("2d"), {
+                type: "line", data: { labels: dates, datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: "rgba(28,28,30,0.96)", borderColor: "#38383a", borderWidth: 1,
+                            titleColor: "#8e8e93", bodyColor: "#fff", padding: 10,
+                            titleFont: { size: 11 }, bodyFont: { size: 11 },
+                            filter: (item) => item.dataset.label !== 'Mechas' && item.dataset.label !== 'Velas',
+                            callbacks: {
+                                label: c => {
+                                    if (c.dataset.label === "Volumen") return `Vol: ${(c.parsed.y/1000).toFixed(0)}k`;
+                                    return `${c.dataset.label}: $${c.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales
+                }
+            });
+            priceChartStructureKey = structureKey;
+        } catch(e) { console.error(e); }
+    }
+
+    renderRsiPanel(dates, rsiS);
+    renderMacdPanel(dates, macdLine, macdSig, macdHist);
+    renderEntries(symbol);
+}
+
+function renderRsiPanel(dates, rsiS) {
+    const canvas = document.getElementById("rsiChartCanvas"); if (!canvas) return;
+    const datasets = [{
+        label: 'RSI', data: rsiS,
+        borderColor: '#bf5af2', backgroundColor: 'rgba(191,90,242,0.08)',
+        borderWidth: 1.6, pointRadius: 0, fill: false, tension: 0.15
+    }];
+    const config = {
+        type: 'line',
+        data: { labels: dates, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: "rgba(28,28,30,0.96)", borderColor: "#38383a", borderWidth: 1,
+                    titleColor: "#8e8e93", bodyColor: "#fff", padding: 8,
+                    titleFont: { size: 10 }, bodyFont: { size: 10 },
+                    callbacks: { label: c => c.parsed.y != null ? `RSI: ${c.parsed.y.toFixed(1)}` : '' }
+                }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    min: 0, max: 100, position: 'right',
+                    grid: { color: "rgba(255,255,255,0.03)" },
+                    ticks: { color: "#636366", font: { size: 8 }, stepSize: 30, callback: v => (v === 30 || v === 50 || v === 70) ? v : '' }
+                }
+            }
+        }
+    };
+    if (rsiChart) { rsiChart.data = config.data; rsiChart.update('none'); }
+    else { try { rsiChart = new Chart(canvas.getContext('2d'), config); } catch(e) { console.error(e); } }
+}
+
+function renderMacdPanel(dates, macdLine, macdSig, macdHist) {
+    const canvas = document.getElementById("macdChartCanvas"); if (!canvas) return;
+    const histColors = macdHist.map(v => v == null ? 'transparent' : v >= 0 ? 'rgba(48,209,88,0.7)' : 'rgba(255,69,58,0.7)');
+    const datasets = [
+        { type: 'bar', label: 'Hist', data: macdHist, backgroundColor: histColors, borderWidth: 0, grouped: false, barPercentage: 0.7, categoryPercentage: 1.0, order: 1 },
+        { type: 'line', label: 'MACD', data: macdLine, borderColor: '#0a84ff', borderWidth: 1.4, pointRadius: 0, fill: false, tension: 0.15, order: 0 },
+        { type: 'line', label: 'Señal', data: macdSig, borderColor: '#ff9f0a', borderWidth: 1.2, pointRadius: 0, fill: false, tension: 0.15, order: 0 }
+    ];
+    const config = {
+        type: 'line',
+        data: { labels: dates, datasets },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: "rgba(28,28,30,0.96)", borderColor: "#38383a", borderWidth: 1,
+                    titleColor: "#8e8e93", bodyColor: "#fff", padding: 8,
+                    titleFont: { size: 10 }, bodyFont: { size: 10 },
+                    callbacks: { label: c => c.parsed.y != null ? `${c.dataset.label}: ${c.parsed.y.toFixed(3)}` : '' }
+                }
+            },
+            scales: {
+                x: { grid: { color: "rgba(255,255,255,0.03)" },
+                     ticks: { color: "#636366", font: { size: 8 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+                y: { position: 'right', beginAtZero: true,
+                     grid: { color: "rgba(255,255,255,0.03)" },
+                     ticks: { color: "#636366", font: { size: 8 }, callback: v => v.toFixed(1) } }
+            }
+        }
+    };
+    if (macdChart) { macdChart.data = config.data; macdChart.update('none'); }
+    else { try { macdChart = new Chart(canvas.getContext('2d'), config); } catch(e) { console.error(e); } }
+}
+
+/* =========================================================
+   API COUNTER / CONFIG
+========================================================= */
+function getApiCalls() { const s = localStorage.getItem("api_calls"); if (s) { try { const d = JSON.parse(s); if (d.date === today()) return d.count; } catch(_) {} } return 0; }
+function incrementApiCall() { safeSetItem("api_calls", JSON.stringify({date: today(), count: getApiCalls() + 1})); updateApiCounterDisplay(); }
+function updateApiCounterDisplay() {
+    const calls = getApiCalls(); const pct = (calls / API_DAILY_LIMIT) * 100;
+    const countEl = document.getElementById("apiCallsCount"); if (countEl) countEl.textContent = calls;
+    const fill = document.getElementById("apiProgressFill");
+    if (fill) { fill.style.width = pct + "%"; fill.className = "api-bar-fill" + (pct >= 100 ? " danger" : pct >= 80 ? " warn" : ""); }
+    const msg = document.getElementById("apiStatusMsg");
+    if (msg) {
+        if (pct >= 100) { msg.textContent = "Límite diario"; msg.className = "api-msg danger"; }
+        else if (pct >= 80) { msg.textContent = `Quedan ${API_DAILY_LIMIT - calls}`; msg.className = "api-msg warn"; }
+        else { msg.textContent = `Quedan ${API_DAILY_LIMIT - calls}`; msg.className = "api-msg"; }
+    }
+}
+function resetApiCounter() { safeSetItem("api_calls", JSON.stringify({date: today(), count: 0})); updateApiCounterDisplay(); }
+function saveKey() { const k = document.getElementById("apikey").value; if (k) safeSetItem("td_key", k); toast("API Key guardada", "success"); }
+function loadKey() { const k = localStorage.getItem("td_key"); if (k) { const el = document.getElementById("apikey"); if (el) el.value = k; } }
+function clearCache() {
+    const toRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (/^price_/.test(key) || /^regime_SPY_/.test(key))) toRemove.push(key);
+    }
+    toRemove.forEach(k => localStorage.removeItem(k));
+    toast(`Cache limpiado (${toRemove.length} items)`, "success");
+}
+function setStatus(text, cls = "") { const el = document.getElementById("statusBadge"); if (el) { el.textContent = text; el.className = "status-badge " + cls; } }
+function updateProgress(percent, text) {
+    const bar = document.getElementById("progressBar"); const fill = document.getElementById("progressFill");
+    if (!bar || !fill) return;
+    if (percent <= 0) bar.style.display = "none";
+    else { bar.style.display = "block"; fill.style.width = percent + "%"; if (percent >= 100) setTimeout(() => { bar.style.display = "none"; }, 1500); }
+    if (text) setStatus(text, percent >= 100 ? "done" : "running");
+}
+
+/* =========================================================
+   FETCH
+========================================================= */
+let apiTimestamps = [], apiQueue = Promise.resolve();
+function apiGate() {
+    const next = apiQueue.then(async () => {
+        while (true) {
+            const now = Date.now();
+            apiTimestamps = apiTimestamps.filter(t => now - t < 60000);
+            if (apiTimestamps.length < API_LIMIT_PER_MIN) {
+                if (getApiCalls() >= API_DAILY_LIMIT) throw new Error("Límite diario");
+                apiTimestamps.push(Date.now()); incrementApiCall(); return;
+            }
+            await new Promise(r => setTimeout(r, 60000 - (now - apiTimestamps[0]) + 50));
+        }
+    });
+    apiQueue = next.catch(() => {});
+    return next;
+}
+async function fetchWithRetry(url, retries = MAX_RETRIES) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const r = await fetch(url);
+            if (r.status === 429) { await new Promise(x => setTimeout(x, 10000)); continue; }
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const d = await r.json();
+            if (d.code === 429) { await new Promise(x => setTimeout(x, 10000)); continue; }
+            if (d.code && d.code !== 200 && d.status === 'error') throw new Error(d.message || `API error ${d.code}`);
+            return d;
+        } catch(e) {
+            if (i === retries - 1) throw e;
+            await new Promise(x => setTimeout(x, 5000));
+        }
+    }
+}
+async function fetchTimeSeries(symbol, key, outputsize) {
+    const ck = `price_${symbol}_${outputsize}`;
+    const cached = localStorage.getItem(ck);
+    if (cached) {
+        try { const p = JSON.parse(cached); if (Date.now() - p.time < 5 * 60 * 1000) return p.data; } catch(_) {}
+    }
+    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=${outputsize}&apikey=${key}`;
+    await apiGate();
+    const data = await fetchWithRetry(url);
+    if (!data?.values?.length) return [];
+    const values = data.values.reverse();
+    safeSetItem(ck, JSON.stringify({ time: Date.now(), data: values }));
+    return values;
+}
+async function fetchAllData(symbol, key, outputsize) {
+    const price = await fetchTimeSeries(symbol, key, outputsize);
+    if (!price.length) throw new Error("sin precios");
+    const out = [];
+    for (const v of price) {
+        if (!v?.datetime) continue;
+        const c = parseFloat(v.close); if (!isFinite(c)) continue;
+        out.push({
+            datetime: v.datetime,
+            open: parseFloat(v.open) || c,
+            high: parseFloat(v.high) || c,
+            low: parseFloat(v.low) || c,
+            close: c,
+            volume: parseFloat(v.volume) || 0
+        });
+    }
+    return out;
+}
+
+/* =========================================================
+   ANÁLISIS TÉCNICO
+========================================================= */
+function analyzeTechnicals(data) {
+    const n = data.length;
+    const closes = data.map(d => d.close);
+    const volumes = data.map(d => d.volume || 0);
+
+    const ema20Arr = ema(closes, 20);
+    const ema50Arr = ema(closes, 50);
+    const ema200Arr = ema(closes, 200);
+    const sma200Arr = sma(closes, 200);
+    const rsiArr = rsi(closes, RSI_PERIOD);
+    const macdObj = macd(closes, 12, 26, 9);
+    const adxObj = adxCalc(data, 14);
+    const atrArr = atrSeries(data, ATR_PERIOD);
+
+    const last = n - 1;
+    const price = closes[last];
+    const prevClose = n > 1 ? closes[last-1] : price;
+    const dayChange = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
+
+    let volSum = 0, volCount = 0;
+    for (let i = Math.max(0, last - 19); i <= last; i++) { volSum += volumes[i]; volCount++; }
+    const avgVolume = volCount ? volSum / volCount : 0;
+    const volRatio = avgVolume > 0 ? volumes[last] / avgVolume : 0;
+
+    const change20 = n > 20 ? ((price / closes[last - 20]) - 1) * 100 : null;
+    const change50 = n > 50 ? ((price / closes[last - 50]) - 1) * 100 : null;
+    const change200 = n > 200 ? ((price / closes[last - 200]) - 1) * 100 : null;
+
+    const tech = {
+        price, dayChange,
+        ema20: ema20Arr[last], ema50: ema50Arr[last], ema200: ema200Arr[last],
+        sma200: sma200Arr[last],
+        rsi: rsiArr[last],
+        macd: macdObj.macd[last], macdSignal: macdObj.signal[last],
+        macdHist: macdObj.hist[last], macdHistPrev: macdObj.hist[last - 1],
+        adx: adxObj.adx[last], plusDI: adxObj.plusDI[last], minusDI: adxObj.minusDI[last],
+        atr: atrArr[last],
+        avgVolume, volRatio,
+        change20, change50, change200
+    };
+
+    tech.macdBull = tech.macd != null && tech.macdSignal != null && tech.macd > tech.macdSignal;
+    tech.trend = classifyTrend(tech, tech.price);
+    const structureState = isUptrendStructure(data, 60);
+    const scorePack = computeTechnicalScore(tech, tech.price, structureState);
+    tech.score = scorePack.score;
+    tech.scoreParts = scorePack.parts;
+    tech.rsiStatus = classifyRsi(tech.rsi);
+    tech.stop = tech.atr ? tech.price - 2 * tech.atr : null;
+    tech.target2R = tech.stop ? tech.price + 2 * (tech.price - tech.stop) : null;
+
+    return tech;
+}
+
+function setAnalyzing(active, label) {
+    const btn = document.getElementById('analyzeBtn');
+    if (!btn) return;
+    if (active) {
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.innerHTML = `<span class="spinner btn-spinner"></span><span>${label || 'Analizando…'}</span>`;
+    } else {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btn.textContent = 'Analizar';
+    }
+}
+
+/* =========================================================
+   RUN
+========================================================= */
+async function run() {
+    const key = document.getElementById("apikey").value;
+    if (!key) { toast("Introduce tu API Key en Config", "error"); return; }
+
+    const tickers = document.getElementById("ticker").value.split(",").map(t => t.trim().toUpperCase()).filter(Boolean);
+    if (!tickers.length) { toast("Introduce al menos un ticker", "error"); return; }
+    const outputsize = parseInt(document.getElementById("outputsize").value);
+
+    setAnalyzing(true, `Analizando ${tickers.length}…`);
+    try {
+        renderErrors([]);
+        updateProgress(2, `Analizando ${tickers.length}...`);
+
+        let regime = null;
+        try {
+            updateProgress(3, 'Régimen de mercado…');
+            regime = await getMarketRegime(key);
+            setRegimeBadge(regime);
+        } catch (e) { console.warn('Régimen no disponible:', e); }
+
+        const results = [], symbolsData = {}, errors = [];
+        lastFetchedData = {};
+
+        for (let i = 0; i < tickers.length; i++) {
+            const symbol = tickers[i];
+            updateProgress(5 + (i / tickers.length) * 90, `${symbol}...`);
+            setAnalyzing(true, `${symbol} (${i + 1}/${tickers.length})`);
+            try {
+                const data = await fetchAllData(symbol, key, outputsize);
+                if (data.length < MIN_BARS) { errors.push({ symbol, reason: `datos insuficientes (${data.length}, min ${MIN_BARS})` }); continue; }
+                lastFetchedData[symbol] = data;
+
+                const tech = analyzeTechnicals(data);
+                tech.entries = computeEntries(data, tech, regime);
+                results.push({ symbol, ...tech });
+                symbolsData[symbol] = tech;
+            } catch (e) {
+                errors.push({ symbol, reason: e && e.message ? e.message : 'error desconocido' });
+                console.error(symbol, e);
+            }
+        }
+
+        results.sort((a, b) => b.score - a.score);
+
+        if (results.length > 0) {
+            const top = results[0];
+            const topEl = document.getElementById("topDetails");
+            if (topEl) {
+                const cls = classifyScore(top.score);
+                const readyTop = (top.entries || []).filter(e => e.status === 'READY').length;
+                topEl.innerHTML = `<b>${escapeHtml(top.symbol)}</b> · Score <b style="color:${cls.color};">${top.score}</b> · ${top.trend} · RSI ${top.rsi != null ? top.rsi.toFixed(1) : '—'}${readyTop ? ` · <b style="color:var(--green);">● ${readyTop} setup${readyTop > 1 ? 's' : ''}</b>` : ''}`;
+                const bd = document.getElementById('topBreakdown');
+                if (bd && top.scoreParts) bd.innerHTML = `<div class="score-breakdown">
+                    <div class="score-component"><div class="k">Trend</div><div class="v">${top.scoreParts.trend}/30</div></div>
+                    <div class="score-component"><div class="k">Mom</div><div class="v">${top.scoreParts.momentum}/20</div></div>
+                    <div class="score-component"><div class="k">Fuerza</div><div class="v">${top.scoreParts.strength}/20</div></div>
+                    <div class="score-component"><div class="k">Vol</div><div class="v">${top.scoreParts.participation}/15</div></div>
+                    <div class="score-component"><div class="k">Estr</div><div class="v">${top.scoreParts.structure}/15</div></div>
+                </div><div class="gate-note"><b>Lectura:</b> Score = estado técnico actual. Quality = confirmación del setup. Ninguno sustituye una estimación de expectativa obtenida por backtest.</div>`;
+            }
+        }
+
+        window.currentResults = results;
+        lastSymbolsData = symbolsData;
+        renderResultCards(results);
+        renderManualPositions();
+        renderErrors(errors);
+
+        updateProgress(100, `✓ ${results.length}/${tickers.length}`);
+        setTimeout(() => setStatus("Listo", "done"), 2000);
+
+        if (results.length > 0) {
+            const firstCard = document.querySelector(`.result-card[data-idx="0"]`);
+            if (firstCard) firstCard.classList.add("selected");
+            try { renderPriceChart(results[0].symbol); } catch(_) {}
+        }
+
+        showMobileTab("results");
+
+        if (errors.length) toast(`${errors.length} ticker(s) con incidencias`, "warn");
+        else toast(`Análisis completado: ${results.length} ticker(s)`, "success");
+    } finally {
+        setAnalyzing(false);
+    }
+}
+function renderErrors(errors) {
+    const box = document.getElementById("errorList"); if (!box) return;
+    if (!errors || !errors.length) { box.classList.remove("visible"); box.innerHTML = ""; return; }
+    box.innerHTML = `<div class="etitle">Incidencias (${errors.length})</div><ul>${errors.map(e => `<li><b>${escapeHtml(e.symbol)}</b>: ${escapeHtml(e.reason)}</li>`).join("")}</ul>`;
+    box.classList.add("visible");
+}
+
+/* =========================================================
+   INIT
+========================================================= */
+let appInitialized = false;
+function initApp() {
+    if (appInitialized) return;
+    appInitialized = true;
+    try { showMobileTab("analysis"); } catch(e) { console.warn(e); }
+    try { loadKey(); } catch(e) { console.warn(e); }
+    try { updateApiCounterDisplay(); } catch(e) { console.warn(e); }
+    try { loadManualPositions(); } catch(e) { console.warn(e); }
+    try { renderManualPositions(); } catch(e) { console.warn(e); }
+    try { renderWatchlist(); } catch(e) { console.warn(e); }
+    try { loadRiskConfig(); } catch(e) { console.warn(e); }
+
+    document.querySelectorAll('[data-series]').forEach(b => {
+        const s = b.dataset.series;
+        if (s in seriesVisibility) b.classList.toggle('active', seriesVisibility[s]);
+    });
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            try { if (priceChart) priceChart.resize(); } catch(_) {}
+            try { if (rsiChart) rsiChart.resize(); } catch(_) {}
+            try { if (macdChart) macdChart.resize(); } catch(_) {}
+        }, 150);
+    });
+
+    console.log('%cStockAnalyzer Pro — estado técnico, setups, riesgo y régimen', 'color: #30d158; font-weight: bold;');
+}
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+else boot();
+</script>
+</body>
+</html>
