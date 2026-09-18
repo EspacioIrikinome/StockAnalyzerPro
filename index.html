@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="stockanalyzer" />
 <meta name="mobile-web-app-capable" content="yes" />
-<title>StockAnalyzer Pro V2</title>
+<title>StockAnalyzer Pro V4 · Exit Signal</title>
 
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" type="image/png" href="stockanalyzer.png" />
@@ -172,12 +172,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .chart-subpanel-label { position: absolute; top: 8px; left: 12px; font-size: 9px; color: var(--text-3); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; z-index: 2; pointer-events: none; }
 .chart-subpanel canvas { position: relative; z-index: 1; }
 
-/* ====== PANEL DE SETUPS ====== */
 .entries-panel { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--separator); }
 .entries-title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 4px; }
 .entries-sub { font-size: 11px; color: var(--text-2); margin: 0 0 12px; }
 
-/* Recomendación del análisis */
 .rec-card { background: linear-gradient(135deg, rgba(50,212,224,0.10), rgba(50,212,224,0.02)); border: 1px solid rgba(50,212,224,0.28); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
 .rec-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
 .rec-title { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 2px; }
@@ -194,7 +192,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .rec-sizing { font-size: 11px; color: var(--text-2); display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
 .rec-sizing b { color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
 
-/* Tarjetas de setup */
 .entry-card { background: var(--bg-elev); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 3px solid var(--text-3); }
 .entry-card.ready   { border-left-color: var(--green); }
 .entry-card.waiting { border-left-color: var(--orange); }
@@ -207,6 +204,23 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .entry-status.ready   { background: rgba(48,209,88,0.18); color: var(--green); }
 .entry-status.waiting { background: rgba(255,159,10,0.18); color: var(--orange); }
 .entry-quality { font-size: 9px; font-weight: 700; color: var(--text-3); letter-spacing: 0.05em; }
+.entry-quality-optimal { color: var(--green); }
+.entry-quality-acceptable { color: var(--orange); }
+.entry-quality-extended { color: var(--red); }
+.entry-quality-panel { margin: 10px 0 12px; padding: 10px 12px; background: rgba(255,255,255,0.035); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); }
+.entry-quality-panel .eq-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px; }
+.entry-quality-panel .eq-title { font-size:12px; font-weight:700; }
+.entry-quality-panel .eq-score { font-size:13px; font-weight:800; }
+.entry-quality-panel .eq-note { font-size:11px; color:var(--text-2); line-height:1.4; }
+.entry-quality-panel .eq-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
+.entry-quality-panel .eq-cell { background:var(--bg-elev); border-radius:8px; padding:6px 8px; }
+.entry-quality-panel .eq-cell .k { font-size:9px; color:var(--text-2); text-transform:uppercase; letter-spacing:.05em; }
+.entry-quality-panel .eq-cell .v { font-size:11px; font-weight:700; margin-top:2px; }
+.entry-state { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border-radius:6px; font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.entry-state.optimal { background:rgba(48,209,88,.15); color:var(--green); }
+.entry-state.acceptable { background:rgba(255,159,10,.15); color:var(--orange); }
+.entry-state.extended { background:rgba(255,69,58,.15); color:var(--red); }
+@media (max-width:480px){ .entry-quality-panel .eq-grid{grid-template-columns:repeat(2,1fr);} }
 
 .entry-prices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--separator); }
 .ep-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); font-weight: 700; margin-bottom: 2px; }
@@ -232,7 +246,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .entry-badge-mini { font-size: 10px; font-weight: 700; color: var(--green); }
 
-/* Posiciones cartera */
 .pos-panel { background: var(--bg-card); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
 .pos-form { display: grid; grid-template-columns: 1.1fr 0.8fr 0.9fr; gap: 6px; margin-bottom: 10px; }
 .pos-form input { margin-bottom: 0; padding: 10px; font-size: 14px; min-height: 40px; }
@@ -292,47 +305,13 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .loading-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #8e8e93, #32d4e0); border-radius: 2px; transition: width 0.15s linear; }
 .loading-percent { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; margin-top: 2px; }
 
-/* ===== Spinner genérico ===== */
-.spinner {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid rgba(255,255,255,0.2);
-    border-top-color: currentColor;
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    vertical-align: middle;
-    box-sizing: border-box;
-}
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: currentColor; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; box-sizing: border-box; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* Spinner dentro del botón primario */
-.btn-primary.loading {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    cursor: wait;
-    opacity: 0.9;
-}
+.btn-primary.loading { display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: wait; opacity: 0.9; }
 .btn-primary.loading:active { transform: none; opacity: 0.9; }
-.btn-primary .spinner.btn-spinner {
-    width: 16px; height: 16px;
-    border-color: rgba(0,20,23,0.25);
-    border-top-color: #001417;
-}
+.btn-primary .spinner.btn-spinner { width: 16px; height: 16px; border-color: rgba(0,20,23,0.25); border-top-color: #001417; }
+.status-badge.running::before { background: transparent; border: 2px solid rgba(48,209,88,0.25); border-top-color: var(--green); width: 10px; height: 10px; box-sizing: border-box; box-shadow: none; animation: spin 0.8s linear infinite; }
 
-/* Status badge: punto → anillo girando */
-.status-badge.running::before {
-    background: transparent;
-    border: 2px solid rgba(48,209,88,0.25);
-    border-top-color: var(--green);
-    width: 10px; height: 10px;
-    box-sizing: border-box;
-    box-shadow: none;
-    animation: spin 0.8s linear infinite;
-}
-
-/* ===== PRO OVERLAY: misma interfaz, más contexto operativo ===== */
 .regime-badge.neutral { background: rgba(255,159,10,0.15); color: var(--orange); }
 .regime-detail { font-size:10px; color:var(--text-3); margin-top:4px; }
 .score-ring { width:54px; height:54px; border-radius:50%; display:grid; place-items:center; background:conic-gradient(#32d4e0 var(--score,0%), #2c2c2e 0); position:relative; flex-shrink:0; }
@@ -353,6 +332,99 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .gate-note { margin-top:10px; padding:9px 10px; border-radius:9px; background:rgba(255,159,10,.07); border:1px solid rgba(255,159,10,.16); color:var(--text-2); font-size:10px; line-height:1.45; }
 .gate-note b { color:var(--text); }
 @media (max-width:520px){ .rec-riskbar{grid-template-columns:repeat(2,1fr)} .score-breakdown{grid-template-columns:repeat(5,1fr)} .score-component{padding:6px 3px} }
+
+/* ═══ contexto de setup ═══ */
+.ctx-badges { display:flex; gap:5px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px solid var(--separator); }
+.ctx-badge { font-size:9px; font-weight:700; padding:3px 7px; border-radius:4px; letter-spacing:.04em; text-transform:uppercase; white-space:nowrap; }
+.ctx-badge.rs-strong { background:rgba(48,209,88,.18); color:var(--green); }
+.ctx-badge.rs-weak   { background:rgba(255,69,58,.15); color:var(--red); }
+.ctx-badge.rs-neutral{ background:rgba(142,142,147,.15); color:var(--text-2); }
+.ctx-badge.warn      { background:rgba(255,159,10,.15); color:var(--orange); }
+.ctx-badge.earnings  { background:rgba(255,69,58,.18); color:var(--red); }
+.ctx-badge.info      { background:rgba(50,212,224,.12); color:#32d4e0; }
+.ctx-badge.neutral   { background:rgba(142,142,147,.12); color:var(--text-2); }
+
+/* ═══ portfolio heat ═══ */
+.heat-card { background:linear-gradient(135deg, rgba(48,209,88,.08), rgba(48,209,88,.02)); border:1px solid rgba(48,209,88,.24); border-radius:14px; padding:14px; margin-bottom:12px; }
+.heat-card.warn   { background:linear-gradient(135deg, rgba(255,159,10,.08), rgba(255,159,10,.02)); border-color:rgba(255,159,10,.28); }
+.heat-card.danger { background:linear-gradient(135deg, rgba(255,69,58,.1), rgba(255,69,58,.02)); border-color:rgba(255,69,58,.32); }
+.heat-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.heat-title { font-size:12px; font-weight:700; letter-spacing:-.01em; }
+.heat-value { font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em; }
+.heat-value small { font-size:11px; color:var(--text-3); font-weight:500; }
+.heat-bar { height:6px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden; margin-bottom:10px; }
+.heat-bar-fill { height:100%; background:var(--green); border-radius:3px; transition:width .3s, background .3s; }
+.heat-bar-fill.warn   { background:var(--orange); }
+.heat-bar-fill.danger { background:var(--red); }
+.heat-rows { display:flex; flex-direction:column; gap:5px; font-size:11px; color:var(--text-2); }
+.heat-row { display:flex; justify-content:space-between; }
+.heat-row b { color:var(--text); font-weight:700; font-variant-numeric:tabular-nums; }
+.corr-warning { background:rgba(255,159,10,.1); border:1px solid rgba(255,159,10,.3); border-radius:8px; padding:8px 10px; font-size:11px; color:var(--orange); margin-top:8px; line-height:1.4; }
+.corr-warning b { color:var(--orange); }
+
+/* ═══ journaling y trailing ═══ */
+.pos-item.expanded .pos-journal { display:flex; }
+.pos-journal { grid-column:1/-1; display:none; flex-direction:column; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--separator); }
+.pos-journal label { font-size:10px; margin-bottom:2px; }
+.pos-journal input, .pos-journal textarea { font-size:12px; padding:8px 10px; min-height:34px; margin-bottom:0; }
+.pos-journal textarea { min-height:56px; resize:vertical; font-family:inherit; }
+.pos-journal .row { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.pos-journal .save-btn { background:rgba(50,212,224,.15); color:#32d4e0; font-size:11px; font-weight:600; min-height:34px; padding:8px; margin:0; }
+.pos-r-badge { display:inline-flex; align-items:baseline; gap:4px; font-size:13px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+.pos-r-badge.pos { color:var(--green); }
+.pos-r-badge.neg { color:var(--red); }
+.pos-r-badge small { font-size:9px; color:var(--text-3); font-weight:600; }
+.pos-trailing { background:rgba(50,212,224,.08); border-radius:6px; padding:6px 9px; font-size:10px; margin-top:6px; display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; }
+.pos-trailing .k { color:var(--text-2); font-weight:500; }
+.pos-trailing .v { font-weight:700; font-variant-numeric:tabular-nums; text-align:right; color:var(--text); }
+.pos-expand-btn { background:transparent; color:var(--text-3); padding:4px 8px; margin:0; width:auto; font-size:11px; min-height:auto; border-radius:6px; }
+.pos-expand-btn:hover { background:rgba(255,255,255,.05); color:var(--text); }
+.pos-orig-setup { background:rgba(50,212,224,.06); border-radius:6px; padding:6px 9px; font-size:10px; margin-top:6px; color:var(--text-2); line-height:1.5; }
+.pos-orig-setup b { color:var(--text); }
+
+/* ═══ EXIT SIGNAL ENGINE ═══ */
+.exit-signal { grid-column:1/-1; border-radius:10px; padding:10px 12px; margin-top:10px; border:1px solid transparent; }
+.exit-signal.critical { background:rgba(255,69,58,.10); border-color:rgba(255,69,58,.4); }
+.exit-signal.warning  { background:rgba(255,159,10,.08); border-color:rgba(255,159,10,.32); }
+.exit-signal.info     { background:rgba(50,212,224,.07); border-color:rgba(50,212,224,.28); }
+.exit-signal.ok       { background:rgba(48,209,88,.06); border-color:rgba(48,209,88,.22); }
+
+.exit-signal .es-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.exit-signal .es-action { font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; display:inline-flex; align-items:center; gap:6px; }
+.exit-signal.critical .es-action { color:var(--red); }
+.exit-signal.warning .es-action  { color:var(--orange); }
+.exit-signal.info .es-action     { color:#32d4e0; }
+.exit-signal.ok .es-action       { color:var(--green); }
+.exit-signal .es-action::before { content:''; width:8px; height:8px; border-radius:50%; background:currentColor; }
+.exit-signal.critical .es-action::before { animation: pulse 1.2s ease-in-out infinite; }
+.exit-signal .es-rmult { font-size:11px; color:var(--text-2); font-variant-numeric:tabular-nums; }
+
+.exit-signal .es-reasons { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:4px; }
+.exit-signal .es-reason { font-size:11px; line-height:1.35; padding-left:14px; position:relative; color:var(--text-2); }
+.exit-signal .es-reason::before { content:'•'; position:absolute; left:4px; }
+.exit-signal .es-reason.level-3 { color:var(--red); font-weight:600; }
+.exit-signal .es-reason.level-2 { color:var(--orange); font-weight:500; }
+.exit-signal .es-reason.level-1 { color:var(--text); }
+
+.exit-signal .es-actions { display:flex; gap:6px; margin-top:8px; }
+.exit-signal .es-actions button { width:auto; flex:1; margin:0; font-size:11px; font-weight:600; padding:7px 10px; min-height:34px; border-radius:8px; }
+.exit-signal .es-actions .es-close-btn { background:rgba(255,69,58,.18); color:var(--red); }
+.exit-signal .es-actions .es-close-btn:hover { background:rgba(255,69,58,.28); }
+.exit-signal .es-actions .es-snooze-btn { background:rgba(142,142,147,.12); color:var(--text-2); }
+.exit-signal .es-actions .es-snooze-btn:hover { background:rgba(142,142,147,.22); color:var(--text); }
+
+.pos-item.signal-critical { border-left-color:var(--red) !important; box-shadow: 0 0 0 1px rgba(255,69,58,.25) inset; }
+.pos-item.signal-warning { border-left-color:var(--orange) !important; }
+
+.closed-history { margin-top:12px; }
+.closed-history .ch-item { background:var(--bg-elev); border-radius:10px; padding:10px 12px; margin-bottom:6px; font-size:11px; display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; }
+.closed-history .ch-symbol { font-weight:700; font-size:13px; color:var(--text); }
+.closed-history .ch-meta { color:var(--text-2); grid-column:1/-1; display:flex; gap:10px; flex-wrap:wrap; font-size:10px; }
+.closed-history .ch-meta b { color:var(--text); }
+.closed-history .ch-r { font-weight:800; font-variant-numeric:tabular-nums; font-size:13px; }
+.closed-history .ch-r.pos { color:var(--green); }
+.closed-history .ch-r.neg { color:var(--red); }
+.closed-history .ch-reason { grid-column:1/-1; font-size:10px; color:var(--text-3); font-style:italic; }
 </style>
 </head>
 
@@ -404,7 +476,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
             <div class="tab-panel active" data-tab="analysis">
                 <div class="card">
                     <div class="card-title">Análisis técnico</div>
-                    <div class="card-sub">EMA · RSI · MACD · Bollinger · ADX · Régimen · Setups con stop/target</div>
+                    <div class="card-sub">EMA · RSI · MACD · Bollinger · ADX · Régimen · RS · MTF · Entry Quality</div>
 
                     <label>Watchlist</label>
                     <div class="watchlist" id="watchlistChips"></div>
@@ -423,21 +495,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
                    <button class="btn-primary" id="analyzeBtn" onclick="run()">Analizar</button>
                     <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
                     <div class="error-list" id="errorList"></div>
-                </div>
-
-                <div class="hint-box">
-                    <b>Cómo se construyen los setups</b>
-                    • <b>Ruptura Donchian 20:</b> cierre sobre máximo de 20 sesiones + volumen P80 + cierre fuerte<br>
-                    • <b>Pullback EMA20/50:</b> retroceso a media con estructura HH/HL y volumen decreciente<br>
-                    • <b>Rebote SMA200:</b> toque de la media larga con tendencia intacta<br>
-                    • <b>Cruce dorado EMA20/50:</b> cruce en ≤3 sesiones con ADX y volumen<br>
-                    • <b>Ruptura Bollinger + Vol:</b> expansión de volatilidad confirmada<br><br>
-                    <b>Stops, sizing y filtros</b>
-                    • Stop estructural bajo swing/EMA con colchón ATR<br>
-                    • T1/T2 se calculan contra resistencias, R y ATR<br>
-                    • Riesgo por trade limitado por la cuenta y por distancia en ATR<br>
-                    • <b>Quality</b> mide confirmación del setup; <b>Score</b> mide estado técnico<br>
-                    • El sistema no trata el Score como probabilidad de éxito: requiere backtest
                 </div>
             </div>
 
@@ -510,6 +567,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
                         <div class="chart-stat">ADX <b id="csAdx">—</b></div>
                         <div class="chart-stat">ATR <b id="csAtr">—</b></div>
                         <div class="chart-stat">Score <b id="csScore">—</b></div>
+                        <div class="chart-stat">RVOL <b id="csRvol">—</b></div>
+                        <div class="chart-stat">RS SPY <b id="csRs">—</b></div>
                     </div>
 
                     <div class="entries-panel" id="entriesPanel" style="display:none;">
@@ -537,7 +596,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
             <div class="tab-panel" data-tab="portfolio">
                 <div class="card">
                     <div class="card-title">Mi cartera</div>
-                    <div class="card-sub">Posiciones reales (las que tienes en el bróker)</div>
+                    <div class="card-sub">Posiciones reales con motor de exit signals</div>
+
+                    <div id="portfolioHeatPanel"></div>
+
                     <div class="pos-panel">
                         <h3 style="font-size:13px;font-weight:600;margin:0 0 10px;">Registrar posición</h3>
                         <div class="pos-form">
@@ -551,6 +613,14 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
                         </div>
                     </div>
                 </div>
+
+                <div class="card closed-history">
+                    <div class="card-title">Operaciones cerradas</div>
+                    <div class="card-sub">Historial con R-múltiplo y motivo de cierre</div>
+                    <div id="closedHistoryList"></div>
+                    <button onclick="if(confirm('¿Borrar todo el historial?')){ saveClosedHistory([]); renderClosedHistory(); }" style="margin-top:10px; font-size:12px; background:rgba(255,69,58,.1); color:var(--red);">Borrar historial</button>
+                </div>
+
                 <div class="card">
                     <div class="card-title">Exportar</div>
                     <div class="card-sub">Descarga tus posiciones en JSON</div>
@@ -582,11 +652,22 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
                     <input id="riskPct" type="number" placeholder="1" step="0.1"/>
                     <label>Máximo de cuenta por posición (%)</label>
                     <input id="maxPositionPct" type="number" placeholder="20" step="1"/>
+                    <label>Heat máximo cartera (R)</label>
+                    <input id="maxHeatR" type="number" placeholder="6" step="0.5"/>
                     <button onclick="saveRiskConfig()">Guardar</button>
                 </div>
                 <div class="card">
+                    <div class="card-title">Filtros de contexto</div>
+                    <div class="card-sub">RS, MTF, earnings</div>
+                    <label>RS mínimo vs SPY (%, 3M ponderado)</label>
+                    <input id="minRsPct" type="number" placeholder="0" step="0.5"/>
+                    <label>Días mínimos a earnings</label>
+                    <input id="minDaysEarnings" type="number" placeholder="5" step="1"/>
+                    <button onclick="saveContextConfig()">Guardar</button>
+                </div>
+                <div class="card">
                     <div class="card-title">Caché</div>
-                    <div class="card-sub">Precio: 5 min · Régimen: 1 día</div>
+                    <div class="card-sub">Precio: 5 min · Régimen: 1 día · Earnings: 1 día</div>
                     <button onclick="clearCache()" style="font-size:13px;">Limpiar caché</button>
                 </div>
                 <div class="card">
@@ -632,11 +713,35 @@ const SMA_TREND = 200;
 
 const MIN_BARS = 250;
 
-// Pesos por categoría para quality (todos iguales hasta backtest)
+const EQ_OPTIMAL_BASE = 80;
+const EQ_ACCEPTABLE_BASE = 60;
+const EQ_OPTIMAL_RISKOFF = 88;
+const EQ_ACCEPTABLE_RISKOFF = 72;
+const EQ_OPTIMAL_RISKON_STRONG = 75;
+const EQ_SCORE_CAP = 95;
+
 const CHECK_WEIGHTS = {
     regime: 12, trend: 15, structure: 12, volume: 10,
-    momentum: 8, strength: 8, timing: 10, health: 10
+    momentum: 8, strength: 8, timing: 10, health: 10,
+    rs: 12, mtf: 10
 };
+
+const SECTOR_ETF_MAP = {
+  AAPL:'XLK', MSFT:'XLK', NVDA:'XLK', AMD:'XLK', AVGO:'XLK', QCOM:'XLK', TSM:'XLK', ORCL:'XLK', CRM:'XLK', ADBE:'XLK', INTC:'XLK', MU:'XLK', AMAT:'XLK', LRCX:'XLK', NOW:'XLK', INTU:'XLK', IBM:'XLK', CSCO:'XLK', TXN:'XLK',
+  JPM:'XLF', BAC:'XLF', GS:'XLF', MS:'XLF', WFC:'XLF', C:'XLF', BLK:'XLF', SCHW:'XLF', AXP:'XLF', V:'XLF', MA:'XLF', PYPL:'XLF', BRK:'XLF',
+  XOM:'XLE', CVX:'XLE', COP:'XLE', SLB:'XLE', EOG:'XLE', OXY:'XLE', PSX:'XLE', VLO:'XLE', MPC:'XLE',
+  JNJ:'XLV', PFE:'XLV', UNH:'XLV', LLY:'XLV', MRK:'XLV', ABBV:'XLV', TMO:'XLV', ABT:'XLV', DHR:'XLV', BMY:'XLV', AMGN:'XLV', GILD:'XLV',
+  AMZN:'XLY', TSLA:'XLY', HD:'XLY', MCD:'XLY', NKE:'XLY', SBUX:'XLY', LOW:'XLY', TGT:'XLY', TJX:'XLY', BKNG:'XLY', F:'XLY', GM:'XLY',
+  WMT:'XLP', PG:'XLP', KO:'XLP', PEP:'XLP', COST:'XLP', PM:'XLP', MO:'XLP', CL:'XLP', MDLZ:'XLP',
+  CAT:'XLI', BA:'XLI', GE:'XLI', HON:'XLI', UPS:'XLI', RTX:'XLI', LMT:'XLI', DE:'XLI', MMM:'XLI', UNP:'XLI', FDX:'XLI',
+  NEE:'XLU', DUK:'XLU', SO:'XLU', D:'XLU', AEP:'XLU', EXC:'XLU',
+  LIN:'XLB', APD:'XLB', FCX:'XLB', NEM:'XLB', SHW:'XLB', DOW:'XLB',
+  AMT:'XLRE', PLD:'XLRE', SPG:'XLRE', O:'XLRE', CCI:'XLRE',
+  GOOGL:'XLC', GOOG:'XLC', META:'XLC', DIS:'XLC', NFLX:'XLC', T:'XLC', VZ:'XLC', CMCSA:'XLC', TMUS:'XLC'
+};
+const EARNINGS_BLACKOUT_DAYS_DEFAULT = 5;
+const MAX_PORTFOLIO_HEAT_R_DEFAULT = 6;
+const MIN_RS_PCT_DEFAULT = 0;
 
 let lastSymbolsData = null;
 let lastFetchedData = {};
@@ -655,6 +760,12 @@ let pinBuffer = '';
 let pinState = 'verify';
 let pinFirstEntry = '';
 let pinAttempts = 0;
+
+let spyDataCache = null;
+let sectorCache = {};
+let weeklyCache = {};
+let earningsCache = {};
+let expandedPositionId = null;
 
 /* =========================================================
    UTILS
@@ -860,6 +971,7 @@ function showMobileTab(name) {
             try { if (rsiChart) rsiChart.resize(); } catch(_) {}
             try { if (macdChart) macdChart.resize(); } catch(_) {}
         }, 100);
+        if (name === 'portfolio') { renderPortfolioHeat(); renderClosedHistory(); }
     } catch(e) { console.error('showMobileTab error:', e); }
 }
 
@@ -1075,10 +1187,93 @@ function buildPointSeries(values, labels) {
     return pts;
 }
 
+function computeOBV(data) {
+    const out = new Array(data.length).fill(0);
+    let obv = 0;
+    for (let i = 1; i < data.length; i++) {
+        if (data[i].close > data[i-1].close) obv += data[i].volume || 0;
+        else if (data[i].close < data[i-1].close) obv -= data[i].volume || 0;
+        out[i] = obv;
+    }
+    return out;
+}
+
+function normalizedSlope(values, lookback = 20) {
+    const slice = values.slice(-lookback).filter(v => v != null && isFinite(v));
+    if (slice.length < 10) return null;
+    const n = slice.length;
+    let sx = 0, sy = 0, sxy = 0, sx2 = 0;
+    for (let i = 0; i < n; i++) { sx += i; sy += slice[i]; sxy += i*slice[i]; sx2 += i*i; }
+    const denom = n*sx2 - sx*sx;
+    if (Math.abs(denom) < 1e-10) return null;
+    const slope = (n*sxy - sx*sy) / denom;
+    const mean = sy / n;
+    return mean !== 0 ? (slope * n) / Math.abs(mean) * 100 : 0;
+}
+
+function computeRsRating(closes, benchCloses) {
+    if (!closes.length || !benchCloses.length) return null;
+    const perf = (arr, n) => arr.length > n ? (arr[arr.length-1] / arr[arr.length-1-n] - 1) * 100 : null;
+    const p3 = perf(closes, 63), p6 = perf(closes, 126), p12 = perf(closes, 252);
+    const b3 = perf(benchCloses, 63), b6 = perf(benchCloses, 126), b12 = perf(benchCloses, 252);
+    let weighted = 0, weight = 0;
+    if (p3 != null && b3 != null) { weighted += 0.4 * (p3 - b3); weight += 0.4; }
+    if (p6 != null && b6 != null) { weighted += 0.3 * (p6 - b6); weight += 0.3; }
+    if (p12 != null && b12 != null) { weighted += 0.3 * (p12 - b12); weight += 0.3; }
+    return weight > 0 ? weighted / weight : null;
+}
+
+function computeRVOL(data, lookback = 20) {
+    if (data.length < lookback + 1) return null;
+    const recent = data.slice(-lookback - 1, -1);
+    const avg = recent.reduce((a, d) => a + (d.volume || 0), 0) / recent.length;
+    if (avg <= 0) return null;
+    return (data[data.length-1].volume || 0) / avg;
+}
+
+async function fetchEarningsDate(symbol, key) {
+    const cacheKey = `sa_earnings_${symbol}`;
+    try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            const p = JSON.parse(cached);
+            if (Date.now() - p.time < 24 * 60 * 60 * 1000) return p.date;
+        }
+    } catch(_) {}
+    try {
+        const url = `https://api.twelvedata.com/earnings?symbol=${symbol}&apikey=${key}`;
+        await apiGate();
+        const d = await fetchWithRetry(url, 1);
+        let date = null;
+        if (d && Array.isArray(d.earnings) && d.earnings.length) {
+            const todayStr = today();
+            const future = d.earnings
+                .map(e => e.date)
+                .filter(dt => dt && dt >= todayStr)
+                .sort();
+            if (future.length) date = future[0];
+        }
+        safeSetItem(cacheKey, JSON.stringify({ time: Date.now(), date }));
+        return date;
+    } catch(e) {
+        safeSetItem(cacheKey, JSON.stringify({ time: Date.now(), date: null }));
+        return null;
+    }
+}
+function daysUntil(dateStr) {
+    if (!dateStr) return null;
+    const d1 = new Date(today() + 'T12:00:00');
+    const d2 = new Date(dateStr + 'T12:00:00');
+    return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+}
+function getSectorETF(symbol) {
+    const base = String(symbol || '').toUpperCase();
+    return SECTOR_ETF_MAP[base] || null;
+}
+
 /* =========================================================
    HELPERS ESTRUCTURALES
 ========================================================= */
-// Percentil de volumen del propio ticker (0..1)
 function volumePercentile(volumes, lookback = 60) {
     const recent = volumes.slice(-lookback).filter(v => v > 0).sort((a, b) => a - b);
     if (recent.length < 20) return null;
@@ -1087,7 +1282,6 @@ function volumePercentile(volumes, lookback = 60) {
     return rank / recent.length;
 }
 
-// Detección de swings (fuerza N barras a cada lado)
 function findSwings(data, lookback = 90, strength = 3) {
     const n = data.length;
     const start = Math.max(strength, n - lookback);
@@ -1105,7 +1299,6 @@ function findSwings(data, lookback = 90, strength = 3) {
     return { highs, lows };
 }
 
-// Swing low confirmado más reciente (al menos `strength` barras de antigüedad)
 function recentSwingLow(data, strength = 3, lookback = 30) {
     const { lows } = findSwings(data, lookback + strength, strength);
     if (!lows.length) return null;
@@ -1115,7 +1308,6 @@ function recentSwingLow(data, strength = 3, lookback = 30) {
     return valid[valid.length - 1];
 }
 
-// Estructura HH/HL con votación
 function isUptrendStructure(data, lookback = 60) {
     const { highs, lows } = findSwings(data, lookback, 3);
     if (highs.length < 2 || lows.length < 2) return false;
@@ -1130,7 +1322,6 @@ function isUptrendStructure(data, lookback = 60) {
     return hhCount >= hhNeed && hlCount >= hlNeed;
 }
 
-// Pullback con volumen decreciente (sano)
 function pullbackVolumeHealthy(data, pullbackBars = 3, impulseBars = 10) {
     const n = data.length;
     if (n < pullbackBars + impulseBars + 5) return false;
@@ -1143,7 +1334,6 @@ function pullbackVolumeHealthy(data, pullbackBars = 3, impulseBars = 10) {
     return avgR < avgI * 0.75;
 }
 
-// Cierre en el tercio superior del rango del día
 function strongClose(data, idx = null) {
     const d = idx == null ? data[data.length - 1] : data[idx];
     const range = d.high - d.low;
@@ -1151,7 +1341,6 @@ function strongClose(data, idx = null) {
     return (d.close - d.low) / range >= 0.66;
 }
 
-// Resistencias: swing highs por encima del precio + máximo absoluto, deduplicadas
 function findResistances(data, price, maxLookback = 200) {
     const { highs } = findSwings(data, maxLookback, 3);
     const raw = [];
@@ -1167,13 +1356,11 @@ function findResistances(data, price, maxLookback = 200) {
     return dedup;
 }
 
-// Stop estructural: bajo swing low confirmado, colchón 0.5 ATR, mín 1 ATR, máx 2.5 ATR
 function computeStructuralStop(data, price, atr, emaRef = null) {
     const buffer = 0.5 * atr;
-    const stopMax = price - 2.5 * atr;    // máximo permitido (más profundo)
-    const minDist = price - 1.0 * atr;    // mínimo permitido (más cerca)
+    const stopMax = price - 2.5 * atr;
+    const minDist = price - 1.0 * atr;
     const candidates = [];
-
     const swing = recentSwingLow(data, 3, 30);
     if (swing) {
         const s = swing.price - buffer;
@@ -1184,18 +1371,16 @@ function computeStructuralStop(data, price, atr, emaRef = null) {
         if (s < price && s <= minDist && s >= stopMax) candidates.push({ price: s, source: 'ema' });
     }
     if (!candidates.length) return { price: stopMax, source: 'atr' };
-    candidates.sort((a, b) => b.price - a.price); // el más cercano al precio
+    candidates.sort((a, b) => b.price - a.price);
     return candidates[0];
 }
 
-// Targets estructurales: T1 en la resistencia más cercana que dé ≥1.5R, T2 en la siguiente
 function computeTargets(data, price, stop, atr) {
     const risk = price - stop;
     if (risk <= 0) return null;
     const resistances = findResistances(data, price, 200);
     const minT1 = price + 1.5 * risk;
     const maxT1 = price + 3.0 * risk;
-
     let t1, t1Source;
     const t1r = resistances.find(r => r >= minT1 && r <= maxT1);
     if (t1r) { t1 = t1r; t1Source = 'resistance'; }
@@ -1204,18 +1389,15 @@ function computeTargets(data, price, stop, atr) {
         if (t1 < minT1) t1 = minT1;
         t1Source = 'atr';
     }
-
     const minT2 = price + 2.5 * risk;
     const t2r = resistances.find(r => r >= minT2);
     let t2, t2Source;
     if (t2r) { t2 = t2r; t2Source = 'resistance'; }
     else { t2 = price + 3.0 * atr; t2Source = 'atr'; }
     if (t2 <= t1) t2 = t1 * 1.02;
-
     return { t1, t2, t1Source, t2Source, risk };
 }
 
-// Quality ponderado por categoría
 function weightedQuality(checks) {
     let total = 0, earned = 0;
     for (const c of checks) {
@@ -1226,37 +1408,19 @@ function weightedQuality(checks) {
     return total > 0 ? Math.round((earned / total) * 100) : 0;
 }
 
-// Plan de salida por defecto
 function makeExitPlan(risk) {
     return {
         partials: '50% en T1 → stop a BE · 25% en T2',
-        trailing: 'Swing low 20 barras',
+        trailing: 'Chandelier 22/3 · EMA20 · Swing low 10',
         timeStop: '20 sesiones si no toca T1',
         invalidation: 'Cierre < stop, o RSI<40 + MACD bajista'
     };
 }
 
-// Construye el objeto setup final
-function buildSetup({ id, name, desc, status, checks, entry, stop, stopSource, targets, risk, exitPlan }) {
-    const quality = weightedQuality(checks);
-    const riskInAtr = 0; // compatibilidad; finalizeSetup calcula el valor real con ATR
-    const rrT1 = (targets.t1 - entry) / risk;
-    const rrT2 = (targets.t2 - entry) / risk;
-    return {
-        id, name, desc, status, quality,
-        entry, stop, stopSource,
-        t1: targets.t1, t1Source: targets.t1Source,
-        t2: targets.t2, t2Source: targets.t2Source,
-        risk, rrT1, rrT2,
-        checks, exitPlan
-    };
-}
-
 /* =========================================================
-   SCORE TÉCNICO 0-100
+   SCORE TÉCNICO
 ========================================================= */
 function computeTechnicalScore(tech, price, structureOk = null) {
-    // Score de estado, no probabilidad de éxito. Evita sumar repetidamente la misma señal.
     const parts = { trend: 0, momentum: 0, strength: 0, participation: 0, structure: 0 };
     if (tech.ema20 != null && tech.ema50 != null && tech.ema200 != null) {
         const stack = (price > tech.ema20) + (tech.ema20 > tech.ema50) + (tech.ema50 > tech.ema200);
@@ -1333,6 +1497,7 @@ async function getMarketRegime(key) {
     else if (price < sma200Now && slopePct <= 0) regime = 'RISK_OFF';
     const result = { regime, price, sma50: sma50Now, sma200: sma200Now, distPct, slopePct };
     safeSetItem(ck, JSON.stringify(result));
+    spyDataCache = data;
     return result;
 }
 function setRegimeBadge(regime) {
@@ -1373,27 +1538,230 @@ function buildCtx(data, tech, regime) {
         minusDI: adxObj.minusDI[last],
         dh20, dl10, bb,
         volPct: volumePercentile(volumes, 60),
-        regime
+        regime,
+        rs: tech.rsRating,
+        weeklyTrend: tech.weeklyTrend,
+        daysEarnings: tech.daysEarnings,
+        rvol: tech.rvol
     };
 }
 
-function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, stopSource, atr, data, regime, momentumSetup }) {
+function getContextConfig() {
+    const rs = parseFloat(localStorage.getItem('sa_min_rs_pct'));
+    const days = parseFloat(localStorage.getItem('sa_min_days_earnings'));
+    return {
+        minRs: isFinite(rs) ? rs : MIN_RS_PCT_DEFAULT,
+        minDaysEarnings: isFinite(days) && days >= 0 ? days : EARNINGS_BLACKOUT_DAYS_DEFAULT
+    };
+}
+function saveContextConfig() {
+    const rs = parseFloat(document.getElementById('minRsPct').value);
+    const days = parseFloat(document.getElementById('minDaysEarnings').value);
+    if (isFinite(rs)) safeSetItem('sa_min_rs_pct', rs);
+    if (isFinite(days) && days >= 0) safeSetItem('sa_min_days_earnings', days);
+    toast('Filtros de contexto guardados', 'success');
+}
+function loadContextConfig() {
+    const c = getContextConfig();
+    const r = document.getElementById('minRsPct'); if (r) r.value = c.minRs;
+    const d = document.getElementById('minDaysEarnings'); if (d) d.value = c.minDaysEarnings;
+}
+
+function contextChecks(ctx, isLong = true) {
+    const out = [];
+    const ccfg = getContextConfig();
+
+    if (ctx.rs != null) {
+        const ok = isLong ? ctx.rs >= ccfg.minRs : ctx.rs <= -ccfg.minRs;
+        out.push({
+            label: 'RS vs SPY favorable',
+            ok,
+            detail: `${ctx.rs >= 0 ? '+' : ''}${ctx.rs.toFixed(2)}%`,
+            category: 'rs'
+        });
+    }
+    if (ctx.weeklyTrend) {
+        const ok = isLong ? ctx.weeklyTrend !== 'BAJISTA' : ctx.weeklyTrend !== 'ALCISTA';
+        out.push({
+            label: 'MTF semanal coherente',
+            ok,
+            detail: ctx.weeklyTrend,
+            category: 'mtf'
+        });
+    }
+    if (ctx.daysEarnings != null) {
+        const ok = ctx.daysEarnings > ccfg.minDaysEarnings;
+        out.push({
+            label: `Earnings > ${ccfg.minDaysEarnings}d`,
+            ok,
+            detail: `${ctx.daysEarnings}d`,
+            category: 'timing'
+        });
+    }
+    return out;
+}
+
+function computeEntryQuality(ctx, setupId, entry, stop, targets, primaryConfirmed) {
+    const atr = ctx?.atr;
+    const price = ctx?.price ?? entry;
+
+    if (!atr || !isFinite(atr) || atr <= 0) {
+        return {
+            score: 0, state: 'extended', label: 'EXTENDIDA',
+            note: 'Sin ATR válido para evaluar la ejecución.',
+            distanceAtr: null, distancePct: null,
+            rvol: ctx?.rvol ?? null, riskAtr: null, rr: null
+        };
+    }
+
+    const e20 = ctx?.e20, e50 = ctx?.e50, s200 = ctx?.s200;
+    const rvol = ctx?.rvol;
+    const riskAtr = (entry - stop) / atr;
+    const rr = targets ? (targets.t1 - entry) / Math.max(entry - stop, 1e-9) : 0;
+
+    let score = 100;
+    const notes = [];
+    let distanceAtr = null;
+    let targetZone = null;
+
+    if (setupId === 'pullback') {
+        const d20 = e20 != null ? (price - e20) / atr : null;
+        const d50 = e50 != null ? (price - e50) / atr : null;
+        const best = [d20, d50].filter(v => v != null && v >= 0).sort((a, b) => a - b)[0];
+        distanceAtr = best ?? null;
+        const d = best == null ? 99 : best;
+        if (d <= 0.50) score += 0;
+        else if (d <= 1.00) score -= 8;
+        else if (d <= 1.50) score -= 22;
+        else if (d <= 2.00) score -= 42;
+        else score -= 55;
+        if (d > 1.25) notes.push(`precio +${d.toFixed(2)} ATR sobre EMA20/50`);
+        if (d > 2.00) {
+            notes.push('demasiado alejada para tratarla como pullback actual');
+            const ref = e20 != null ? e20 : e50;
+            if (ref != null) targetZone = ref;
+        }
+    } else if (setupId === 'donchian' || setupId === 'bb_breakout') {
+        let trigger = null;
+        if (setupId === 'donchian' && ctx.dh20 && ctx.dh20[ctx.last - 1] != null) {
+            trigger = ctx.dh20[ctx.last - 1];
+        } else if (setupId === 'bb_breakout' && ctx.bb && ctx.bb.upper && ctx.bb.upper[ctx.last - 1] != null) {
+            trigger = ctx.bb.upper[ctx.last - 1];
+        }
+        if (trigger != null && trigger > 0) {
+            const ext = (price - trigger) / atr;
+            distanceAtr = ext;
+            if (ext > 1.5) {
+                score -= 35;
+                notes.push(`+${ext.toFixed(2)} ATR por encima del trigger ($${trigger.toFixed(2)})`);
+                targetZone = trigger + 0.3 * atr;
+            } else if (ext > 1.0) {
+                score -= 20;
+                notes.push(`+${ext.toFixed(2)} ATR por encima del trigger`);
+                targetZone = trigger + 0.5 * atr;
+            } else if (ext > 0.5) {
+                score -= 8;
+            }
+        }
+    } else if (setupId === 'sma200') {
+        const d = s200 != null ? (price - s200) / atr : null;
+        distanceAtr = d;
+        if (d != null) {
+            if (d > 1.5) {
+                score -= 30;
+                notes.push(`+${d.toFixed(2)} ATR sobre SMA200`);
+                targetZone = s200 + 0.5 * atr;
+            } else if (d > 1.0) {
+                score -= 15;
+                notes.push(`+${d.toFixed(2)} ATR sobre SMA200`);
+            } else if (d > 0.5) {
+                score -= 5;
+            }
+        }
+    } else if (setupId === 'golden_cross') {
+        const d20 = e20 != null ? (price - e20) / atr : null;
+        distanceAtr = d20;
+        if (d20 != null && d20 > 1.5) {
+            score -= 15;
+            notes.push(`+${d20.toFixed(2)} ATR sobre EMA20`);
+        } else if (d20 != null && d20 > 1.0) {
+            score -= 6;
+        }
+    }
+
+    if (rvol != null && isFinite(rvol)) {
+        if (rvol < 0.50) score -= 15;
+        else if (rvol < 0.80) score -= 7;
+        else if (rvol >= 1.50) score += 2;
+    }
+
+    if (riskAtr > 2.50) score -= 15;
+    else if (riskAtr > 2.00) score -= 8;
+    else if (riskAtr >= 1.00 && riskAtr <= 2.00) score += 2;
+
+    if (rr >= 2.0) score += 2;
+    else if (rr < 1.7) score -= 5;
+
+    score = Math.max(0, Math.min(EQ_SCORE_CAP, Math.round(score)));
+
+    let optimalThreshold = EQ_OPTIMAL_BASE;
+    let acceptableThreshold = EQ_ACCEPTABLE_BASE;
+    const regimeName = ctx?.regime?.regime;
+    if (regimeName === 'RISK_OFF' || regimeName === 'STRONG_RISK_OFF') {
+        optimalThreshold = EQ_OPTIMAL_RISKOFF;
+        acceptableThreshold = EQ_ACCEPTABLE_RISKOFF;
+    } else if (regimeName === 'STRONG_RISK_ON') {
+        optimalThreshold = EQ_OPTIMAL_RISKON_STRONG;
+    }
+
+    let state = 'extended', label = 'EXTENDIDA';
+    if (score >= optimalThreshold) { state = 'optimal'; label = 'ÓPTIMA'; }
+    else if (score >= acceptableThreshold) { state = 'acceptable'; label = 'ACEPTABLE'; }
+
+    if (!notes.length) {
+        if (state === 'optimal') notes.push('precio dentro de una zona de ejecución razonable');
+        else if (state === 'acceptable') notes.push('entrada operable, pero conviene esperar confirmación o mejor precio');
+        else notes.push('el contexto puede ser bueno, pero la ejecución actual está extendida');
+    }
+    if (targetZone != null) {
+        notes.push(`⏳ esperar retroceso a ~$${targetZone.toFixed(2)}`);
+    }
+
+    return {
+        score, state, label,
+        note: notes.join(' · '),
+        distanceAtr,
+        distancePct: e20 != null ? ((price - e20) / e20) * 100 : null,
+        rvol, riskAtr, rr,
+        targetZone
+    };
+}
+
+function entryQualityLabel(eq) {
+    if (!eq) return '—';
+    return `${eq.label} · ${eq.score}/100`;
+}
+
+function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, stopSource, atr, data, regime, momentumSetup, ctx }) {
     const risk = entry - stop;
     if (!isFinite(risk) || risk <= 0) return null;
     const riskInAtr = risk / atr;
-    // Gate duro: riesgo fuera de rango
     if (riskInAtr > 3.0) return null;
     if (riskInAtr < 0.8) return null;
-    // Gate duro: momentum en RISK-OFF
     if (momentumSetup && (regime?.regime === 'RISK_OFF' || regime?.regime === 'STRONG_RISK_OFF')) return null;
+
+    const ccfg = getContextConfig();
+    if (ctx) {
+        if (ctx.rs != null && ctx.rs < ccfg.minRs) return null;
+        if (ctx.weeklyTrend === 'BAJISTA') return null;
+        if (ctx.daysEarnings != null && ctx.daysEarnings <= ccfg.minDaysEarnings) return null;
+    }
 
     const targets = computeTargets(data, entry, stop, atr);
     if (!targets) return null;
     const rrT1 = (targets.t1 - entry) / risk;
-    // Gate duro: R:R mínimo
     if (rrT1 < 1.5) return null;
 
-    // Measured move como T2 alternativo en rupturas
     if (id === 'donchian' || id === 'bb_breakout') {
         const slice20 = data.slice(-20);
         const rHigh = slice20.reduce((m, d) => Math.max(m, d.high), -Infinity);
@@ -1405,16 +1773,30 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
         }
     }
 
-    const quality = weightedQuality(checks);
-    const status = primaryConfirmed && quality >= 65 ? 'READY' : 'WAITING';
+    const entryQuality = computeEntryQuality(ctx, id, entry, stop, targets, primaryConfirmed);
+
+    const checksWithEQ = [
+        ...checks,
+        {
+            label: 'Entrada en zona óptima',
+            ok: entryQuality.state === 'optimal',
+            detail: `${entryQuality.score}/100`,
+            category: 'timing'
+        }
+    ];
+
+    const quality = weightedQuality(checksWithEQ);
+    const status = primaryConfirmed && quality >= 65 && entryQuality.state !== 'extended' ? 'READY' : 'WAITING';
+
     return {
-        id, name, desc, status, quality,
+        id, name, desc, status, quality, entryQuality,
         entry, stop, stopSource,
         t1: targets.t1, t1Source: targets.t1Source,
         t2: targets.t2, t2Source: targets.t2Source,
         risk, riskInAtr, rrT1,
         rrT2: (targets.t2 - entry) / risk,
-        checks, exitPlan: makeExitPlan(risk)
+        checks: checksWithEQ,
+        exitPlan: makeExitPlan(risk)
     };
 }
 
@@ -1424,14 +1806,12 @@ function regimeCheck(regime) {
     return [{ label: 'Régimen favorable', ok: bullish, detail: regime.regime.replaceAll('_','-'), category: 'regime' }];
 }
 
-/* --- Setup 1: Ruptura Donchian 20 --- */
 function setupDonchian(ctx) {
     const { data, last, price, atr, e20, e50, e200, adx, plusDI, minusDI, r, dh20, volPct, regime } = ctx;
     const dhPrev = dh20[last - 1];
     if (dhPrev == null) return null;
-    const breakout = data[last].close > dhPrev;
-    if (!breakout) return null;         // gate: sin ruptura no es este setup
-    if (!(e50 > e200)) return null;     // gate: tendencia de fondo alcista
+    if (!(data[last].close > dhPrev)) return null;
+    if (!(e50 > e200)) return null;
 
     const checks = [
         { label: 'Cierre > Donchian High 20', ok: true, detail: `$${dhPrev.toFixed(2)}`, category: 'trend' },
@@ -1443,7 +1823,8 @@ function setupDonchian(ctx) {
         { label: '+DI > −DI', ok: plusDI > minusDI, detail: '', category: 'strength' },
         { label: 'Volumen P80 propio', ok: volPct != null && volPct >= 0.8, detail: volPct != null ? `P${Math.round(volPct*100)}` : '—', category: 'volume' },
         { label: 'RSI 50-80', ok: r != null && r >= 50 && r <= 80, detail: r != null ? r.toFixed(1) : '—', category: 'momentum' },
-        ...regimeCheck(regime)
+        ...regimeCheck(regime),
+        ...contextChecks(ctx, true)
     ];
 
     const stopObj = computeStructuralStop(data, price, atr, e20);
@@ -1452,17 +1833,15 @@ function setupDonchian(ctx) {
         desc: 'Cierre sobre el máximo de 20 sesiones con volumen y estructura',
         primaryConfirmed: true, momentumSetup: true,
         checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
-        atr, data, regime
+        atr, data, regime, ctx
     });
 }
 
-/* --- Setup 2: Pullback a EMA20/50 --- */
 function setupPullback(ctx) {
     const { data, last, price, atr, e20, e50, e200, adx, r, regime } = ctx;
     const stack = e20 > e50 && e50 > e200;
     if (!stack) return null;
 
-    // Toque reciente de EMA20 o EMA50 (últimas 5 barras)
     let touched = false;
     for (let i = Math.max(0, last - 4); i <= last; i++) {
         const ref = (e20 != null && data[i].low <= e20 * 1.005) ? e20
@@ -1477,11 +1856,13 @@ function setupPullback(ctx) {
         { label: 'EMA20 > EMA50 > EMA200', ok: true, detail: '', category: 'trend' },
         { label: 'Toque EMA20/50 (≤5 sesiones)', ok: touched, detail: '', category: 'timing' },
         { label: 'Precio > EMA20', ok: price > e20, detail: e20 != null ? `$${e20.toFixed(2)}` : '—', category: 'trend' },
+        { label: 'Distancia a EMA20/50 ≤ 1.25 ATR', ok: (() => { const d20 = e20 != null ? (price-e20)/atr : Infinity; const d50 = e50 != null ? (price-e50)/atr : Infinity; return Math.min(d20,d50) <= 1.25; })(), detail: `${(() => { const d20=e20!=null?(price-e20)/atr:Infinity; const d50=e50!=null?(price-e50)/atr:Infinity; return Math.min(d20,d50).toFixed(2); })()} ATR`, category: 'timing' },
         { label: 'Estructura HH/HL', ok: structureOk, detail: '', category: 'structure' },
         { label: 'Volumen decreciente en pullback', ok: volHealthy, detail: '', category: 'health' },
         { label: 'RSI 40-65', ok: r != null && r >= 40 && r <= 65, detail: r != null ? r.toFixed(1) : '—', category: 'momentum' },
         { label: 'ADX > 20', ok: adx != null && adx > 20, detail: adx != null ? adx.toFixed(1) : '—', category: 'strength' },
-        ...regimeCheck(regime)
+        ...regimeCheck(regime),
+        ...contextChecks(ctx, true)
     ];
 
     const stopObj = computeStructuralStop(data, price, atr, e50);
@@ -1491,18 +1872,15 @@ function setupPullback(ctx) {
         primaryConfirmed: touched && structureOk,
         momentumSetup: false,
         checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
-        atr, data, regime
+        atr, data, regime, ctx
     });
 }
 
-/* --- Setup 3: Rebote SMA200 --- */
 function setupSma200(ctx) {
-    const { data, last, price, atr, e20, s200, r, regime } = ctx;
+    const { data, last, price, atr, s200, r, regime } = ctx;
     if (s200 == null) return null;
-    const above = price > s200;
-    if (!above) return null;
+    if (!(price > s200)) return null;
 
-    // Toque de SMA200 en las últimas 7 barras
     let touched = false;
     for (let i = Math.max(0, last - 6); i <= last; i++) {
         if (data[i].low <= s200 * 1.005) { touched = true; break; }
@@ -1520,7 +1898,8 @@ function setupSma200(ctx) {
         { label: 'RSI < 50', ok: r != null && r < 50, detail: r != null ? r.toFixed(1) : '—', category: 'momentum' },
         { label: 'Estructura HH/HL', ok: structureOk, detail: '', category: 'structure' },
         { label: 'Volumen decreciente en pullback', ok: volHealthy, detail: '', category: 'health' },
-        ...regimeCheck(regime)
+        ...regimeCheck(regime),
+        ...contextChecks(ctx, true)
     ];
 
     const stopObj = computeStructuralStop(data, price, atr, s200);
@@ -1530,15 +1909,12 @@ function setupSma200(ctx) {
         primaryConfirmed: touched && greenDay,
         momentumSetup: false,
         checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
-        atr, data, regime
+        atr, data, regime, ctx
     });
 }
 
-/* --- Setup 4: Cruce dorado EMA20/50 --- */
 function setupGoldenCross(ctx) {
     const { data, last, price, atr, e50, e200, adx, volPct, regime } = ctx;
-    const ema20Arr = ctx.ema20Arr, ema50Arr = ctx.ema50Arr;
-    // Necesitamos acceso a las series; recalculamos si no están en ctx
     const closes = data.map(d => d.close);
     const e20s = ema(closes, 20), e50s = ema(closes, 50);
     let crossIdx = -1;
@@ -1560,7 +1936,8 @@ function setupGoldenCross(ctx) {
         { label: 'ADX > 20 y subiendo', ok: adx != null && adx > 20 && adxRising, detail: adx != null ? adx.toFixed(1) : '—', category: 'strength' },
         { label: 'Volumen P75 propio', ok: volPct != null && volPct >= 0.75, detail: volPct != null ? `P${Math.round(volPct*100)}` : '—', category: 'volume' },
         { label: 'MACD > Signal', ok: (() => { const m = macd(closes, 12, 26, 9); return m.macd[last] != null && m.signal[last] != null && m.macd[last] > m.signal[last]; })(), detail: '', category: 'momentum' },
-        ...regimeCheck(regime)
+        ...regimeCheck(regime),
+        ...contextChecks(ctx, true)
     ];
 
     const stopObj = computeStructuralStop(data, price, atr, null);
@@ -1569,18 +1946,16 @@ function setupGoldenCross(ctx) {
         desc: 'Cruce reciente de medias con confirmación de fuerza y volumen',
         primaryConfirmed: true, momentumSetup: true,
         checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
-        atr, data, regime
+        atr, data, regime, ctx
     });
 }
 
-/* --- Setup 5: Ruptura Bollinger + Volumen --- */
 function setupBbBreakout(ctx) {
     const { data, last, price, atr, adx, r, bb, volPct, regime } = ctx;
     const closes = data.map(d => d.close);
     const bbUp = bb.upper[last], bbMid = bb.middle[last];
     if (bbUp == null) return null;
-    const breakout = closes[last] > bbUp;
-    if (!breakout) return null;
+    if (!(closes[last] > bbUp)) return null;
 
     const macdObj = macd(closes, 12, 26, 9);
     const macdBull = macdObj.macd[last] != null && macdObj.signal[last] != null && macdObj.macd[last] > macdObj.signal[last];
@@ -1592,18 +1967,18 @@ function setupBbBreakout(ctx) {
         { label: 'ADX > 20', ok: adx != null && adx > 20, detail: adx != null ? adx.toFixed(1) : '—', category: 'strength' },
         { label: 'RSI 55-80', ok: r != null && r >= 55 && r <= 80, detail: r != null ? r.toFixed(1) : '—', category: 'momentum' },
         { label: 'Estructura HH/HL', ok: isUptrendStructure(data, 60), detail: '', category: 'structure' },
-        ...regimeCheck(regime)
+        ...regimeCheck(regime),
+        ...contextChecks(ctx, true)
     ];
 
     const stopObj = computeStructuralStop(data, price, atr, null);
-    // Override stop: no más arriba que la BB media (si está por debajo del precio)
     if (bbMid != null && bbMid < price && bbMid > stopObj.price) {
         return finalizeSetup({
             id: 'bb_breakout', name: 'Ruptura Bollinger + Volumen',
             desc: 'Expansión de volatilidad confirmada con volumen y MACD',
             primaryConfirmed: true, momentumSetup: true,
             checks, entry: price, stop: bbMid, stopSource: 'ema',
-            atr, data, regime
+            atr, data, regime, ctx
         });
     }
     return finalizeSetup({
@@ -1611,11 +1986,10 @@ function setupBbBreakout(ctx) {
         desc: 'Expansión de volatilidad confirmada con volumen y MACD',
         primaryConfirmed: true, momentumSetup: true,
         checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
-        atr, data, regime
+        atr, data, regime, ctx
     });
 }
 
-/* --- Orquestador --- */
 function computeEntries(data, tech, regime) {
     if (!tech.atr || !isFinite(tech.atr)) return [];
     if (data.length < MIN_BARS) return [];
@@ -1631,6 +2005,7 @@ function computeEntries(data, tech, regime) {
 
     setups.sort((a, b) => {
         if (a.status !== b.status) return a.status === 'READY' ? -1 : 1;
+        if ((b.entryQuality?.score ?? 0) !== (a.entryQuality?.score ?? 0)) return (b.entryQuality?.score ?? 0) - (a.entryQuality?.score ?? 0);
         return b.quality - a.quality;
     });
     return setups;
@@ -1643,27 +2018,33 @@ function getRiskConfig() {
     const size = parseFloat(localStorage.getItem('sa_account_size'));
     const pct = parseFloat(localStorage.getItem('sa_risk_pct'));
     const maxPos = parseFloat(localStorage.getItem('sa_max_position_pct'));
+    const maxHeat = parseFloat(localStorage.getItem('sa_max_heat_r'));
     return {
         size: isFinite(size) && size > 0 ? size : 10000,
         pct: isFinite(pct) && pct > 0 ? Math.min(pct, MAX_RISK_PCT_DEFAULT) : 1,
-        maxPositionPct: isFinite(maxPos) && maxPos > 0 ? Math.min(maxPos, 100) : MAX_POSITION_PCT_DEFAULT
+        maxPositionPct: isFinite(maxPos) && maxPos > 0 ? Math.min(maxPos, 100) : MAX_POSITION_PCT_DEFAULT,
+        maxHeatR: isFinite(maxHeat) && maxHeat > 0 ? maxHeat : MAX_PORTFOLIO_HEAT_R_DEFAULT
     };
 }
 function saveRiskConfig() {
     const s = parseFloat(document.getElementById('accountSize').value);
     const p = parseFloat(document.getElementById('riskPct').value);
     const m = parseFloat(document.getElementById('maxPositionPct').value);
+    const h = parseFloat(document.getElementById('maxHeatR').value);
     if (isFinite(s) && s > 0) safeSetItem('sa_account_size', s);
     if (isFinite(p) && p > 0) safeSetItem('sa_risk_pct', Math.min(p, MAX_RISK_PCT_DEFAULT));
     if (isFinite(m) && m > 0) safeSetItem('sa_max_position_pct', Math.min(m, 100));
+    if (isFinite(h) && h > 0) safeSetItem('sa_max_heat_r', h);
     toast('Configuración de riesgo guardada', 'success');
     if (currentChartSymbol) renderEntries(currentChartSymbol);
+    renderPortfolioHeat();
 }
 function loadRiskConfig() {
     const c = getRiskConfig();
     const sEl = document.getElementById('accountSize'); if (sEl) sEl.value = c.size;
     const pEl = document.getElementById('riskPct'); if (pEl) pEl.value = c.pct;
     const mEl = document.getElementById('maxPositionPct'); if (mEl) mEl.value = c.maxPositionPct;
+    const hEl = document.getElementById('maxHeatR'); if (hEl) hEl.value = c.maxHeatR;
 }
 
 function sourceLabel(src) {
@@ -1677,6 +2058,41 @@ function sourceLabel(src) {
     }
 }
 
+function renderContextBadges(symbol) {
+    const live = lastSymbolsData?.[symbol];
+    if (!live) return '';
+    const badges = [];
+    if (live.rsRating != null) {
+        const cls = live.rsRating > 2 ? 'rs-strong' : live.rsRating < -2 ? 'rs-weak' : 'rs-neutral';
+        const lbl = live.rsRating > 2 ? 'RS líder' : live.rsRating < -2 ? 'RS laggard' : 'RS neutral';
+        badges.push(`<span class="ctx-badge ${cls}" title="RS vs SPY ponderado 3/6/12M">${lbl} ${live.rsRating >= 0 ? '+' : ''}${live.rsRating.toFixed(1)}%</span>`);
+    }
+    if (live.rsVsSector != null) {
+        const cls = live.rsVsSector > 1 ? 'rs-strong' : live.rsVsSector < -1 ? 'rs-weak' : 'rs-neutral';
+        badges.push(`<span class="ctx-badge ${cls}" title="RS vs sector ETF">vs sector ${live.rsVsSector >= 0 ? '+' : ''}${live.rsVsSector.toFixed(1)}%</span>`);
+    }
+    if (live.weeklyTrend) {
+        const cls = live.weeklyTrend === 'ALCISTA' ? 'rs-strong' : live.weeklyTrend === 'BAJISTA' ? 'rs-weak' : 'rs-neutral';
+        badges.push(`<span class="ctx-badge ${cls}" title="Tendencia semanal">W: ${live.weeklyTrend}</span>`);
+    }
+    if (live.rvol != null) {
+        const cls = live.rvol >= 1.5 ? 'info' : live.rvol < 0.7 ? 'neutral' : '';
+        badges.push(`<span class="ctx-badge ${cls}" title="Relative Volume">RVOL ${live.rvol.toFixed(2)}×</span>`);
+    }
+    if (live.daysEarnings != null) {
+        const cls = live.daysEarnings <= 5 ? 'earnings' : live.daysEarnings <= 14 ? 'warn' : 'neutral';
+        badges.push(`<span class="ctx-badge ${cls}" title="Días a earnings">Earnings ${live.daysEarnings}d</span>`);
+    } else {
+        badges.push(`<span class="ctx-badge neutral" title="Sin datos de earnings">Earnings —</span>`);
+    }
+    if (live.obvSlope != null) {
+        const cls = live.obvSlope > 0 ? 'rs-strong' : 'rs-weak';
+        badges.push(`<span class="ctx-badge ${cls}" title="Pendiente OBV 20d">OBV ${live.obvSlope > 0 ? '↑' : '↓'}</span>`);
+    }
+    if (!badges.length) return '';
+    return `<div class="ctx-badges">${badges.join('')}</div>`;
+}
+
 function renderRecommendation(symbol, entries, accountSize, riskPct) {
     if (!entries.length) return '';
     const best = entries[0];
@@ -1687,14 +2103,28 @@ function renderRecommendation(symbol, entries, accountSize, riskPct) {
     const cost = shares * best.entry;
     const statusText = best.status === 'READY' ? 'LISTO PARA OPERAR' : 'EN FORMACIÓN';
     const statusClass = best.status === 'READY' ? 'ready' : 'waiting';
+    const badges = renderContextBadges(symbol);
     return `
         <div class="rec-card">
             <div class="rec-head">
                 <div>
                     <div class="rec-title">${escapeHtml(symbol)} · ${escapeHtml(best.name)}</div>
-                    <div class="rec-sub">${statusText} · Quality <b style="color:var(--text);">${best.quality}/100</b> · Riesgo ${best.riskInAtr.toFixed(2)} ATR</div>
+                    <div class="rec-sub">${statusText} · Contexto/Setup <b style="color:var(--text);">${best.quality}/100</b> · Ejecución <b style="color:${best.entryQuality.state === 'optimal' ? 'var(--green)' : best.entryQuality.state === 'acceptable' ? 'var(--orange)' : 'var(--red)'};">${entryQualityLabel(best.entryQuality)}</b></div>
                 </div>
                 <span class="entry-status ${statusClass}">${best.status === 'READY' ? 'READY' : 'WAIT'}</span>
+            </div>
+            ${badges}
+            <div class="entry-quality-panel">
+                <div class="eq-head">
+                    <div class="eq-title">Calidad de entrada actual</div>
+                    <span class="entry-state ${best.entryQuality.state}">${best.entryQuality.label}</span>
+                </div>
+                <div class="eq-note">${escapeHtml(best.entryQuality.note)}</div>
+                <div class="eq-grid">
+                    <div class="eq-cell"><div class="k">Score entrada</div><div class="v">${best.entryQuality.score}/100</div></div>
+                    <div class="eq-cell"><div class="k">Distancia</div><div class="v">${best.entryQuality.distanceAtr != null ? best.entryQuality.distanceAtr.toFixed(2)+' ATR' : '—'}</div></div>
+                    <div class="eq-cell"><div class="k">RVOL</div><div class="v">${best.entryQuality.rvol != null ? best.entryQuality.rvol.toFixed(2)+'×' : '—'}</div></div>
+                </div>
             </div>
             <div class="rec-prices">
                 <div class="rec-price entry">
@@ -1740,8 +2170,8 @@ function renderEntries(symbol) {
 
     panel.style.display = 'block';
     if (!entries.length) {
-        if (sub) sub.textContent = 'Sin setups activos. Comprueba régimen, tendencia y estructura.';
-        container.innerHTML = `<div class="empty-state" style="padding:20px; font-size:12px;">No hay setups que cumplan los filtros.<br>Revisa tendencia, régimen, estructura y R:R mínimo.</div>`;
+        if (sub) sub.textContent = 'Sin setups activos. Comprueba régimen, tendencia, RS, MTF y estructura.';
+        container.innerHTML = `<div class="empty-state" style="padding:20px; font-size:12px;">No hay setups que cumplan los filtros.<br>Revisa régimen, RS vs SPY, MTF semanal, earnings y R:R mínimo.</div>`;
         return;
     }
 
@@ -1778,7 +2208,20 @@ function renderEntries(symbol) {
                     </div>
                     <div class="entry-badges">
                         <span class="entry-status ${statusClass}">${statusText}</span>
-                        <span class="entry-quality">Q${e.quality}</span>
+                        <span class="entry-quality">Setup Q${e.quality}</span>
+                        <span class="entry-quality entry-quality-${e.entryQuality.state}">Entrada ${e.entryQuality.score}</span>
+                    </div>
+                </div>
+                <div class="entry-quality-panel">
+                    <div class="eq-head">
+                        <div class="eq-title">Ejecución actual</div>
+                        <span class="entry-state ${e.entryQuality.state}">${e.entryQuality.label} · ${e.entryQuality.score}/100</span>
+                    </div>
+                    <div class="eq-note">${escapeHtml(e.entryQuality.note)}</div>
+                    <div class="eq-grid">
+                        <div class="eq-cell"><div class="k">Distancia</div><div class="v">${e.entryQuality.distanceAtr != null ? e.entryQuality.distanceAtr.toFixed(2)+' ATR' : '—'}</div></div>
+                        <div class="eq-cell"><div class="k">RVOL</div><div class="v">${e.entryQuality.rvol != null ? e.entryQuality.rvol.toFixed(2)+'×' : '—'}</div></div>
+                        <div class="eq-cell"><div class="k">Riesgo</div><div class="v">${e.entryQuality.riskAtr.toFixed(2)} ATR</div></div>
                     </div>
                 </div>
                 <div class="entry-prices">
@@ -1824,6 +2267,7 @@ function loadManualPositions() {
     try { const raw = localStorage.getItem("sa_manual_positions"); if (raw) manualPositions = JSON.parse(raw) || []; }
     catch(e) { manualPositions = []; }
 }
+
 function addManualPosition() {
     const symbolEl = document.getElementById("posSymbol");
     const sharesEl = document.getElementById("posShares");
@@ -1831,59 +2275,514 @@ function addManualPosition() {
     const symbol = symbolEl.value.trim().toUpperCase();
     const shares = parseFloat(sharesEl.value);
     const entry = parseFloat(entryEl.value);
-    if (!symbol || !isFinite(shares) || shares <= 0 || !isFinite(entry) || entry <= 0) { toast("Rellena símbolo, acciones y precio correctamente.", "error"); return; }
+    if (!symbol || !isFinite(shares) || shares <= 0 || !isFinite(entry) || entry <= 0) {
+        toast("Rellena símbolo, acciones y precio correctamente.", "error");
+        return;
+    }
     const id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-    manualPositions.push({ id, symbol, shares, entry, entryDate: new Date().toISOString() });
+
+    const live = lastSymbolsData?.[symbol];
+    const topSetup = live?.entries?.[0] || null;
+    const regimeBadgeEl = document.getElementById('regimeBadge');
+    const regimeText = (regimeBadgeEl && regimeBadgeEl.style.display !== 'none') ? regimeBadgeEl.textContent.replace('● ', '').trim() : null;
+
+    manualPositions.push({
+        id, symbol, shares, entry,
+        entryDate: new Date().toISOString(),
+        setupId: topSetup?.id || null,
+        setupName: topSetup?.name || null,
+        setupQuality: topSetup?.quality ?? null,
+        entryQualityScore: topSetup?.entryQuality?.score ?? null,
+        entryQualityState: topSetup?.entryQuality?.state || null,
+        t1: topSetup?.t1 ?? null,
+        t2: topSetup?.t2 ?? null,
+        regime: regimeText,
+        journal: '',
+        stopInitial: topSetup?.stop ?? null,
+        note: ''
+    });
     saveManualPositions();
     symbolEl.value = ""; sharesEl.value = ""; entryEl.value = "";
     renderManualPositions();
-    toast(`${symbol} añadido a cartera`, "success");
+    renderPortfolioHeat();
+    if (topSetup) {
+        toast(`${symbol} añadido · Setup ${topSetup.name} Q${topSetup.quality}`, "success", 3500);
+    } else {
+        toast(`${symbol} añadido a cartera`, "success");
+    }
 }
 function removeManualPosition(id) {
     manualPositions = manualPositions.filter(p => p.id !== id);
-    saveManualPositions(); renderManualPositions();
+    saveManualPositions(); renderManualPositions(); renderPortfolioHeat();
 }
+function togglePositionExpand(id) {
+    expandedPositionId = expandedPositionId === id ? null : id;
+    renderManualPositions();
+}
+function updatePositionField(id, field, value) {
+    const p = manualPositions.find(x => x.id === id);
+    if (!p) return;
+    p[field] = value;
+    saveManualPositions();
+}
+function updatePositionNumber(id, field, raw) {
+    const p = manualPositions.find(x => x.id === id);
+    if (!p) return;
+    const v = parseFloat(raw);
+    p[field] = isFinite(v) ? v : null;
+    saveManualPositions();
+    renderPortfolioHeat();
+}
+function savePositionJournal(id) {
+    saveManualPositions();
+    toast("Journaling guardado", "success");
+    renderPortfolioHeat();
+}
+
+function computeTrailingStops(position) {
+    const live = lastSymbolsData?.[position.symbol];
+    const fullData = lastFetchedData[position.symbol];
+    if (!live || !fullData || fullData.length < 30) return null;
+    const atr = live.atr;
+    if (!atr) return null;
+    const price = live.price;
+    const result = {};
+
+    const last22 = fullData.slice(-22);
+    const maxHigh = last22.reduce((m, d) => Math.max(m, d.high), -Infinity);
+    result.chandelier = maxHigh - 3 * atr;
+
+    const closes = fullData.map(d => d.close);
+    const ema20Arr = ema(closes, 20);
+    const ema20 = ema20Arr[ema20Arr.length - 1];
+    if (ema20 != null && price > ema20 * 1.02) result.ema20 = ema20 * 0.99;
+
+    const swing = recentSwingLow(fullData, 2, 10);
+    if (swing) result.swing10 = swing.price - 0.5 * atr;
+
+    return result;
+}
+
+function computeRMultiple(position) {
+    const live = lastSymbolsData?.[position.symbol];
+    const price = live?.price ?? position.entry;
+    const riskPerShare = position.stopInitial
+        ? (position.entry - position.stopInitial)
+        : null;
+    if (!riskPerShare || riskPerShare <= 0) {
+        const atr = live?.atr;
+        if (!atr) return null;
+        const risk = 2 * atr;
+        return (price - position.entry) / risk;
+    }
+    return (price - position.entry) / riskPerShare;
+}
+
+/* =========================================================
+   EXIT SIGNAL ENGINE
+========================================================= */
+
+function detectRsiDivergence(data, lookback = 60, strength = 3) {
+    const n = data.length;
+    if (n < lookback + 5) return { bearish: false, bullish: false, detail: null };
+
+    const closes = data.map(d => d.close);
+    const rsiArr = rsi(closes, RSI_PERIOD);
+    const { highs, lows } = findSwings(data, lookback, strength);
+
+    let bearish = false, bearishDetail = null;
+    if (highs.length >= 2) {
+        const last = highs[highs.length - 1];
+        const prev = highs[highs.length - 2];
+        const rL = rsiArr[last.index], rP = rsiArr[prev.index];
+        const recentEnough = (n - 1 - last.index) <= 15;
+        if (recentEnough && last.price > prev.price && rL != null && rP != null && rL < rP - 3) {
+            bearish = true;
+            bearishDetail = { priceDelta: last.price - prev.price, rsiDelta: rL - rP };
+        }
+    }
+
+    let bullish = false, bullishDetail = null;
+    if (lows.length >= 2) {
+        const last = lows[lows.length - 1];
+        const prev = lows[lows.length - 2];
+        const rL = rsiArr[last.index], rP = rsiArr[prev.index];
+        const recentEnough = (n - 1 - last.index) <= 15;
+        if (recentEnough && last.price < prev.price && rL != null && rP != null && rL > rP + 3) {
+            bullish = true;
+            bullishDetail = { priceDelta: last.price - prev.price, rsiDelta: rL - rP };
+        }
+    }
+
+    return { bearish, bullish, detail: bearish ? bearishDetail : bullishDetail };
+}
+
+function detectVolumeClimax(data, lookback = 60) {
+    const n = data.length;
+    if (n < 25) return { exhaustion: false, capitulation: false };
+
+    const last = data[n - 1];
+    const recent = data.slice(-lookback, -1);
+    if (recent.length < 20) return { exhaustion: false, capitulation: false };
+
+    const avgVol = recent.reduce((a, d) => a + (d.volume || 0), 0) / recent.length;
+    const avgRange = recent.reduce((a, d) => a + (d.high - d.low), 0) / recent.length;
+    if (avgVol <= 0 || avgRange <= 0) return { exhaustion: false, capitulation: false };
+
+    const rvol = (last.volume || 0) / avgVol;
+    const lastRange = last.high - last.low;
+    if (lastRange <= 0) return { exhaustion: false, capitulation: false };
+    const rangeRatio = lastRange / avgRange;
+
+    const upperWick = (last.high - Math.max(last.open, last.close)) / lastRange;
+    const lowerWick = (Math.min(last.open, last.close) - last.low) / lastRange;
+
+    return {
+        exhaustion: rvol > 3 && rangeRatio > 1.5 && upperWick > 0.35,
+        capitulation: rvol > 3 && rangeRatio > 1.5 && lowerWick > 0.35,
+        rvol, rangeRatio
+    };
+}
+
+function daysSinceEntry(position) {
+    if (!position.entryDate) return null;
+    const d1 = new Date(position.entryDate);
+    const d2 = new Date();
+    return Math.max(0, Math.floor((d2 - d1) / (1000 * 60 * 60 * 24)));
+}
+
+function computeHighWaterMark(position, fullData) {
+    if (!position.entryDate || !fullData) return null;
+    const entryDay = position.entryDate.slice(0, 10);
+    let max = -Infinity;
+    for (const d of fullData) {
+        if (d.datetime >= entryDay && d.high > max) max = d.high;
+    }
+    return max === -Infinity ? null : max;
+}
+
+function computeExitSignal(position, live, fullData) {
+    if (!live || !fullData || fullData.length < 30) {
+        return { action: 'HOLD', severity: 'ok', reasons: [], rMult: null, hwm: null, noData: true };
+    }
+
+    const reasons = [];
+    let severity = 0;
+    const addReason = (text, level) => {
+        reasons.push({ text, level });
+        if (level > severity) severity = level;
+    };
+
+    const price = live.price;
+    const atr = live.atr;
+    const stopInit = position.stopInitial;
+
+    if (stopInit && price <= stopInit) {
+        addReason(`Precio $${price.toFixed(2)} ≤ stop inicial $${stopInit.toFixed(2)}`, 3);
+    }
+
+    if (live.trend === 'BAJISTA') {
+        addReason('Tendencia diaria BAJISTA (precio < EMA20 < EMA50 < EMA200)', 3);
+    }
+
+    const closes = fullData.map(d => d.close);
+    const macdObj = macd(closes, 12, 26, 9);
+    const n = macdObj.macd.length;
+    const macdLast = macdObj.macd[n - 1], sigLast = macdObj.signal[n - 1];
+    const macdPrev = macdObj.macd[n - 2], sigPrev = macdObj.signal[n - 2];
+    if (macdLast != null && sigLast != null && macdPrev != null && sigPrev != null) {
+        const crossToday = macdPrev > sigPrev && macdLast <= sigLast;
+        const crossRecent = macdLast < sigLast && (macdLast - sigLast) < (macdPrev - sigPrev);
+        if (crossToday && live.ema20 != null && price < live.ema20) {
+            addReason('MACD cruce bajista hoy + precio < EMA20', 3);
+        } else if (crossRecent && live.rsi != null && live.rsi < 45) {
+            addReason('MACD momentum bajista + RSI débil', 2);
+        }
+    }
+
+    const div = detectRsiDivergence(fullData);
+    if (div.bearish && div.detail) {
+        addReason(`Divergencia bajista RSI (ΔRSI ${div.detail.rsiDelta.toFixed(1)})`, 2);
+    }
+
+    const climax = detectVolumeClimax(fullData);
+    if (climax.exhaustion) {
+        addReason(`Climax de agotamiento (RVOL ${climax.rvol.toFixed(1)}×, rango ${climax.rangeRatio.toFixed(1)}×)`, 2);
+    }
+
+    const hwm = computeHighWaterMark(position, fullData);
+    const t1 = position.t1 || null;
+    const reachedT1 = t1 != null && hwm != null && hwm >= t1;
+    const days = daysSinceEntry(position);
+    if (days != null && days >= 20 && !reachedT1) {
+        addReason(`${days} días desde entrada sin alcanzar T1`, 2);
+    }
+
+    if (live.ema20 != null && atr) {
+        const ext = (price - live.ema20) / atr;
+        if (ext > 3.0) addReason(`Parabólico: +${ext.toFixed(1)} ATR sobre EMA20`, 2);
+        else if (ext > 2.5) addReason(`Extendido: +${ext.toFixed(1)} ATR sobre EMA20`, 1);
+    }
+
+    if (live.rsi != null && live.rsi > 80) {
+        addReason(`RSI ${live.rsi.toFixed(0)} en sobrecompra extrema`, 1);
+    }
+
+    if (live.rsi != null && live.rsi < 50 && live.ema20 != null && price > live.ema20) {
+        addReason('RSI < 50 con precio aún sobre EMA20 (momentum débil)', 1);
+    }
+
+    if (reachedT1) {
+        addReason(`T1 $${t1.toFixed(2)} alcanzado — cerrar 50% y stop a BE`, 1);
+    }
+
+    const trailing = computeTrailingStops(position);
+    if (trailing) {
+        const chandelier = trailing.chandelier;
+        if (chandelier != null && price <= chandelier) {
+            addReason(`Chandelier 22/3 violado: $${price.toFixed(2)} ≤ $${chandelier.toFixed(2)}`, 3);
+        }
+    }
+
+    let action = 'HOLD', severityLabel = 'ok';
+    if (severity >= 3) { action = 'CLOSE'; severityLabel = 'critical'; }
+    else if (severity === 2) { action = 'REDUCE'; severityLabel = 'warning'; }
+    else if (severity === 1) { action = 'TRAIL'; severityLabel = 'info'; }
+
+    return {
+        action, severity: severityLabel, reasons,
+        rMult: computeRMultiple(position),
+        hwm
+    };
+}
+
+function renderExitSignalHTML(signal, positionId) {
+    if (!signal || signal.noData) {
+        return `
+            <div class="exit-signal info">
+                <div class="es-head">
+                    <span class="es-action">SIN DATOS</span>
+                </div>
+                <ul class="es-reasons">
+                    <li class="es-reason level-1">Analiza este ticker para ver señales de salida</li>
+                </ul>
+            </div>`;
+    }
+
+    const emoji = { CLOSE: '🚨', REDUCE: '⚠️', TRAIL: '📍', HOLD: '✓' }[signal.action] || '•';
+    const rTxt = signal.rMult != null ? `<span class="es-rmult">${signal.rMult >= 0 ? '+' : ''}${signal.rMult.toFixed(2)}R</span>` : '';
+
+    const reasonsHtml = signal.reasons.length
+        ? `<ul class="es-reasons">${signal.reasons.map(r => `<li class="es-reason level-${r.level}">${escapeHtml(r.text)}</li>`).join('')}</ul>`
+        : `<ul class="es-reasons"><li class="es-reason level-1">Ninguna señal de salida activa · mantén trailing</li></ul>`;
+
+    const actionsHtml = (signal.action === 'CLOSE' || signal.action === 'REDUCE')
+        ? `<div class="es-actions">
+             <button class="es-close-btn" onclick="closePositionWithReason('${positionId}')">Cerrar posición</button>
+             <button class="es-snooze-btn" onclick="togglePositionExpand('${positionId}')">Ver journaling</button>
+           </div>`
+        : '';
+
+    return `
+        <div class="exit-signal ${signal.severity}">
+            <div class="es-head">
+                <span class="es-action">${emoji} ${signal.action}</span>
+                ${rTxt}
+            </div>
+            ${reasonsHtml}
+            ${actionsHtml}
+        </div>`;
+}
+
 function renderManualPositions() {
     const container = document.getElementById("manualPositionsList"); if (!container) return;
     if (!manualPositions.length) { container.innerHTML = '<div class="empty-state" style="padding:16px;">Sin posiciones</div>'; return; }
+
     container.innerHTML = manualPositions.map(p => {
         const live = lastSymbolsData?.[p.symbol];
         const price = live?.price ?? p.entry;
         const atr = live?.atr ?? null;
         const liveStop = live?.entries?.find(e => e.status === 'READY')?.stop;
-        const stop = liveStop ?? (atr ? price - 2 * atr : null);
+        const fallbackStop = atr ? price - 2 * atr : null;
+        const initialStop = p.stopInitial ?? fallbackStop;
         const pnlPct = ((price - p.entry) / p.entry) * 100;
         const pnlDollar = (price - p.entry) * p.shares;
+        const rMult = computeRMultiple(p);
         const score = live?.score ?? null;
+        const trailing = computeTrailingStops(p);
+        const isExpanded = expandedPositionId === p.id;
+
         let state = "warn", statusText = "Sin análisis", statusDetail = "Analiza el ticker";
         if (live) {
-            if (stop && price <= stop) { state = "danger"; statusText = "STOP TÉCNICO"; statusDetail = `≤ $${stop.toFixed(2)}`; }
+            if (liveStop && price <= liveStop) { state = "danger"; statusText = "STOP TÉCNICO"; statusDetail = `≤ $${liveStop.toFixed(2)}`; }
             else if (live.trend === 'BAJISTA') { state = "danger"; statusText = "TENDENCIA BAJISTA"; statusDetail = `Score ${score}`; }
             else if (live.trend === 'LATERAL') { state = "warn"; statusText = "LATERAL"; statusDetail = `Score ${score}`; }
             else { state = "ok"; statusText = "TENDENCIA ALCISTA"; statusDetail = `Score ${score}`; }
         }
         const pnlClass = pnlPct >= 0 ? "pos" : "neg";
+        const rClass = rMult == null ? '' : rMult >= 0 ? 'pos' : 'neg';
+
+        // ═══ EXIT SIGNAL ═══
+        const fullData = lastFetchedData[p.symbol];
+        const exitSignal = live ? computeExitSignal(p, live, fullData) : null;
+        const signalClass = exitSignal ? `signal-${exitSignal.severity}` : '';
+        const exitHtml = exitSignal ? renderExitSignalHTML(exitSignal, p.id) : '';
+
+        const trailingHtml = trailing ? `
+            <div class="pos-trailing">
+                <span class="k">Chandelier 22/3</span><span class="v">$${trailing.chandelier.toFixed(2)}</span>
+                ${trailing.ema20 ? `<span class="k">EMA20 trailing</span><span class="v">$${trailing.ema20.toFixed(2)}</span>` : ''}
+                ${trailing.swing10 ? `<span class="k">Swing low 10</span><span class="v">$${trailing.swing10.toFixed(2)}</span>` : ''}
+            </div>` : '';
+
+        let setupHint = '';
+        if (p.setupName) {
+            const eqTxt = p.entryQualityScore != null
+                ? ` · Entrada ${p.entryQualityScore}${p.entryQualityState ? ' ('+p.entryQualityState+')' : ''}`
+                : '';
+            const regimeTxt = p.regime ? ` · ${escapeHtml(p.regime)}` : '';
+            setupHint = `<div class="pos-orig-setup"><b>Setup entrada:</b> ${escapeHtml(p.setupName)} Q${p.setupQuality ?? '—'}${eqTxt}${regimeTxt}</div>`;
+        } else if (live?.entries?.length) {
+            setupHint = `<div class="pos-meta" style="font-size:10px;color:var(--text-3);">Setup actual: ${escapeHtml(live.entries[0].name)}</div>`;
+        }
+
         return `
-            <div class="pos-item ${state}">
+            <div class="pos-item ${state} ${isExpanded ? 'expanded' : ''} ${signalClass}">
                 <div>
                     <div class="pos-symbol">${escapeHtml(p.symbol)}</div>
                     <div class="pos-meta" style="margin-top:2px;"><span><b>${p.shares}</b> @ <b>$${p.entry.toFixed(2)}</b></span></div>
                 </div>
-                <button class="pos-remove" onclick="removeManualPosition('${escapeHtml(String(p.id))}')">×</button>
+                <div style="display:flex;gap:4px;align-items:center;">
+                    <button class="pos-expand-btn" onclick="togglePositionExpand('${escapeHtml(String(p.id))}')" title="Journaling">${isExpanded ? '▲' : '▼'}</button>
+                    <button class="pos-remove" onclick="removeManualPosition('${escapeHtml(String(p.id))}')">×</button>
+                </div>
                 <div class="pos-meta">
                     <span>Actual: <b>$${price.toFixed(2)}</b></span>
                     <span class="${pnlClass}" style="font-weight:600;">${fmtPct(pnlPct)} · ${pnlDollar >= 0 ? '+' : ''}$${pnlDollar.toFixed(2)}</span>
-                    ${stop ? `<span>Stop ATR: <b style="color:${state==='danger'?'var(--red)':'var(--text)'}">$${stop.toFixed(2)}</b></span>` : ''}
+                    ${rMult != null ? `<span class="pos-r-badge ${rClass}">${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R<small>múltiplo</small></span>` : ''}
+                    ${initialStop ? `<span>Stop: <b style="color:${state==='danger'?'var(--red)':'var(--text)'}">$${initialStop.toFixed(2)}</b></span>` : ''}
                 </div>
+                ${trailingHtml}
+                ${setupHint}
                 <div class="pos-status">
                     <span class="label">${statusText}</span>
                     <span class="value">${statusDetail}</span>
                 </div>
+                ${exitHtml}
+                <div class="pos-journal">
+                    <div class="row">
+                        <div><label>Stop inicial</label>
+                            <input type="number" step="any" value="${p.stopInitial ?? ''}"
+                                onchange="updatePositionNumber('${escapeHtml(String(p.id))}', 'stopInitial', this.value)"
+                                placeholder="ej: 320.50"/>
+                        </div>
+                        <div><label>Régimen entrada</label>
+                            <input type="text" value="${escapeHtml(p.regime || '')}"
+                                onchange="updatePositionField('${escapeHtml(String(p.id))}', 'regime', this.value)"
+                                placeholder="RISK_ON"/>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Notas de la operación</label>
+                        <textarea placeholder="Por qué entré, cómo salgo, errores…"
+                            onchange="updatePositionField('${escapeHtml(String(p.id))}', 'journal', this.value)">${escapeHtml(p.journal || '')}</textarea>
+                    </div>
+                    <button class="save-btn" onclick="savePositionJournal('${escapeHtml(String(p.id))}')">Guardar journaling</button>
+                </div>
             </div>`;
     }).join("");
 }
+
+function closePositionWithReason(id) {
+    const pos = manualPositions.find(p => p.id === id);
+    if (!pos) return;
+    const live = lastSymbolsData?.[pos.symbol];
+    const signal = live ? computeExitSignal(pos, live, lastFetchedData[pos.symbol]) : null;
+    const exitPrice = live?.price ?? pos.entry;
+    const pnlPct = ((exitPrice - pos.entry) / pos.entry) * 100;
+    const pnlDollar = (exitPrice - pos.entry) * pos.shares;
+    const rMult = signal?.rMult ?? computeRMultiple(pos);
+
+    const reasonText = signal && signal.reasons.length
+        ? signal.reasons.filter(r => r.level >= 2).map(r => r.text).join(' · ')
+        : 'Cierre manual';
+
+    const confirmed = confirm(
+        `Cerrar ${pos.symbol}\n\n` +
+        `Entrada: $${pos.entry.toFixed(2)}\n` +
+        `Salida: $${exitPrice.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)\n` +
+        `P&L: ${pnlDollar >= 0 ? '+' : ''}$${pnlDollar.toFixed(2)}\n` +
+        `${rMult != null ? `R: ${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R\n` : ''}\n` +
+        `Motivo: ${reasonText}\n\n` +
+        `¿Confirmar cierre?`
+    );
+    if (!confirmed) return;
+
+    const history = loadClosedHistory();
+    history.push({
+        id: pos.id,
+        symbol: pos.symbol,
+        shares: pos.shares,
+        entry: pos.entry,
+        exit: exitPrice,
+        entryDate: pos.entryDate,
+        closeDate: new Date().toISOString(),
+        pnlPct, pnlDollar, rMult,
+        setupId: pos.setupId,
+        setupName: pos.setupName,
+        reason: reasonText,
+        journal: pos.journal || ''
+    });
+    saveClosedHistory(history);
+
+    manualPositions = manualPositions.filter(p => p.id !== id);
+    saveManualPositions();
+    renderManualPositions();
+    renderPortfolioHeat();
+    renderClosedHistory();
+    toast(`${pos.symbol} cerrada · ${rMult != null ? `${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R` : `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`}`, 'success', 4000);
+}
+
+/* Historial de posiciones cerradas */
+const CLOSED_HISTORY_KEY = 'sa_closed_positions';
+function loadClosedHistory() {
+    try { const raw = localStorage.getItem(CLOSED_HISTORY_KEY); return raw ? JSON.parse(raw) : []; }
+    catch(_) { return []; }
+}
+function saveClosedHistory(list) { safeSetItem(CLOSED_HISTORY_KEY, JSON.stringify(list)); }
+
+function renderClosedHistory() {
+    const container = document.getElementById('closedHistoryList');
+    if (!container) return;
+    const history = loadClosedHistory().sort((a, b) => new Date(b.closeDate) - new Date(a.closeDate));
+    if (!history.length) {
+        container.innerHTML = '<div class="empty-state" style="padding:16px;font-size:12px;">Sin operaciones cerradas</div>';
+        return;
+    }
+    const totalR = history.reduce((a, h) => a + (h.rMult || 0), 0);
+    const wins = history.filter(h => (h.rMult || 0) > 0).length;
+    const winRate = history.length ? Math.round((wins / history.length) * 100) : 0;
+
+    container.innerHTML = `
+        <div class="small" style="margin-bottom:8px;">${history.length} ops · Win rate ${winRate}% · R acumulado <b style="color:${totalR >= 0 ? 'var(--green)' : 'var(--red)'};">${totalR >= 0 ? '+' : ''}${totalR.toFixed(2)}R</b></div>
+        ${history.slice(0, 20).map(h => {
+            const rClass = (h.rMult || 0) >= 0 ? 'pos' : 'neg';
+            return `<div class="ch-item">
+                <div><div class="ch-symbol">${escapeHtml(h.symbol)}</div>
+                <div class="ch-meta" style="margin-top:2px;">
+                    <span>${h.shares} acc</span>
+                    <span>$${h.entry.toFixed(2)} → $${h.exit.toFixed(2)}</span>
+                    <span style="color:${h.pnlPct >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600;">${h.pnlPct >= 0 ? '+' : ''}${h.pnlPct.toFixed(2)}%</span>
+                </div></div>
+                <div class="ch-r ${rClass}">${h.rMult != null ? `${h.rMult >= 0 ? '+' : ''}${h.rMult.toFixed(2)}R` : '—'}</div>
+                <div class="ch-reason">${escapeHtml(h.reason || '—')}</div>
+            </div>`;
+        }).join('')}
+    `;
+}
+
 function exportPositions() {
-    const data = { positions: manualPositions, exportedAt: new Date().toISOString() };
+    const data = { positions: manualPositions, closed: loadClosedHistory(), exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1891,6 +2790,98 @@ function exportPositions() {
     a.click();
     URL.revokeObjectURL(url);
     toast("Posiciones exportadas", "success");
+}
+
+function computePortfolioHeat() {
+    const cfg = getRiskConfig();
+    let totalHeatR = 0;
+    const positions = [];
+    for (const p of manualPositions) {
+        const live = lastSymbolsData?.[p.symbol];
+        const price = live?.price ?? p.entry;
+        const atr = live?.atr;
+        const stop = p.stopInitial ?? (atr ? price - 2 * atr : null);
+        let rRisk = 0;
+        if (stop != null && stop > 0 && stop < price) {
+            rRisk = ((price - stop) / price) * (price * p.shares) / (cfg.size * cfg.pct / 100);
+        } else {
+            rRisk = 1.0;
+        }
+        const dollarRisk = rRisk * (cfg.size * cfg.pct / 100);
+        totalHeatR += rRisk;
+        positions.push({ ...p, price, stop, rRisk, dollarRisk });
+    }
+    return { totalHeatR, positions, cfg };
+}
+
+function computeCorrelation(posA, posB) {
+    const a = lastFetchedData[posA.symbol];
+    const b = lastFetchedData[posB.symbol];
+    if (!a || !b || a.length < 60 || b.length < 60) return null;
+    const mapB = new Map(b.map(d => [d.datetime, d.close]));
+    const pairs = [];
+    for (const d of a) if (mapB.has(d.datetime)) pairs.push([d.close, mapB.get(d.datetime)]);
+    if (pairs.length < 40) return null;
+    const ra = [], rb = [];
+    for (let i = 1; i < pairs.length; i++) {
+        ra.push(Math.log(pairs[i][0] / pairs[i-1][0]));
+        rb.push(Math.log(pairs[i][1] / pairs[i-1][1]));
+    }
+    const n = ra.length;
+    if (n < 30) return null;
+    const ma = ra.reduce((x, y) => x + y, 0) / n;
+    const mb = rb.reduce((x, y) => x + y, 0) / n;
+    let num = 0, da = 0, db = 0;
+    for (let i = 0; i < n; i++) {
+        const xa = ra[i] - ma, xb = rb[i] - mb;
+        num += xa * xb; da += xa * xa; db += xb * xb;
+    }
+    if (da <= 0 || db <= 0) return null;
+    return num / Math.sqrt(da * db);
+}
+
+function renderPortfolioHeat() {
+    const panel = document.getElementById('portfolioHeatPanel');
+    if (!panel) return;
+    const { totalHeatR, positions, cfg } = computePortfolioHeat();
+
+    if (!manualPositions.length) {
+        panel.innerHTML = '';
+        return;
+    }
+
+    const pct = Math.min(100, (totalHeatR / cfg.maxHeatR) * 100);
+    let cls = '';
+    if (pct >= 90) cls = 'danger';
+    else if (pct >= 70) cls = 'warn';
+
+    const warnings = [];
+    for (let i = 0; i < positions.length; i++) {
+        for (let j = i + 1; j < positions.length; j++) {
+            const c = computeCorrelation(positions[i], positions[j]);
+            if (c != null && c > 0.7) {
+                warnings.push({ a: positions[i].symbol, b: positions[j].symbol, c });
+            }
+        }
+    }
+
+    const totalDollarRisk = positions.reduce((a, p) => a + p.dollarRisk, 0);
+
+    panel.innerHTML = `
+        <div class="heat-card ${cls}">
+            <div class="heat-head">
+                <div class="heat-title">Portfolio Heat</div>
+                <div class="heat-value">${totalHeatR.toFixed(2)}R <small>/ ${cfg.maxHeatR}R</small></div>
+            </div>
+            <div class="heat-bar"><div class="heat-bar-fill ${cls}" style="width:${pct}%"></div></div>
+            <div class="heat-rows">
+                <div class="heat-row"><span>Riesgo total abierto</span><b>$${totalDollarRisk.toFixed(0)}</b></div>
+                <div class="heat-row"><span>% de cuenta en riesgo</span><b>${(totalDollarRisk / cfg.size * 100).toFixed(2)}%</b></div>
+                <div class="heat-row"><span>Posiciones abiertas</span><b>${positions.length}</b></div>
+            </div>
+            ${warnings.length ? `<div class="corr-warning"><b>⚠ Correlación alta detectada:</b> ${warnings.map(w => `${escapeHtml(w.a)}↔${escapeHtml(w.b)} (${w.c.toFixed(2)})`).join(' · ')} — considera reducir tamaño o tratar como una sola apuesta.</div>` : ''}
+        </div>
+    `;
 }
 
 /* =========================================================
@@ -1935,6 +2926,17 @@ function renderResultCards(results) {
         const entryBadge = readyEntries
             ? `<span class="entry-badge-mini">● ${readyEntries} setup${readyEntries > 1 ? 's' : ''}</span>`
             : (totalEntries ? `<span class="small" style="opacity:0.5;">${totalEntries} en formación</span>` : '');
+
+        const rsBadge = r.rsRating != null
+            ? `<span class="ctx-badge ${r.rsRating > 2 ? 'rs-strong' : r.rsRating < -2 ? 'rs-weak' : 'rs-neutral'}">RS ${r.rsRating >= 0 ? '+' : ''}${r.rsRating.toFixed(1)}%</span>`
+            : '';
+        const wBadge = r.weeklyTrend
+            ? `<span class="ctx-badge ${r.weeklyTrend === 'ALCISTA' ? 'rs-strong' : r.weeklyTrend === 'BAJISTA' ? 'rs-weak' : 'rs-neutral'}">W ${r.weeklyTrend}</span>`
+            : '';
+        const eBadge = r.daysEarnings != null
+            ? `<span class="ctx-badge ${r.daysEarnings <= 5 ? 'earnings' : r.daysEarnings <= 14 ? 'warn' : 'neutral'}">E ${r.daysEarnings}d</span>`
+            : '';
+
         return `
             <div class="result-card" data-idx="${i}">
                 <div class="head">
@@ -1966,6 +2968,7 @@ function renderResultCards(results) {
                     <div class="score-component"><div class="k">Vol</div><div class="v">${r.scoreParts.participation}</div></div>
                     <div class="score-component"><div class="k">Estr</div><div class="v">${r.scoreParts.structure}</div></div>
                 </div>` : ''}
+                ${(rsBadge || wBadge || eBadge) ? `<div class="ctx-badges" style="margin-top:8px;padding-top:0;border-top:none;">${rsBadge}${wBadge}${eBadge}</div>` : ''}
                 <div class="foot">
                     <span class="signal-badge ${trendClass}">${trend}</span>
                     <span class="small">MACD <b style="color:${r.macdBull ? 'var(--green)' : 'var(--red)'};">${r.macdBull ? 'Bull' : 'Bear'}</b></span>
@@ -2069,6 +3072,8 @@ function renderPriceChart(symbol) {
     document.getElementById("csAdx").textContent = lastAdx != null ? lastAdx.toFixed(1) : '—';
     document.getElementById("csAtr").textContent = atr != null ? `$${atr.toFixed(2)}` : '—';
     document.getElementById("csScore").textContent = live?.score ?? '—';
+    document.getElementById("csRvol").textContent = live?.rvol != null ? `${live.rvol.toFixed(2)}×` : '—';
+    document.getElementById("csRs").textContent = live?.rsRating != null ? `${live.rsRating >= 0 ? '+' : ''}${live.rsRating.toFixed(1)}%` : '—';
 
     const datasets = [];
 
@@ -2347,9 +3352,10 @@ function clearCache() {
     const toRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && (/^price_/.test(key) || /^regime_SPY_/.test(key))) toRemove.push(key);
+        if (key && (/^price_/.test(key) || /^regime_SPY_/.test(key) || /^sa_earnings_/.test(key) || /^weekly_/.test(key))) toRemove.push(key);
     }
     toRemove.forEach(k => localStorage.removeItem(k));
+    spyDataCache = null; sectorCache = {}; weeklyCache = {}; earningsCache = {};
     toast(`Cache limpiado (${toRemove.length} items)`, "success");
 }
 function setStatus(text, cls = "") { const el = document.getElementById("statusBadge"); if (el) { el.textContent = text; el.className = "status-badge " + cls; } }
@@ -2396,13 +3402,13 @@ async function fetchWithRetry(url, retries = MAX_RETRIES) {
         }
     }
 }
-async function fetchTimeSeries(symbol, key, outputsize) {
-    const ck = `price_${symbol}_${outputsize}`;
+async function fetchTimeSeries(symbol, key, outputsize, interval = '1day') {
+    const ck = `price_${symbol}_${outputsize}_${interval}`;
     const cached = localStorage.getItem(ck);
     if (cached) {
         try { const p = JSON.parse(cached); if (Date.now() - p.time < 5 * 60 * 1000) return p.data; } catch(_) {}
     }
-    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=1day&outputsize=${outputsize}&apikey=${key}`;
+    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&apikey=${key}`;
     await apiGate();
     const data = await fetchWithRetry(url);
     if (!data?.values?.length) return [];
@@ -2411,7 +3417,7 @@ async function fetchTimeSeries(symbol, key, outputsize) {
     return values;
 }
 async function fetchAllData(symbol, key, outputsize) {
-    const price = await fetchTimeSeries(symbol, key, outputsize);
+    const price = await fetchTimeSeries(symbol, key, outputsize, '1day');
     if (!price.length) throw new Error("sin precios");
     const out = [];
     for (const v of price) {
@@ -2460,6 +3466,10 @@ function analyzeTechnicals(data) {
     const change50 = n > 50 ? ((price / closes[last - 50]) - 1) * 100 : null;
     const change200 = n > 200 ? ((price / closes[last - 200]) - 1) * 100 : null;
 
+    const obvArr = computeOBV(data);
+    const obvSlope = normalizedSlope(obvArr, 20);
+    const rvol = computeRVOL(data, 20);
+
     const tech = {
         price, dayChange,
         ema20: ema20Arr[last], ema50: ema50Arr[last], ema200: ema200Arr[last],
@@ -2470,7 +3480,9 @@ function analyzeTechnicals(data) {
         adx: adxObj.adx[last], plusDI: adxObj.plusDI[last], minusDI: adxObj.minusDI[last],
         atr: atrArr[last],
         avgVolume, volRatio,
-        change20, change50, change200
+        change20, change50, change200,
+        obvSlope,
+        rvol
     };
 
     tech.macdBull = tech.macd != null && tech.macdSignal != null && tech.macd > tech.macdSignal;
@@ -2484,6 +3496,25 @@ function analyzeTechnicals(data) {
     tech.target2R = tech.stop ? tech.price + 2 * (tech.price - tech.stop) : null;
 
     return tech;
+}
+
+function analyzeWeekly(weeklyData) {
+    if (!weeklyData || weeklyData.length < 30) return { trend: null, rsi: null };
+    const closes = weeklyData.map(d => d.close);
+    const ema10 = ema(closes, 10);
+    const ema30 = ema(closes, 30);
+    const sma30 = sma(closes, 30);
+    const rsiArr = rsi(closes, 14);
+    const last = closes.length - 1;
+    const price = closes[last];
+    let trend = 'LATERAL';
+    if (ema10[last] != null && ema30[last] != null) {
+        if (price > ema10[last] && ema10[last] > ema30[last]) trend = 'ALCISTA';
+        else if (price < ema10[last] && ema10[last] < ema30[last]) trend = 'BAJISTA';
+    } else if (sma30[last] != null) {
+        trend = price > sma30[last] ? 'ALCISTA' : 'BAJISTA';
+    }
+    return { trend, rsi: rsiArr[last] };
 }
 
 function setAnalyzing(active, label) {
@@ -2517,11 +3548,17 @@ async function run() {
         updateProgress(2, `Analizando ${tickers.length}...`);
 
         let regime = null;
+        let spyData = null;
         try {
             updateProgress(3, 'Régimen de mercado…');
             regime = await getMarketRegime(key);
             setRegimeBadge(regime);
+            spyData = spyDataCache;
+            if (!spyData) spyData = await fetchAllData('SPY', key, 300);
+            spyDataCache = spyData;
         } catch (e) { console.warn('Régimen no disponible:', e); }
+
+        const spyCloses = spyData ? spyData.map(d => d.close) : null;
 
         const results = [], symbolsData = {}, errors = [];
         lastFetchedData = {};
@@ -2536,6 +3573,48 @@ async function run() {
                 lastFetchedData[symbol] = data;
 
                 const tech = analyzeTechnicals(data);
+                const closes = data.map(d => d.close);
+
+                if (spyCloses && spyCloses.length > 200) {
+                    tech.rsRating = computeRsRating(closes, spyCloses);
+                }
+
+                try {
+                    const weeklyRaw = await fetchTimeSeries(symbol, key, 300, '1week');
+                    if (weeklyRaw && weeklyRaw.length > 30) {
+                        const weeklyData = weeklyRaw.map(v => ({
+                            datetime: v.datetime,
+                            open: parseFloat(v.open) || parseFloat(v.close),
+                            high: parseFloat(v.high) || parseFloat(v.close),
+                            low: parseFloat(v.low) || parseFloat(v.close),
+                            close: parseFloat(v.close),
+                            volume: parseFloat(v.volume) || 0
+                        }));
+                        const w = analyzeWeekly(weeklyData);
+                        tech.weeklyTrend = w.trend;
+                        tech.weeklyRsi = w.rsi;
+                    }
+                } catch(e) { /* silencioso */ }
+
+                const sectorEtf = getSectorETF(symbol);
+                if (sectorEtf && spyCloses) {
+                    try {
+                        if (!sectorCache[sectorEtf]) {
+                            const sectorData = await fetchAllData(sectorEtf, key, 300);
+                            sectorCache[sectorEtf] = sectorData;
+                        }
+                        const sectorCloses = sectorCache[sectorEtf].map(d => d.close);
+                        tech.rsVsSector = computeRsRating(closes, sectorCloses);
+                        tech.sectorETF = sectorEtf;
+                    } catch(e) { /* silencioso */ }
+                }
+
+                try {
+                    const eDate = await fetchEarningsDate(symbol, key);
+                    tech.daysEarnings = daysUntil(eDate);
+                    tech.earningsDate = eDate;
+                } catch(e) { /* silencioso */ }
+
                 tech.entries = computeEntries(data, tech, regime);
                 results.push({ symbol, ...tech });
                 symbolsData[symbol] = tech;
@@ -2553,7 +3632,8 @@ async function run() {
             if (topEl) {
                 const cls = classifyScore(top.score);
                 const readyTop = (top.entries || []).filter(e => e.status === 'READY').length;
-                topEl.innerHTML = `<b>${escapeHtml(top.symbol)}</b> · Score <b style="color:${cls.color};">${top.score}</b> · ${top.trend} · RSI ${top.rsi != null ? top.rsi.toFixed(1) : '—'}${readyTop ? ` · <b style="color:var(--green);">● ${readyTop} setup${readyTop > 1 ? 's' : ''}</b>` : ''}`;
+                const rsTxt = top.rsRating != null ? ` · RS ${top.rsRating >= 0 ? '+' : ''}${top.rsRating.toFixed(1)}%` : '';
+                topEl.innerHTML = `<b>${escapeHtml(top.symbol)}</b> · Score <b style="color:${cls.color};">${top.score}</b> · ${top.trend}${rsTxt} · RSI ${top.rsi != null ? top.rsi.toFixed(1) : '—'}${readyTop ? ` · <b style="color:var(--green);">● ${readyTop} setup${readyTop > 1 ? 's' : ''}</b>` : ''}`;
                 const bd = document.getElementById('topBreakdown');
                 if (bd && top.scoreParts) bd.innerHTML = `<div class="score-breakdown">
                     <div class="score-component"><div class="k">Trend</div><div class="v">${top.scoreParts.trend}/30</div></div>
@@ -2561,7 +3641,7 @@ async function run() {
                     <div class="score-component"><div class="k">Fuerza</div><div class="v">${top.scoreParts.strength}/20</div></div>
                     <div class="score-component"><div class="k">Vol</div><div class="v">${top.scoreParts.participation}/15</div></div>
                     <div class="score-component"><div class="k">Estr</div><div class="v">${top.scoreParts.structure}/15</div></div>
-                </div><div class="gate-note"><b>Lectura:</b> Score = estado técnico actual. Quality = confirmación del setup. Ninguno sustituye una estimación de expectativa obtenida por backtest.</div>`;
+                </div><div class="gate-note"><b>Lectura:</b> Score = estado técnico. Quality = confirmación del setup. Entry Score = calidad de ejecución adaptada al régimen. Exit Signal = motor de salida sobre posiciones abiertas.</div>`;
             }
         }
 
@@ -2569,6 +3649,8 @@ async function run() {
         lastSymbolsData = symbolsData;
         renderResultCards(results);
         renderManualPositions();
+        renderPortfolioHeat();
+        renderClosedHistory();
         renderErrors(errors);
 
         updateProgress(100, `✓ ${results.length}/${tickers.length}`);
@@ -2584,6 +3666,17 @@ async function run() {
 
         if (errors.length) toast(`${errors.length} ticker(s) con incidencias`, "warn");
         else toast(`Análisis completado: ${results.length} ticker(s)`, "success");
+
+        // Aviso si alguna posición tiene exit signal CLOSE
+        const closing = manualPositions.filter(p => {
+            const l = lastSymbolsData?.[p.symbol];
+            if (!l) return false;
+            const s = computeExitSignal(p, l, lastFetchedData[p.symbol]);
+            return s && s.action === 'CLOSE';
+        });
+        if (closing.length) {
+            toast(`🚨 ${closing.length} posición(es) con señal de CIERRE: ${closing.map(p => p.symbol).join(', ')}`, 'error', 8000);
+        }
     } finally {
         setAnalyzing(false);
     }
@@ -2607,8 +3700,11 @@ function initApp() {
     try { updateApiCounterDisplay(); } catch(e) { console.warn(e); }
     try { loadManualPositions(); } catch(e) { console.warn(e); }
     try { renderManualPositions(); } catch(e) { console.warn(e); }
+    try { renderPortfolioHeat(); } catch(e) { console.warn(e); }
+    try { renderClosedHistory(); } catch(e) { console.warn(e); }
     try { renderWatchlist(); } catch(e) { console.warn(e); }
     try { loadRiskConfig(); } catch(e) { console.warn(e); }
+    try { loadContextConfig(); } catch(e) { console.warn(e); }
 
     document.querySelectorAll('[data-series]').forEach(b => {
         const s = b.dataset.series;
@@ -2625,7 +3721,7 @@ function initApp() {
         }, 150);
     });
 
-    console.log('%cStockAnalyzer Pro — estado técnico, setups, riesgo y régimen', 'color: #30d158; font-weight: bold;');
+    console.log('%cStockAnalyzer Pro V4 — Entry Quality + Exit Signal + RS + MTF + Portfolio Heat', 'color: #30d158; font-weight: bold;');
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
