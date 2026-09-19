@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="stockanalyzer" />
 <meta name="mobile-web-app-capable" content="yes" />
-<title>StockAnalyzer Pro V4 · Exit Signal</title>
+<title>StockAnalyzer Pro V4.5.5 · Fixes 1·7·9·10 · Setup Q destacado</title>
 
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" type="image/png" href="stockanalyzer.png" />
@@ -195,6 +195,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .entry-card { background: var(--bg-elev); border-radius: 12px; padding: 14px; margin-bottom: 10px; border-left: 3px solid var(--text-3); }
 .entry-card.ready   { border-left-color: var(--green); }
 .entry-card.waiting { border-left-color: var(--orange); }
+.entry-card.expired { border-left-color: var(--text-3); opacity: 0.72; }
 
 .entry-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
 .entry-name { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 2px; }
@@ -203,24 +204,188 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .entry-status { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.06em; }
 .entry-status.ready   { background: rgba(48,209,88,0.18); color: var(--green); }
 .entry-status.waiting { background: rgba(255,159,10,0.18); color: var(--orange); }
+.entry-status.expired { background: rgba(142,142,147,0.18); color: var(--text-3); }
 .entry-quality { font-size: 9px; font-weight: 700; color: var(--text-3); letter-spacing: 0.05em; }
 .entry-quality-optimal { color: var(--green); }
 .entry-quality-acceptable { color: var(--orange); }
 .entry-quality-extended { color: var(--red); }
-.entry-quality-panel { margin: 10px 0 12px; padding: 10px 12px; background: rgba(255,255,255,0.035); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); }
-.entry-quality-panel .eq-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px; }
-.entry-quality-panel .eq-title { font-size:12px; font-weight:700; }
-.entry-quality-panel .eq-score { font-size:13px; font-weight:800; }
-.entry-quality-panel .eq-note { font-size:11px; color:var(--text-2); line-height:1.4; }
-.entry-quality-panel .eq-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:8px; }
-.entry-quality-panel .eq-cell { background:var(--bg-elev); border-radius:8px; padding:6px 8px; }
-.entry-quality-panel .eq-cell .k { font-size:9px; color:var(--text-2); text-transform:uppercase; letter-spacing:.05em; }
-.entry-quality-panel .eq-cell .v { font-size:11px; font-weight:700; margin-top:2px; }
-.entry-state { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border-radius:6px; font-size:9px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
-.entry-state.optimal { background:rgba(48,209,88,.15); color:var(--green); }
-.entry-state.acceptable { background:rgba(255,159,10,.15); color:var(--orange); }
-.entry-state.extended { background:rgba(255,69,58,.15); color:var(--red); }
-@media (max-width:480px){ .entry-quality-panel .eq-grid{grid-template-columns:repeat(2,1fr);} }
+
+.confirmation-strip { margin: 14px 0 12px; padding: 11px 13px; border-radius: 9px; background: rgba(142,142,147,.08); color: var(--text-2); font-size: 11px; border: 1px solid rgba(142,142,147,.12); line-height: 1.5; }
+.confirmation-strip.confirmed { background: rgba(48,209,88,.10); color: var(--green); border-color: rgba(48,209,88,.22); }
+.confirmation-strip.forming { background: rgba(255,159,10,.10); color: var(--orange); border-color: rgba(255,159,10,.22); }
+.confirmation-strip.none { background: rgba(142,142,147,.07); color: var(--text-2); }
+.confirmation-strip.expired { background: rgba(255,69,58,.08); color: var(--red); border-color: rgba(255,69,58,.22); }
+
+/* V4.5.5: espaciado cuando Confirmación va precedida de otros bloques */
+.confirmation-strip + .entry-quality-panel { margin-top: 14px; }
+.ctx-badges + .confirmation-strip { margin-top: 14px; }
+.gate-note + .confirmation-strip { margin-top: 14px; }
+.confirmation-strip.expired + * { margin-top: 12px; }
+
+/* V4.5.5: Badge destacado Setup Q */
+.setup-quality-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 4px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    border: 1px solid transparent;
+}
+.setup-quality-badge .sq-label {
+    font-size: 9px;
+    font-weight: 700;
+    opacity: 0.75;
+    letter-spacing: 0.06em;
+}
+.setup-quality-badge .sq-value {
+    font-size: 12px;
+    font-weight: 800;
+}
+.setup-quality-badge.sq-high {
+    background: rgba(48,209,88,0.18);
+    color: var(--green);
+    border-color: rgba(48,209,88,0.35);
+}
+.setup-quality-badge.sq-mid {
+    background: rgba(255,159,10,0.18);
+    color: var(--orange);
+    border-color: rgba(255,159,10,0.35);
+}
+.setup-quality-badge.sq-low {
+    background: rgba(255,69,58,0.15);
+    color: var(--red);
+    border-color: rgba(255,69,58,0.32);
+}
+
+.entry-quality-panel {
+    margin: 10px 0 12px;
+    padding: 12px;
+    background: rgba(255,255,255,0.035);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: background .2s, border-color .2s;
+}
+.entry-quality-panel.state-extended   { background: rgba(255,69,58,.06);  border-color: rgba(255,69,58,.22); }
+.entry-quality-panel.state-acceptable { background: rgba(255,159,10,.06); border-color: rgba(255,159,10,.22); }
+.entry-quality-panel.state-optimal    { background: rgba(48,209,88,.06);  border-color: rgba(48,209,88,.22); }
+
+.eq-top { display:flex; gap:12px; align-items:flex-start; margin-bottom:12px; }
+
+.eq-score-ring {
+    width: 58px; height: 58px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: conic-gradient(
+        var(--eq-color, var(--text-3)) calc(var(--eq-score, 0) * 1%),
+        rgba(255,255,255,0.07) 0
+    );
+    position: relative; flex-shrink: 0;
+}
+.eq-score-ring::after {
+    content: ''; position: absolute; inset: 4px;
+    border-radius: 50%; background: #151517;
+}
+.eq-score-ring span {
+    position: relative; z-index: 1;
+    font-size: 16px; font-weight: 800;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.03em;
+    color: var(--eq-color, #fff);
+}
+
+.eq-top-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+
+.eq-title-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.eq-title {
+    font-size: 10px; font-weight: 700; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+}
+
+.eq-state-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; white-space: nowrap;
+}
+.eq-state-pill::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.eq-state-pill.optimal    { background: rgba(48,209,88,.18);  color: var(--green); }
+.eq-state-pill.acceptable { background: rgba(255,159,10,.18); color: var(--orange); }
+.eq-state-pill.extended   { background: rgba(255,69,58,.18);  color: var(--red); }
+
+.eq-note-block {
+    font-size: 11.5px; line-height: 1.5;
+    color: var(--text); font-weight: 500;
+    background: rgba(0,0,0,0.28);
+    border-radius: 8px; padding: 8px 10px;
+    border-left: 2px solid var(--eq-color, var(--text-3));
+}
+
+.eq-target-callout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, rgba(50,212,224,.16), rgba(50,212,224,.04));
+    border: 1px solid rgba(50,212,224,.38);
+    border-radius: 10px;
+}
+.eq-target-callout .eq-tc-meta { flex: 1; min-width: 0; }
+.eq-target-callout .eq-tc-label {
+    font-size: 10px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: #32d4e0;
+    line-height: 1.2;
+}
+.eq-target-callout .eq-tc-hint {
+    font-size: 10px; color: var(--text-2); margin-top: 3px; line-height: 1.3;
+}
+.eq-target-callout .eq-tc-value {
+    font-size: 22px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    color: #32d4e0;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.eq-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.eq-metric {
+    background: rgba(0,0,0,0.24); border-radius: 10px; padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 6px;
+}
+.eq-metric-head { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.eq-metric-head .k {
+    font-size: 9px; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;
+}
+.eq-metric-head .v {
+    font-size: 13px; font-weight: 800;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.eq-metric-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.eq-metric-bar-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+.eq-metric-hint { font-size: 9px; color: var(--text-3); line-height: 1.2; }
+
+@media (max-width: 480px) {
+    .eq-metric { padding: 7px 8px; }
+    .eq-metric-head .v { font-size: 12px; }
+    .eq-target-callout .eq-tc-value { font-size: 19px; }
+}
+
+.rec-checks-section {
+    margin: 12px 0 10px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+.rec-checks-label {
+    font-size: 9px; font-weight: 700; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 8px;
+}
 
 .entry-prices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--separator); }
 .ep-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2); font-weight: 700; margin-bottom: 2px; }
@@ -235,6 +400,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .check-item.ok .check-icon { color: var(--green); }
 .check-item.no { color: var(--text-3); }
 .check-item.no .check-icon { color: var(--text-3); }
+.check-item.soft { color: var(--orange); }
+.check-item.soft .check-icon { color: var(--orange); }
 .check-label { flex: 1; }
 .check-detail { font-family: ui-monospace, monospace; font-size: 10px; color: var(--text-2); }
 
@@ -331,9 +498,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .result-card .score-value { font-size:20px; font-weight:800; line-height:1; }
 .gate-note { margin-top:10px; padding:9px 10px; border-radius:9px; background:rgba(255,159,10,.07); border:1px solid rgba(255,159,10,.16); color:var(--text-2); font-size:10px; line-height:1.45; }
 .gate-note b { color:var(--text); }
+.gate-note.soft { background:rgba(255,159,10,.12); border-color:rgba(255,159,10,.4); color:#ffce80; }
 @media (max-width:520px){ .rec-riskbar{grid-template-columns:repeat(2,1fr)} .score-breakdown{grid-template-columns:repeat(5,1fr)} .score-component{padding:6px 3px} }
 
-/* ═══ contexto de setup ═══ */
 .ctx-badges { display:flex; gap:5px; flex-wrap:wrap; margin-top:8px; padding-top:8px; border-top:1px solid var(--separator); }
 .ctx-badge { font-size:9px; font-weight:700; padding:3px 7px; border-radius:4px; letter-spacing:.04em; text-transform:uppercase; white-space:nowrap; }
 .ctx-badge.rs-strong { background:rgba(48,209,88,.18); color:var(--green); }
@@ -344,7 +511,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .ctx-badge.info      { background:rgba(50,212,224,.12); color:#32d4e0; }
 .ctx-badge.neutral   { background:rgba(142,142,147,.12); color:var(--text-2); }
 
-/* ═══ portfolio heat ═══ */
 .heat-card { background:linear-gradient(135deg, rgba(48,209,88,.08), rgba(48,209,88,.02)); border:1px solid rgba(48,209,88,.24); border-radius:14px; padding:14px; margin-bottom:12px; }
 .heat-card.warn   { background:linear-gradient(135deg, rgba(255,159,10,.08), rgba(255,159,10,.02)); border-color:rgba(255,159,10,.28); }
 .heat-card.danger { background:linear-gradient(135deg, rgba(255,69,58,.1), rgba(255,69,58,.02)); border-color:rgba(255,69,58,.32); }
@@ -362,7 +528,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .corr-warning { background:rgba(255,159,10,.1); border:1px solid rgba(255,159,10,.3); border-radius:8px; padding:8px 10px; font-size:11px; color:var(--orange); margin-top:8px; line-height:1.4; }
 .corr-warning b { color:var(--orange); }
 
-/* ═══ journaling y trailing ═══ */
 .pos-item.expanded .pos-journal { display:flex; }
 .pos-journal { grid-column:1/-1; display:none; flex-direction:column; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid var(--separator); }
 .pos-journal label { font-size:10px; margin-bottom:2px; }
@@ -382,7 +547,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pos-orig-setup { background:rgba(50,212,224,.06); border-radius:6px; padding:6px 9px; font-size:10px; margin-top:6px; color:var(--text-2); line-height:1.5; }
 .pos-orig-setup b { color:var(--text); }
 
-/* ═══ EXIT SIGNAL ENGINE ═══ */
 .exit-signal { grid-column:1/-1; border-radius:10px; padding:10px 12px; margin-top:10px; border:1px solid transparent; }
 .exit-signal.critical { background:rgba(255,69,58,.10); border-color:rgba(255,69,58,.4); }
 .exit-signal.warning  { background:rgba(255,159,10,.08); border-color:rgba(255,159,10,.32); }
@@ -475,10 +639,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
             <div class="tab-panel active" data-tab="analysis">
                 <div class="card">
-                    <div class="card-title">Análisis técnico</div>
-                    <div class="card-sub">EMA · RSI · MACD · Bollinger · ADX · Régimen · RS · MTF · Entry Quality</div>
-
-                    <label>Watchlist</label>
                     <div class="watchlist" id="watchlistChips"></div>
 
                     <label>Tickers</label>
@@ -600,6 +760,14 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
                     <div id="portfolioHeatPanel"></div>
 
+                    <div style="display:flex; gap:8px; margin-bottom:8px; align-items:stretch;">
+                        <button id="refreshPricesBtn" onclick="refreshPortfolioPrices()"
+                            style="flex:1; margin:0; background:rgba(50,212,224,.12); color:#32d4e0; font-weight:600; font-size:13px; min-height:40px;">
+                             Actualizar precios
+                        </button>
+                    </div>
+                    <div class="small" id="lastPriceUpdate" style="margin-bottom:12px; opacity:0.6; font-size:10px;"></div>
+
                     <div class="pos-panel">
                         <h3 style="font-size:13px;font-weight:600;margin:0 0 10px;">Registrar posición</h3>
                         <div class="pos-form">
@@ -658,17 +826,50 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
                 </div>
                 <div class="card">
                     <div class="card-title">Filtros de contexto</div>
-                    <div class="card-sub">RS, MTF, earnings</div>
+                    <div class="card-sub">RS, MTF, earnings, liquidez (soft filters V4.1)</div>
                     <label>RS mínimo vs SPY (%, 3M ponderado)</label>
                     <input id="minRsPct" type="number" placeholder="0" step="0.5"/>
                     <label>Días mínimos a earnings</label>
                     <input id="minDaysEarnings" type="number" placeholder="5" step="1"/>
+                    <label>Dollar volume mínimo diario ($)</label>
+                    <input id="minDollarVolume" type="number" placeholder="5000000" step="100000"/>
                     <button onclick="saveContextConfig()">Guardar</button>
+                    <div class="hint-box" style="margin-top:12px;">
+                        <b>Soft filters V4.1</b>
+                        Estos filtros ya no eliminan setups: los marcan como WAITING con la razón visible y penalizan el quality score. Sólo earnings ≤ 1 día hace hard-block.
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Umbrales del motor</div>
+                    <div class="card-sub">Calibra la sensibilidad de setups y ejecución</div>
+                    <label>Setup Quality mínimo (0–100)</label>
+                    <input id="thMinQuality" type="number" placeholder="65" step="1" min="0" max="100"/>
+                    <label>R:R mínimo en T1</label>
+                    <input id="thMinRr" type="number" placeholder="1.5" step="0.1" min="0.5" max="5"/>
+                    <label>Riesgo máximo en ATR</label>
+                    <input id="thMaxRiskAtr" type="number" placeholder="3.0" step="0.1" min="1" max="6"/>
+                    <label>Riesgo mínimo en ATR</label>
+                    <input id="thMinRiskAtr" type="number" placeholder="0.8" step="0.1" min="0.1" max="2"/>
+                    <label>Entry Quality — umbral ÓPTIMA</label>
+                    <input id="thEqOptimal" type="number" placeholder="80" step="1" min="50" max="100"/>
+                    <label>Entry Quality — umbral ACEPTABLE</label>
+                    <input id="thEqAcceptable" type="number" placeholder="60" step="1" min="30" max="95"/>
+                    <button onclick="saveThresholds()">Guardar umbrales</button>
+                    <button onclick="resetThresholds()" style="background:rgba(255,69,58,.12); color:var(--red); margin-top:6px; font-size:13px;">Restaurar defaults</button>
+                    <div class="hint-box" style="margin-top:12px;">
+                        <b>Qué controla cada uno</b>
+                        <b style="display:inline; color:var(--text);">Setup Quality mínimo:</b> por debajo de este valor el setup queda en WAITING aunque tenga confirmación.<br>
+                        <b style="display:inline; color:var(--text);">R:R mínimo T1:</b> si el target más cercano no da este múltiplo del riesgo, el setup se descarta.<br>
+                        <b style="display:inline; color:var(--text);">Riesgo máx/mín ATR:</b> la distancia entrada–stop debe estar en esta banda.<br>
+                        <b style="display:inline; color:var(--text);">EQ Óptima/Aceptable:</b> umbrales del panel de Ejecución.
+                    </div>
                 </div>
                 <div class="card">
                     <div class="card-title">Caché</div>
                     <div class="card-sub">Precio: 5 min · Régimen: 1 día · Earnings: 1 día</div>
-                    <button onclick="clearCache()" style="font-size:13px;">Limpiar caché</button>
+                    <button onclick="clearCache()" style="font-size:13px;">Limpiar caché de precios</button>
+                    <button onclick="prunePriceCache(0); toast('Cachés de precio eliminadas', 'success');" style="font-size:13px; margin-top:6px; background:rgba(255,69,58,.12); color:var(--red);">Liberar TODO el espacio de caches</button>
+                    <button onclick="const b=Object.keys(localStorage).reduce((a,k)=>a+(localStorage[k]||'').length,0); alert('localStorage: '+(b/1024/1024).toFixed(2)+' MB\nClaves: '+Object.keys(localStorage).length+'\nCachés precio: '+Object.keys(localStorage).filter(k=>/^price_/.test(k)).length);" style="font-size:12px; margin-top:6px;">Ver uso de localStorage</button>
                 </div>
                 <div class="card">
                     <div class="card-title">Seguridad</div>
@@ -691,8 +892,15 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 <script>
 /* =========================================================
-   CONFIG
-========================================================= */
+   V4.5.5 — FIXES 1 · 7 · 9 · 10 + Setup Q destacado + espaciado
+   ---------------------------------------------------------
+   FIX 1  buildCtx expone macd/macdSignal → Golden Cross confirma.
+   FIX 7  Umbrales configurables (minQuality, R:R, risk ATR, EQ).
+   FIX 9  computeSetupConfirmation degrada confirmed→forming si MTF BAJISTA.
+   FIX 10 finalizeSetup recalcula entry/stop/targets desde targetZone.
+   UI     Badge Setup Q destacado + separación del bloque Confirmación.
+   ========================================================= */
+
 const API_LIMIT_PER_MIN = 8;
 const API_DAILY_LIMIT = 800;
 const MAX_RETRIES = 3;
@@ -704,13 +912,13 @@ const PIN_LENGTH = 4;
 const PIN_STORAGE_KEY = 'sa_pin_hash';
 const PIN_SALT = 'stockanalyzer_v1_salt';
 const WATCHLIST_KEY = 'sa_watchlist';
+const PRICE_SNAPSHOT_KEY = 'sa_price_snapshot_v1';
 const MAX_POSITION_PCT_DEFAULT = 20;
 const MAX_RISK_PCT_DEFAULT = 2;
 
 const DONCHIAN_ENTRY = 20;
 const DONCHIAN_EXIT = 10;
 const SMA_TREND = 200;
-
 const MIN_BARS = 250;
 
 const EQ_OPTIMAL_BASE = 80;
@@ -719,6 +927,39 @@ const EQ_OPTIMAL_RISKOFF = 88;
 const EQ_ACCEPTABLE_RISKOFF = 72;
 const EQ_OPTIMAL_RISKON_STRONG = 75;
 const EQ_SCORE_CAP = 95;
+const MIN_DOLLAR_VOLUME_DEFAULT = 5000000;
+
+/* V4.5.5: umbrales configurables (Fix 7) */
+const THRESHOLD_KEYS = {
+    minSetupQuality: 'sa_min_setup_quality',
+    minRrT1: 'sa_min_rr_t1',
+    maxRiskAtr: 'sa_max_risk_atr',
+    minRiskAtr: 'sa_min_risk_atr',
+    eqOptimalBase: 'sa_eq_optimal_base',
+    eqAcceptableBase: 'sa_eq_acceptable_base'
+};
+const THRESHOLD_DEFAULTS = {
+    minSetupQuality: 65,
+    minRrT1: 1.5,
+    maxRiskAtr: 3.0,
+    minRiskAtr: 0.8,
+    eqOptimalBase: EQ_OPTIMAL_BASE,
+    eqAcceptableBase: EQ_ACCEPTABLE_BASE
+};
+function getThresholds() {
+    const out = {};
+    for (const [k, storageKey] of Object.entries(THRESHOLD_KEYS)) {
+        const v = parseFloat(localStorage.getItem(storageKey));
+        out[k] = isFinite(v) ? v : THRESHOLD_DEFAULTS[k];
+    }
+    if (out.eqAcceptableBase >= out.eqOptimalBase) {
+        out.eqAcceptableBase = Math.max(30, out.eqOptimalBase - 10);
+    }
+    if (out.minRiskAtr >= out.maxRiskAtr) {
+        out.minRiskAtr = Math.max(0.1, out.maxRiskAtr - 0.5);
+    }
+    return out;
+}
 
 const CHECK_WEIGHTS = {
     regime: 12, trend: 15, structure: 12, volume: 10,
@@ -760,16 +1001,12 @@ let pinBuffer = '';
 let pinState = 'verify';
 let pinFirstEntry = '';
 let pinAttempts = 0;
-
 let spyDataCache = null;
 let sectorCache = {};
 let weeklyCache = {};
 let earningsCache = {};
 let expandedPositionId = null;
 
-/* =========================================================
-   UTILS
-========================================================= */
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtPct = n => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 const hasChartJs = () => typeof Chart !== 'undefined';
@@ -777,9 +1014,38 @@ const today = () => new Date().toISOString().split('T')[0];
 
 function safeSetItem(key, value) {
     try { localStorage.setItem(key, value); return true; }
-    catch(e) { console.warn(`[localStorage] fallo en "${key}"`); return false; }
+    catch(e) { console.warn(`[localStorage] fallo en "${key}" (${e.name})`); return false; }
 }
-
+function prunePriceCache(keepRatio = 0.5) {
+    const entries = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && /^price_/.test(key)) {
+            let t = 0;
+            try { t = JSON.parse(localStorage.getItem(key)).time || 0; } catch(_) {}
+            entries.push({ key, time: t });
+        }
+    }
+    entries.sort((a, b) => a.time - b.time);
+    const removeN = Math.ceil(entries.length * (1 - keepRatio));
+    let freed = 0;
+    for (let i = 0; i < removeN; i++) {
+        try { freed += (localStorage.getItem(entries[i].key) || '').length; } catch(_) {}
+        localStorage.removeItem(entries[i].key);
+    }
+    if (removeN > 0) console.log(`[prunePriceCache] Liberados ${freed} bytes (${removeN}/${entries.length} caches)`);
+    return freed;
+}
+function trySave(key, value) {
+    let ok = safeSetItem(key, value);
+    if (!ok) {
+        console.warn(`[trySave] Fallo guardando "${key}", liberando espacio...`);
+        prunePriceCache(0.3);
+        ok = safeSetItem(key, value);
+        if (!ok) console.error(`[trySave] Segundo intento falló para "${key}"`);
+    }
+    return ok;
+}
 function toast(message, type = 'info', duration = 2800) {
     const el = document.createElement('div');
     el.className = `toast toast-${type}`;
@@ -791,21 +1057,18 @@ function toast(message, type = 'info', duration = 2800) {
         setTimeout(() => el.remove(), 300);
     }, duration);
 }
-
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW failed:', err));
     });
 }
 
-/* =========================================================
-   WATCHLIST
-========================================================= */
+/* WATCHLIST */
 function getWatchlist() {
     try { const raw = localStorage.getItem(WATCHLIST_KEY); return raw ? JSON.parse(raw) : []; }
     catch(_) { return []; }
 }
-function saveWatchlist(list) { safeSetItem(WATCHLIST_KEY, JSON.stringify(list)); }
+function saveWatchlist(list) { trySave(WATCHLIST_KEY, JSON.stringify(list)); }
 function addToWatchlist(sym) {
     sym = (sym || '').toUpperCase().trim();
     if (!sym) return;
@@ -839,9 +1102,7 @@ function analyzeWatchlistSymbol(sym) {
     run();
 }
 
-/* =========================================================
-   PIN
-========================================================= */
+/* PIN */
 function getGreeting() {
     const h = new Date().getHours();
     if (h >= 6 && h < 12) return 'Buenos días';
@@ -901,7 +1162,7 @@ function handlePinComplete() {
         pinFirstEntry = pinBuffer; pinBuffer = ''; updatePinDots(); clearPinError();
         pinState = 'setup-confirm'; setPinTitle('Confirma tu PIN', 'Vuelve a introducirlo');
     } else if (pinState === 'setup-confirm') {
-        if (pinBuffer === pinFirstEntry) { safeSetItem(PIN_STORAGE_KEY, hashPin(pinBuffer)); unlockApp(); }
+        if (pinBuffer === pinFirstEntry) { trySave(PIN_STORAGE_KEY, hashPin(pinBuffer)); unlockApp(); }
         else {
             showPinError('Los PIN no coinciden');
             pinBuffer = ''; pinFirstEntry = '';
@@ -954,9 +1215,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-/* =========================================================
-   TABS
-========================================================= */
+/* TABS */
 function showMobileTab(name) {
     try {
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -971,13 +1230,15 @@ function showMobileTab(name) {
             try { if (rsiChart) rsiChart.resize(); } catch(_) {}
             try { if (macdChart) macdChart.resize(); } catch(_) {}
         }, 100);
-        if (name === 'portfolio') { renderPortfolioHeat(); renderClosedHistory(); }
+        if (name === 'portfolio') {
+            renderPortfolioHeat();
+            renderClosedHistory();
+            updateLastPriceUpdate();
+        }
     } catch(e) { console.error('showMobileTab error:', e); }
 }
 
-/* =========================================================
-   INDICADORES BASE
-========================================================= */
+/* INDICADORES */
 function sma(values, period) {
     const out = new Array(values.length).fill(null);
     let sum = 0;
@@ -988,7 +1249,6 @@ function sma(values, period) {
     }
     return out;
 }
-
 function ema(values, period) {
     const out = new Array(values.length).fill(null);
     if (values.length < period) return out;
@@ -1001,7 +1261,6 @@ function ema(values, period) {
     }
     return out;
 }
-
 function rsi(values, period = RSI_PERIOD) {
     const out = new Array(values.length).fill(null);
     if (values.length < period + 1) return out;
@@ -1022,7 +1281,6 @@ function rsi(values, period = RSI_PERIOD) {
     }
     return out;
 }
-
 function macd(values, fast = 12, slow = 26, signalPeriod = 9) {
     const emaFast = ema(values, fast);
     const emaSlow = ema(values, slow);
@@ -1043,7 +1301,6 @@ function macd(values, fast = 12, slow = 26, signalPeriod = 9) {
     );
     return { macd: macdLine, signal: signalLine, hist };
 }
-
 function bollinger(values, period = 20, mult = 2) {
     const middle = sma(values, period);
     const upper = new Array(values.length).fill(null);
@@ -1057,7 +1314,6 @@ function bollinger(values, period = 20, mult = 2) {
     }
     return { upper, middle, lower };
 }
-
 function adxCalc(data, period = 14) {
     const n = data.length;
     if (n < period * 2 + 1) return { adx: new Array(n).fill(null), plusDI: new Array(n).fill(0), minusDI: new Array(n).fill(0) };
@@ -1108,7 +1364,6 @@ function adxCalc(data, period = 14) {
     }
     return { adx: adxOut, plusDI, minusDI };
 }
-
 function atrSeries(data, period = ATR_PERIOD) {
     const out = new Array(data.length).fill(null);
     if (data.length < period + 1) return out;
@@ -1123,7 +1378,6 @@ function atrSeries(data, period = ATR_PERIOD) {
     for (let i = period + 1; i < data.length; i++) out[i] = (out[i-1] * (period - 1) + trs[i]) / period;
     return out;
 }
-
 function donchianHighSeries(data, period) {
     const out = new Array(data.length).fill(null);
     for (let i = period - 1; i < data.length; i++) {
@@ -1142,7 +1396,6 @@ function donchianLowSeries(data, period) {
     }
     return out;
 }
-
 function calculateTrendChannel(data) {
     const n = data.length;
     if (n < 15) return null;
@@ -1177,7 +1430,6 @@ function calculateTrendChannel(data) {
     else if (slopePct < -5) tipo = 'bajista';
     return { upper, lower, slope, intercept, tipo, slopePct };
 }
-
 function buildPointSeries(values, labels) {
     const pts = [];
     for (let i = 0; i < values.length; i++) {
@@ -1186,7 +1438,6 @@ function buildPointSeries(values, labels) {
     }
     return pts;
 }
-
 function computeOBV(data) {
     const out = new Array(data.length).fill(0);
     let obv = 0;
@@ -1197,7 +1448,6 @@ function computeOBV(data) {
     }
     return out;
 }
-
 function normalizedSlope(values, lookback = 20) {
     const slice = values.slice(-lookback).filter(v => v != null && isFinite(v));
     if (slice.length < 10) return null;
@@ -1210,7 +1460,6 @@ function normalizedSlope(values, lookback = 20) {
     const mean = sy / n;
     return mean !== 0 ? (slope * n) / Math.abs(mean) * 100 : 0;
 }
-
 function computeRsRating(closes, benchCloses) {
     if (!closes.length || !benchCloses.length) return null;
     const perf = (arr, n) => arr.length > n ? (arr[arr.length-1] / arr[arr.length-1-n] - 1) * 100 : null;
@@ -1222,7 +1471,6 @@ function computeRsRating(closes, benchCloses) {
     if (p12 != null && b12 != null) { weighted += 0.3 * (p12 - b12); weight += 0.3; }
     return weight > 0 ? weighted / weight : null;
 }
-
 function computeRVOL(data, lookback = 20) {
     if (data.length < lookback + 1) return null;
     const recent = data.slice(-lookback - 1, -1);
@@ -1230,7 +1478,6 @@ function computeRVOL(data, lookback = 20) {
     if (avg <= 0) return null;
     return (data[data.length-1].volume || 0) / avg;
 }
-
 async function fetchEarningsDate(symbol, key) {
     const cacheKey = `sa_earnings_${symbol}`;
     try {
@@ -1253,10 +1500,10 @@ async function fetchEarningsDate(symbol, key) {
                 .sort();
             if (future.length) date = future[0];
         }
-        safeSetItem(cacheKey, JSON.stringify({ time: Date.now(), date }));
+        trySave(cacheKey, JSON.stringify({ time: Date.now(), date }));
         return date;
     } catch(e) {
-        safeSetItem(cacheKey, JSON.stringify({ time: Date.now(), date: null }));
+        trySave(cacheKey, JSON.stringify({ time: Date.now(), date: null }));
         return null;
     }
 }
@@ -1271,9 +1518,7 @@ function getSectorETF(symbol) {
     return SECTOR_ETF_MAP[base] || null;
 }
 
-/* =========================================================
-   HELPERS ESTRUCTURALES
-========================================================= */
+/* HELPERS ESTRUCTURALES */
 function volumePercentile(volumes, lookback = 60) {
     const recent = volumes.slice(-lookback).filter(v => v > 0).sort((a, b) => a - b);
     if (recent.length < 20) return null;
@@ -1281,7 +1526,6 @@ function volumePercentile(volumes, lookback = 60) {
     const rank = recent.filter(v => v <= last).length;
     return rank / recent.length;
 }
-
 function findSwings(data, lookback = 90, strength = 3) {
     const n = data.length;
     const start = Math.max(strength, n - lookback);
@@ -1298,7 +1542,6 @@ function findSwings(data, lookback = 90, strength = 3) {
     }
     return { highs, lows };
 }
-
 function recentSwingLow(data, strength = 3, lookback = 30) {
     const { lows } = findSwings(data, lookback + strength, strength);
     if (!lows.length) return null;
@@ -1307,7 +1550,6 @@ function recentSwingLow(data, strength = 3, lookback = 30) {
     if (!valid.length) return null;
     return valid[valid.length - 1];
 }
-
 function isUptrendStructure(data, lookback = 60) {
     const { highs, lows } = findSwings(data, lookback, 3);
     if (highs.length < 2 || lows.length < 2) return false;
@@ -1321,7 +1563,6 @@ function isUptrendStructure(data, lookback = 60) {
     const hlNeed = Math.max(1, Math.ceil((rL.length - 1) * 0.5));
     return hhCount >= hhNeed && hlCount >= hlNeed;
 }
-
 function pullbackVolumeHealthy(data, pullbackBars = 3, impulseBars = 10) {
     const n = data.length;
     if (n < pullbackBars + impulseBars + 5) return false;
@@ -1333,14 +1574,12 @@ function pullbackVolumeHealthy(data, pullbackBars = 3, impulseBars = 10) {
     if (avgI <= 0) return false;
     return avgR < avgI * 0.75;
 }
-
 function strongClose(data, idx = null) {
     const d = idx == null ? data[data.length - 1] : data[idx];
     const range = d.high - d.low;
     if (range <= 0) return false;
     return (d.close - d.low) / range >= 0.66;
 }
-
 function findResistances(data, price, maxLookback = 200) {
     const { highs } = findSwings(data, maxLookback, 3);
     const raw = [];
@@ -1355,7 +1594,6 @@ function findResistances(data, price, maxLookback = 200) {
     }
     return dedup;
 }
-
 function computeStructuralStop(data, price, atr, emaRef = null) {
     const buffer = 0.5 * atr;
     const stopMax = price - 2.5 * atr;
@@ -1374,7 +1612,6 @@ function computeStructuralStop(data, price, atr, emaRef = null) {
     candidates.sort((a, b) => b.price - a.price);
     return candidates[0];
 }
-
 function computeTargets(data, price, stop, atr) {
     const risk = price - stop;
     if (risk <= 0) return null;
@@ -1397,7 +1634,6 @@ function computeTargets(data, price, stop, atr) {
     if (t2 <= t1) t2 = t1 * 1.02;
     return { t1, t2, t1Source, t2Source, risk };
 }
-
 function weightedQuality(checks) {
     let total = 0, earned = 0;
     for (const c of checks) {
@@ -1407,7 +1643,6 @@ function weightedQuality(checks) {
     }
     return total > 0 ? Math.round((earned / total) * 100) : 0;
 }
-
 function makeExitPlan(risk) {
     return {
         partials: '50% en T1 → stop a BE · 25% en T2',
@@ -1417,38 +1652,53 @@ function makeExitPlan(risk) {
     };
 }
 
-/* =========================================================
-   SCORE TÉCNICO
-========================================================= */
+/* SCORE TÉCNICO */
 function computeTechnicalScore(tech, price, structureOk = null) {
     const parts = { trend: 0, momentum: 0, strength: 0, participation: 0, structure: 0 };
     if (tech.ema20 != null && tech.ema50 != null && tech.ema200 != null) {
-        const stack = (price > tech.ema20) + (tech.ema20 > tech.ema50) + (tech.ema50 > tech.ema200);
-        parts.trend = stack === 3 ? 30 : stack === 2 ? 20 : stack === 1 ? 10 : 0;
+        const stack = (price > tech.ema20 ? 1 : 0) + (tech.ema20 > tech.ema50 ? 1 : 0) + (tech.ema50 > tech.ema200 ? 1 : 0);
+        parts.trend = stack === 3 ? 27 : stack === 2 ? 18 : stack === 1 ? 9 : 0;
+        if (tech.atr && tech.ema200 && tech.atr > 0) {
+            const distAtr = (price - tech.ema200) / tech.atr;
+            const bonus = Math.max(-3, Math.min(3, distAtr * 0.3));
+            parts.trend = Math.max(0, Math.min(30, parts.trend + bonus));
+        }
     }
     if (tech.rsi != null) {
-        if (tech.rsi >= 50 && tech.rsi <= 70) parts.momentum += 12;
-        else if (tech.rsi > 70 && tech.rsi <= 80) parts.momentum += 7;
-        else if (tech.rsi >= 30 && tech.rsi < 50) parts.momentum += 4;
+        parts.momentum += Math.exp(-Math.pow((tech.rsi - 62) / 18, 2)) * 14;
     }
-    if (tech.macdBull) parts.momentum += 8;
+    if (tech.macdBull) {
+        const histStrength = (tech.macdHist != null && tech.atr && tech.atr > 0)
+            ? Math.min(1, Math.abs(tech.macdHist) / (tech.atr * 0.5))
+            : 0.5;
+        parts.momentum += 6 * (0.5 + 0.5 * histStrength);
+    }
+    parts.momentum = Math.min(20, parts.momentum);
     if (tech.adx != null) {
-        if (tech.adx >= 25 && tech.plusDI > tech.minusDI) parts.strength = 20;
-        else if (tech.adx >= 20 && tech.plusDI > tech.minusDI) parts.strength = 13;
-        else if (tech.adx >= 20) parts.strength = 7;
+        const adxNorm = 1 / (1 + Math.exp(-(tech.adx - 20) / 5));
+        const diWeight = tech.plusDI > tech.minusDI ? 1 : 0.3;
+        parts.strength = 20 * adxNorm * diWeight;
     }
     if (tech.volRatio != null) {
-        if (tech.volRatio >= 1.5 && tech.dayChange > 0) parts.participation = 15;
-        else if (tech.volRatio >= 1.1 && tech.dayChange >= 0) parts.participation = 9;
-        else if (tech.volRatio >= 0.8) parts.participation = 5;
+        const volFactor = Math.min(1, Math.max(0, (tech.volRatio - 0.5) / 1.5));
+        const dirFactor = tech.dayChange > 0 ? 1 : tech.dayChange > -1 ? 0.5 : 0.2;
+        parts.participation = 15 * volFactor * dirFactor;
     }
     if (structureOk === true) parts.structure = 15;
     else if (structureOk === false) parts.structure = 4;
     else parts.structure = 8;
-    const score = parts.trend + parts.momentum + parts.strength + parts.participation + parts.structure;
-    return { score: Math.max(0, Math.min(100, Math.round(score))), parts };
+    const rawScore = parts.trend + parts.momentum + parts.strength + parts.participation + parts.structure;
+    return {
+        score: Math.max(0, Math.min(100, Math.round(rawScore))),
+        parts: {
+            trend: Math.round(parts.trend),
+            momentum: Math.round(parts.momentum),
+            strength: Math.round(parts.strength),
+            participation: Math.round(parts.participation),
+            structure: Math.round(parts.structure)
+        }
+    };
 }
-
 function classifyTrend(tech, price) {
     if (tech.ema20 == null || tech.ema50 == null || tech.ema200 == null) return 'SIN DATOS';
     const stack = (price > tech.ema20) + (tech.ema20 > tech.ema50) + (tech.ema50 > tech.ema200);
@@ -1456,7 +1706,6 @@ function classifyTrend(tech, price) {
     if (stack === 0) return 'BAJISTA';
     return 'LATERAL';
 }
-
 function classifyScore(score) {
     if (score >= 75) return { text: 'MUY FUERTE', color: 'var(--green)' };
     if (score >= 60) return { text: 'FUERTE', color: 'var(--green)' };
@@ -1464,7 +1713,6 @@ function classifyScore(score) {
     if (score >= 30) return { text: 'DÉBIL', color: 'var(--orange)' };
     return { text: 'MUY DÉBIL', color: 'var(--red)' };
 }
-
 function classifyRsi(rsi) {
     if (rsi == null) return '—';
     if (rsi >= 70) return 'SOBRECOMPRA';
@@ -1473,9 +1721,7 @@ function classifyRsi(rsi) {
     return 'BAJISTA';
 }
 
-/* =========================================================
-   RÉGIMEN DE MERCADO
-========================================================= */
+/* RÉGIMEN */
 async function getMarketRegime(key) {
     const ck = `regime_SPY_${today()}`;
     try { const cached = localStorage.getItem(ck); if (cached) return JSON.parse(cached); } catch(_) {}
@@ -1496,7 +1742,7 @@ async function getMarketRegime(key) {
     else if (price < sma200Now && sma50Now < sma200Now && slopePct < -0.5) regime = 'STRONG_RISK_OFF';
     else if (price < sma200Now && slopePct <= 0) regime = 'RISK_OFF';
     const result = { regime, price, sma50: sma50Now, sma200: sma200Now, distPct, slopePct };
-    safeSetItem(ck, JSON.stringify(result));
+    trySave(ck, JSON.stringify(result));
     spyDataCache = data;
     return result;
 }
@@ -1511,9 +1757,7 @@ function setRegimeBadge(regime) {
     el.title = `SPY $${regime.price.toFixed(2)} · SMA50 $${regime.sma50.toFixed(2)} · SMA200 $${regime.sma200.toFixed(2)} · distancia ${regime.distPct >= 0 ? '+' : ''}${regime.distPct.toFixed(1)}% · pendiente SMA200 20d ${regime.slopePct >= 0 ? '+' : ''}${regime.slopePct.toFixed(2)}%`;
 }
 
-/* =========================================================
-   SETUPS
-========================================================= */
+/* CONTEXTO / SETUPS */
 function buildCtx(data, tech, regime) {
     const n = data.length, last = n - 1;
     const closes = data.map(d => d.close);
@@ -1527,98 +1771,133 @@ function buildCtx(data, tech, regime) {
     const dh20 = donchianHighSeries(data, 20);
     const dl10 = donchianLowSeries(data, 10);
     const bb = bollinger(closes, 20, 2);
+    const macdObj = macd(closes, 12, 26, 9);
     return {
         data, closes, volumes, last,
         price: tech.price, atr: tech.atr,
         e20: ema20Arr[last], e50: ema50Arr[last], e200: ema200Arr[last],
         s200: sma200Arr[last],
+        s200Series: sma200Arr,
         r: rsiArr[last],
         adx: adxObj.adx[last],
         plusDI: adxObj.plusDI[last],
         minusDI: adxObj.minusDI[last],
+        macd: macdObj.macd[last],
+        macdSignal: macdObj.signal[last],
         dh20, dl10, bb,
         volPct: volumePercentile(volumes, 60),
         regime,
         rs: tech.rsRating,
         weeklyTrend: tech.weeklyTrend,
         daysEarnings: tech.daysEarnings,
-        rvol: tech.rvol
+        rvol: tech.rvol,
+        ema20Series: ema20Arr,
+        ema50Series: ema50Arr
     };
 }
-
 function getContextConfig() {
     const rs = parseFloat(localStorage.getItem('sa_min_rs_pct'));
     const days = parseFloat(localStorage.getItem('sa_min_days_earnings'));
+    const dv = parseFloat(localStorage.getItem('sa_min_dollar_volume'));
     return {
         minRs: isFinite(rs) ? rs : MIN_RS_PCT_DEFAULT,
-        minDaysEarnings: isFinite(days) && days >= 0 ? days : EARNINGS_BLACKOUT_DAYS_DEFAULT
+        minDaysEarnings: isFinite(days) && days >= 0 ? days : EARNINGS_BLACKOUT_DAYS_DEFAULT,
+        minDollarVolume: isFinite(dv) && dv > 0 ? dv : MIN_DOLLAR_VOLUME_DEFAULT
     };
 }
+function getMinDollarVolume() { return getContextConfig().minDollarVolume; }
 function saveContextConfig() {
     const rs = parseFloat(document.getElementById('minRsPct').value);
     const days = parseFloat(document.getElementById('minDaysEarnings').value);
-    if (isFinite(rs)) safeSetItem('sa_min_rs_pct', rs);
-    if (isFinite(days) && days >= 0) safeSetItem('sa_min_days_earnings', days);
+    const dv = parseFloat(document.getElementById('minDollarVolume').value);
+    if (isFinite(rs)) trySave('sa_min_rs_pct', rs);
+    if (isFinite(days) && days >= 0) trySave('sa_min_days_earnings', days);
+    if (isFinite(dv) && dv > 0) trySave('sa_min_dollar_volume', dv);
     toast('Filtros de contexto guardados', 'success');
 }
 function loadContextConfig() {
     const c = getContextConfig();
     const r = document.getElementById('minRsPct'); if (r) r.value = c.minRs;
     const d = document.getElementById('minDaysEarnings'); if (d) d.value = c.minDaysEarnings;
+    const v = document.getElementById('minDollarVolume'); if (v) v.value = c.minDollarVolume;
+}
+
+/* V4.5.5: UI umbrales (Fix 7) */
+function saveThresholds() {
+    const pairs = [
+        ['minSetupQuality', 'thMinQuality',  0, 100],
+        ['minRrT1',         'thMinRr',       0.5, 5],
+        ['maxRiskAtr',      'thMaxRiskAtr',  1, 6],
+        ['minRiskAtr',      'thMinRiskAtr',  0.1, 2],
+        ['eqOptimalBase',   'thEqOptimal',   50, 100],
+        ['eqAcceptableBase','thEqAcceptable',30, 95]
+    ];
+    let n = 0, invalid = 0;
+    for (const [k, id, min, max] of pairs) {
+        const raw = document.getElementById(id)?.value;
+        if (raw === '' || raw == null) continue;
+        const v = parseFloat(raw);
+        if (!isFinite(v)) { invalid++; continue; }
+        if (v < min || v > max) { invalid++; continue; }
+        trySave(THRESHOLD_KEYS[k], v);
+        n++;
+    }
+    if (invalid > 0) toast(`Umbrales fuera de rango ignorados (${invalid})`, 'warn');
+    toast(`Umbrales guardados (${n})`, 'success');
+    loadThresholds();
+    if (currentChartSymbol) renderEntries(currentChartSymbol);
+}
+function resetThresholds() {
+    Object.values(THRESHOLD_KEYS).forEach(k => localStorage.removeItem(k));
+    loadThresholds();
+    toast('Umbrales restaurados a defaults', 'success');
+    if (currentChartSymbol) renderEntries(currentChartSymbol);
+}
+function loadThresholds() {
+    const TH = getThresholds();
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    set('thMinQuality', TH.minSetupQuality);
+    set('thMinRr', TH.minRrT1);
+    set('thMaxRiskAtr', TH.maxRiskAtr);
+    set('thMinRiskAtr', TH.minRiskAtr);
+    set('thEqOptimal', TH.eqOptimalBase);
+    set('thEqAcceptable', TH.eqAcceptableBase);
 }
 
 function contextChecks(ctx, isLong = true) {
     const out = [];
     const ccfg = getContextConfig();
-
     if (ctx.rs != null) {
         const ok = isLong ? ctx.rs >= ccfg.minRs : ctx.rs <= -ccfg.minRs;
-        out.push({
-            label: 'RS vs SPY favorable',
-            ok,
-            detail: `${ctx.rs >= 0 ? '+' : ''}${ctx.rs.toFixed(2)}%`,
-            category: 'rs'
-        });
+        out.push({ label: 'RS vs SPY favorable', ok, detail: `${ctx.rs >= 0 ? '+' : ''}${ctx.rs.toFixed(2)}%`, category: 'rs' });
     }
     if (ctx.weeklyTrend) {
         const ok = isLong ? ctx.weeklyTrend !== 'BAJISTA' : ctx.weeklyTrend !== 'ALCISTA';
-        out.push({
-            label: 'MTF semanal coherente',
-            ok,
-            detail: ctx.weeklyTrend,
-            category: 'mtf'
-        });
+        out.push({ label: 'MTF semanal coherente', ok, detail: ctx.weeklyTrend, category: 'mtf' });
     }
     if (ctx.daysEarnings != null) {
         const ok = ctx.daysEarnings > ccfg.minDaysEarnings;
-        out.push({
-            label: `Earnings > ${ccfg.minDaysEarnings}d`,
-            ok,
-            detail: `${ctx.daysEarnings}d`,
-            category: 'timing'
-        });
+        out.push({ label: `Earnings > ${ccfg.minDaysEarnings}d`, ok, detail: `${ctx.daysEarnings}d`, category: 'timing' });
     }
     return out;
 }
 
-function computeEntryQuality(ctx, setupId, entry, stop, targets, primaryConfirmed) {
+function computeEntryQuality(ctx, setupId, entry, stop, targets) {
     const atr = ctx?.atr;
     const price = ctx?.price ?? entry;
-
     if (!atr || !isFinite(atr) || atr <= 0) {
         return {
             score: 0, state: 'extended', label: 'EXTENDIDA',
             note: 'Sin ATR válido para evaluar la ejecución.',
             distanceAtr: null, distancePct: null,
-            rvol: ctx?.rvol ?? null, riskAtr: null, rr: null
+            rvol: ctx?.rvol ?? null, riskAtr: null, rr: null,
+            targetZone: null
         };
     }
-
     const e20 = ctx?.e20, e50 = ctx?.e50, s200 = ctx?.s200;
     const rvol = ctx?.rvol;
     const riskAtr = (entry - stop) / atr;
     const rr = targets ? (targets.t1 - entry) / Math.max(entry - stop, 1e-9) : 0;
-
     let score = 100;
     const notes = [];
     let distanceAtr = null;
@@ -1688,45 +1967,44 @@ function computeEntryQuality(ctx, setupId, entry, stop, targets, primaryConfirme
             score -= 6;
         }
     }
-
     if (rvol != null && isFinite(rvol)) {
-        if (rvol < 0.50) score -= 15;
-        else if (rvol < 0.80) score -= 7;
+        if (rvol < 0.50) score -= 5;
+        else if (rvol < 0.80) score -= 2;
         else if (rvol >= 1.50) score += 2;
     }
-
     if (riskAtr > 2.50) score -= 15;
     else if (riskAtr > 2.00) score -= 8;
     else if (riskAtr >= 1.00 && riskAtr <= 2.00) score += 2;
-
     if (rr >= 2.0) score += 2;
     else if (rr < 1.7) score -= 5;
-
     score = Math.max(0, Math.min(EQ_SCORE_CAP, Math.round(score)));
 
-    let optimalThreshold = EQ_OPTIMAL_BASE;
-    let acceptableThreshold = EQ_ACCEPTABLE_BASE;
+    // V4.5.5: umbrales base configurables; ajuste por régimen como delta
+    const TH = getThresholds();
+    let optimalThreshold = TH.eqOptimalBase;
+    let acceptableThreshold = TH.eqAcceptableBase;
     const regimeName = ctx?.regime?.regime;
     if (regimeName === 'RISK_OFF' || regimeName === 'STRONG_RISK_OFF') {
-        optimalThreshold = EQ_OPTIMAL_RISKOFF;
-        acceptableThreshold = EQ_ACCEPTABLE_RISKOFF;
+        const deltaO = EQ_OPTIMAL_RISKOFF - EQ_OPTIMAL_BASE;
+        const deltaA = EQ_ACCEPTABLE_RISKOFF - EQ_ACCEPTABLE_BASE;
+        optimalThreshold = Math.min(99, TH.eqOptimalBase + deltaO);
+        acceptableThreshold = Math.min(95, TH.eqAcceptableBase + deltaA);
     } else if (regimeName === 'STRONG_RISK_ON') {
-        optimalThreshold = EQ_OPTIMAL_RISKON_STRONG;
+        const deltaO = EQ_OPTIMAL_RISKON_STRONG - EQ_OPTIMAL_BASE;
+        optimalThreshold = Math.max(50, TH.eqOptimalBase + deltaO);
+    }
+    if (acceptableThreshold >= optimalThreshold) {
+        acceptableThreshold = Math.max(30, optimalThreshold - 10);
     }
 
     let state = 'extended', label = 'EXTENDIDA';
     if (score >= optimalThreshold) { state = 'optimal'; label = 'ÓPTIMA'; }
     else if (score >= acceptableThreshold) { state = 'acceptable'; label = 'ACEPTABLE'; }
-
     if (!notes.length) {
         if (state === 'optimal') notes.push('precio dentro de una zona de ejecución razonable');
         else if (state === 'acceptable') notes.push('entrada operable, pero conviene esperar confirmación o mejor precio');
         else notes.push('el contexto puede ser bueno, pero la ejecución actual está extendida');
     }
-    if (targetZone != null) {
-        notes.push(`⏳ esperar retroceso a ~$${targetZone.toFixed(2)}`);
-    }
-
     return {
         score, state, label,
         note: notes.join(' · '),
@@ -1736,31 +2014,230 @@ function computeEntryQuality(ctx, setupId, entry, stop, targets, primaryConfirme
         targetZone
     };
 }
-
 function entryQualityLabel(eq) {
     if (!eq) return '—';
     return `${eq.label} · ${eq.score}/100`;
 }
 
+/* CONFIRMACIÓN */
+function computeSetupConfirmation(ctx, setupId, primaryConfirmed) {
+    const price = ctx?.price;
+    const last = ctx?.last;
+    const data = ctx?.data;
+    const atr = ctx?.atr;
+    if (!ctx || price == null || !data || !data.length) {
+        return { state: 'none', label: 'SIN CONFIRMACIÓN', icon: '○', note: 'Datos insuficientes.' };
+    }
+    const bar = data[last] || data[data.length - 1];
+    const prev = data[last - 1] || null;
+    const green = !!(bar && prev && bar.close > prev.close);
+    const strong = strongClose(data, last);
+    const rvol = ctx.rvol;
+    const volPct = ctx.volPct;
+    const volumeOk = (rvol != null && rvol >= 0.80) || (volPct != null && volPct >= 0.75);
+    let confirmed = false;
+    let forming = false;
+    let note = '';
+
+    if (setupId === 'pullback') {
+        const near20 = ctx.e20 != null && atr > 0 && (price - ctx.e20) / atr <= 1.25;
+        const near50 = ctx.e50 != null && atr > 0 && (price - ctx.e50) / atr <= 1.25;
+        const reclaimed20 = near20 && ctx.e20 != null && price > ctx.e20;
+        const reclaimed50 = near50 && ctx.e50 != null && price > ctx.e50;
+        confirmed = primaryConfirmed && green && (reclaimed20 || reclaimed50);
+        forming = primaryConfirmed && (reclaimed20 || reclaimed50) && (green || strong);
+        note = confirmed
+            ? 'Reclamación de media + cierre favorable.'
+            : forming
+                ? 'La estructura existe; espera una confirmación de cierre.'
+                : 'Falta una confirmación de ejecución.';
+    } else if (setupId === 'sma200') {
+        const above = ctx.s200 != null && price > ctx.s200;
+        confirmed = primaryConfirmed && above && green && strong;
+        forming = primaryConfirmed && above && (green || strong);
+        note = confirmed ? 'Rebote confirmado sobre SMA200.' : forming ? 'Rebote en formación; falta cierre convincente.' : 'Falta confirmación sobre SMA200.';
+    } else if (setupId === 'donchian') {
+        const trigger = ctx.dh20?.[last - 1];
+        const above = trigger != null && price > trigger;
+        confirmed = primaryConfirmed && above && strong && volumeOk;
+        forming = primaryConfirmed && above;
+        note = confirmed ? 'Ruptura + cierre fuerte + participación.' : forming ? 'Ruptura presente; confirma cierre/volumen.' : 'Falta confirmación de ruptura.';
+    } else if (setupId === 'bb_breakout') {
+        const upper = ctx.bb?.upper?.[last];
+        const above = upper != null && price > upper;
+        confirmed = primaryConfirmed && above && strong && volumeOk;
+        forming = primaryConfirmed && above;
+        note = confirmed ? 'Breakout BB confirmado con cierre/participación.' : forming ? 'Breakout presente; confirma cierre/volumen.' : 'Falta confirmación del breakout.';
+    } else if (setupId === 'golden_cross') {
+        const macdBull = ctx.macd != null && ctx.macdSignal != null && ctx.macd > ctx.macdSignal;
+        const above20 = ctx.e20 != null && price > ctx.e20;
+        confirmed = primaryConfirmed && above20 && macdBull && green;
+        forming = primaryConfirmed && above20 && (macdBull || green);
+        note = confirmed ? 'Precio sobre EMA20 + MACD favorable + cierre verde.' : forming ? 'Cruce reciente; espera confirmación de momentum.' : 'Falta confirmación post-cruce.';
+    }
+
+    const weeklyBear = ctx.weeklyTrend === 'BAJISTA';
+    const weeklyBull = ctx.weeklyTrend === 'ALCISTA';
+    if (confirmed && weeklyBear) {
+        confirmed = false;
+        forming = true;
+        note = 'Confirmación técnica presente, pero MTF semanal BAJISTA — esperar alineación.';
+    } else if (forming && weeklyBear) {
+        note = note + ' · MTF semanal BAJISTA penaliza la confirmación.';
+    } else if (confirmed && weeklyBull) {
+        note = note + ' · MTF semanal ALCISTA alineado.';
+    }
+
+    if (confirmed) return { state: 'confirmed', label: 'CONFIRMADA', icon: '✓', note };
+    if (forming) return { state: 'forming', label: 'EN CONFIRMACIÓN', icon: '◐', note };
+    return { state: 'none', label: 'SIN CONFIRMACIÓN', icon: '○', note };
+}
+
+/* LIFECYCLE */
+function computeSetupLifecycle(ctx, setupId, primaryConfirmed, confirmation, entryQuality) {
+    const data = ctx?.data || [];
+    const last = ctx?.last ?? (data.length - 1);
+    const price = ctx?.price;
+    const atr = ctx?.atr;
+    const e20 = ctx?.e20, e50 = ctx?.e50, s200 = ctx?.s200;
+    const reasons = [];
+    let state = 'forming';
+    let age = null;
+
+    if (!data.length || price == null || !atr || !isFinite(atr) || atr <= 0) {
+        return { state: 'forming', label: 'EN FORMACIÓN', age: null, expired: false, reason: 'Datos insuficientes para determinar el ciclo del setup.' };
+    }
+    const lastN = Math.min(12, data.length);
+    const recent = data.slice(-lastN);
+    const green = recent.length >= 2 && recent[recent.length - 1].close > recent[recent.length - 2].close;
+    let eventIndex = null;
+    const markEvent = (i) => { if (i >= 0) eventIndex = eventIndex == null ? i : Math.max(eventIndex, i); };
+
+    if (setupId === 'pullback') {
+        for (let i = Math.max(0, last - 8); i <= last; i++) {
+            const near20 = e20 != null && data[i].low <= e20 * 1.005;
+            const near50 = e50 != null && data[i].low <= e50 * 1.005;
+            if (near20 || near50) markEvent(i);
+        }
+        if (eventIndex != null) age = last - eventIndex;
+        const distance = e20 != null && e50 != null
+            ? Math.min((price - e20) / atr, (price - e50) / atr)
+            : null;
+        if (distance != null && distance > 2.0) {
+            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El precio se ha alejado demasiado de la zona de pullback.' };
+        }
+        if (age != null && age > 5) {
+            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El toque del pullback es demasiado antiguo.' };
+        }
+    } else if (setupId === 'sma200') {
+        const s200Series = ctx.s200Series || sma(ctx.closes, 200);
+        for (let i = Math.max(0, last - 10); i <= last; i++) {
+            const s200At = s200Series[i];
+            if (s200At != null && data[i].low <= s200At * 1.005) markEvent(i);
+        }
+        if (eventIndex != null) age = last - eventIndex;
+        const distance = s200 != null ? (price - s200) / atr : null;
+        if (distance != null && distance > 2.0) {
+            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El precio se ha alejado demasiado de SMA200 para tratar el rebote como actual.' };
+        }
+        if (age != null && age > 7) {
+            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El test de SMA200 es demasiado antiguo.' };
+        }
+    } else if (setupId === 'donchian') {
+        const trigger = ctx.dh20?.[last - 1];
+        if (trigger != null) {
+            for (let i = Math.max(0, last - 5); i <= last; i++) if (data[i].close > trigger) markEvent(i);
+            if (eventIndex != null) age = last - eventIndex;
+            if (price < trigger && age != null && age > 3) {
+                return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El breakout perdió continuidad y quedó fuera de la ventana de confirmación.' };
+            }
+        }
+    } else if (setupId === 'bb_breakout') {
+        const upper = ctx.bb?.upper?.[last - 1];
+        if (upper != null) {
+            for (let i = Math.max(0, last - 5); i <= last; i++) if (data[i].close > upper) markEvent(i);
+            if (eventIndex != null) age = last - eventIndex;
+            if (price < upper && age != null && age > 3) {
+                return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El breakout de Bollinger perdió continuidad.' };
+            }
+        }
+    } else if (setupId === 'golden_cross') {
+        const e20s = ctx.ema20Series;
+        const e50s = ctx.ema50Series;
+        if (e20s && e50s) {
+            for (let i = Math.max(1, last - 10); i <= last; i++) {
+                const prevE20 = e20s[i - 1];
+                const prevE50 = e50s[i - 1];
+                const curE20  = e20s[i];
+                const curE50  = e50s[i];
+                if (prevE20 != null && prevE50 != null && curE20 != null && curE50 != null
+                    && prevE20 <= prevE50 && curE20 > curE50) {
+                    markEvent(i);
+                }
+            }
+        }
+        if (eventIndex != null) age = last - eventIndex;
+        if (age != null && age > 10) {
+            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El golden cross dejó de ser reciente.' };
+        }
+    }
+
+    if (!primaryConfirmed) {
+        return { state: 'forming', label: 'EN FORMACIÓN', age, expired: false, reason: 'El patrón aún no cumple su condición primaria.' };
+    }
+    if (confirmation?.state === 'confirmed') {
+        state = 'confirmed';
+        reasons.push('La tesis del setup está confirmada.');
+    } else {
+        state = 'valid';
+        reasons.push(confirmation?.state === 'forming' ? 'Setup válido esperando confirmación.' : 'Setup válido sin confirmación suficiente.');
+    }
+    if (entryQuality?.state === 'extended') {
+        reasons.push('La tesis puede ser válida, pero la entrada actual está extendida.');
+    } else if (entryQuality?.state === 'acceptable') {
+        reasons.push('La ejecución es operable pero no está en zona óptima.');
+    } else if (entryQuality?.state === 'optimal') {
+        reasons.push('La ejecución está dentro de una zona razonable.');
+    }
+    return {
+        state,
+        label: state === 'confirmed' ? 'CONFIRMADO' : 'VÁLIDO',
+        age,
+        expired: false,
+        reason: reasons.join(' ')
+    };
+}
+
+/* FINALIZE SETUP */
 function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, stopSource, atr, data, regime, momentumSetup, ctx }) {
+    const TH = getThresholds();
     const risk = entry - stop;
     if (!isFinite(risk) || risk <= 0) return null;
     const riskInAtr = risk / atr;
-    if (riskInAtr > 3.0) return null;
-    if (riskInAtr < 0.8) return null;
+    if (riskInAtr > TH.maxRiskAtr) return null;
+    if (riskInAtr < TH.minRiskAtr) return null;
     if (momentumSetup && (regime?.regime === 'RISK_OFF' || regime?.regime === 'STRONG_RISK_OFF')) return null;
 
     const ccfg = getContextConfig();
+    const softFilters = [];
     if (ctx) {
-        if (ctx.rs != null && ctx.rs < ccfg.minRs) return null;
-        if (ctx.weeklyTrend === 'BAJISTA') return null;
-        if (ctx.daysEarnings != null && ctx.daysEarnings <= ccfg.minDaysEarnings) return null;
+        if (ctx.rs != null && ctx.rs < ccfg.minRs) softFilters.push(`RS ${ctx.rs.toFixed(1)}% < ${ccfg.minRs}%`);
+        if (ctx.weeklyTrend === 'BAJISTA') softFilters.push('MTF semanal BAJISTA');
+        if (ctx.daysEarnings != null && ctx.daysEarnings <= ccfg.minDaysEarnings) {
+            if (ctx.daysEarnings <= 1) return null;
+            softFilters.push(`Earnings en ${ctx.daysEarnings}d`);
+        }
+    }
+    if (data?.length) {
+        const lastBar = data[data.length - 1];
+        const dollarVol = lastBar.close * (lastBar.volume || 0);
+        if (dollarVol < ccfg.minDollarVolume) softFilters.push(`Liquidez $${(dollarVol/1e6).toFixed(1)}M < $${(ccfg.minDollarVolume/1e6).toFixed(1)}M`);
     }
 
     const targets = computeTargets(data, entry, stop, atr);
     if (!targets) return null;
     const rrT1 = (targets.t1 - entry) / risk;
-    if (rrT1 < 1.5) return null;
+    if (rrT1 < TH.minRrT1) return null;
 
     if (id === 'donchian' || id === 'bb_breakout') {
         const slice20 = data.slice(-20);
@@ -1773,30 +2250,110 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
         }
     }
 
-    const entryQuality = computeEntryQuality(ctx, id, entry, stop, targets, primaryConfirmed);
+    const entryQuality = computeEntryQuality(ctx, id, entry, stop, targets);
+    const quality = weightedQuality(checks);
+    const confirmation = computeSetupConfirmation(ctx, id, primaryConfirmed);
+    const lifecycle = computeSetupLifecycle(ctx, id, primaryConfirmed, confirmation, entryQuality);
 
-    const checksWithEQ = [
-        ...checks,
-        {
-            label: 'Entrada en zona óptima',
-            ok: entryQuality.state === 'optimal',
-            detail: `${entryQuality.score}/100`,
-            category: 'timing'
+    let operationalEntry = entry;
+    let entryType = 'market';
+    let finalStop = stop;
+    let finalStopSource = stopSource;
+    let finalTargets = targets;
+
+    if (entryQuality.state === 'extended'
+        && entryQuality.targetZone != null
+        && isFinite(entryQuality.targetZone)
+        && entryQuality.targetZone > 0
+        && entryQuality.targetZone < entry) {
+
+        const refEntry = entryQuality.targetZone;
+        const refStopObj = computeStructuralStop(data, refEntry, atr, null);
+        const refTargets = computeTargets(data, refEntry, refStopObj.price, atr);
+        const refRisk = refEntry - refStopObj.price;
+        const refRiskAtr = refRisk / atr;
+        const refRr = refTargets ? (refTargets.t1 - refEntry) / refRisk : 0;
+
+        if (refTargets
+            && refStopObj.price < refEntry
+            && refRiskAtr <= TH.maxRiskAtr
+            && refRiskAtr >= TH.minRiskAtr
+            && refRr >= TH.minRrT1) {
+            operationalEntry = refEntry;
+            finalStop = refStopObj.price;
+            finalStopSource = refStopObj.source;
+            finalTargets = refTargets;
+            entryType = 'limit';
         }
-    ];
+    }
 
-    const quality = weightedQuality(checksWithEQ);
-    const status = primaryConfirmed && quality >= 65 && entryQuality.state !== 'extended' ? 'READY' : 'WAITING';
+    const finalRisk = operationalEntry - finalStop;
+    const finalRiskInAtr = finalRisk / atr;
+    const finalRrT1 = (finalTargets.t1 - operationalEntry) / finalRisk;
+    const finalRrT2 = (finalTargets.t2 - operationalEntry) / finalRisk;
+
+    if (lifecycle.expired) {
+        return {
+            id, name, desc,
+            status: 'EXPIRED',
+            quality, entryQuality,
+            entry: operationalEntry,
+            entryType: 'market',
+            currentPrice: ctx?.price ?? operationalEntry,
+            stop: finalStop, stopSource: finalStopSource,
+            t1: finalTargets.t1, t1Source: finalTargets.t1Source,
+            t2: finalTargets.t2, t2Source: finalTargets.t2Source,
+            risk: finalRisk, riskInAtr: finalRiskInAtr, rrT1: finalRrT1,
+            rrT2: finalRrT2,
+            checks, softFilters, confirmation, lifecycle,
+            decision: { state: 'EXPIRED', label: 'EXPIRADO', reason: lifecycle.reason },
+            exitPlan: makeExitPlan(finalRisk)
+        };
+    }
+
+    let status = 'WAITING';
+    let decisionState = 'WAITING';
+    let decisionLabel = 'ESPERAR';
+    let decisionReason = '';
+
+    if (softFilters.length) {
+        decisionReason = `Contexto pendiente: ${softFilters.join(' · ')}`;
+    } else if (!primaryConfirmed || quality < TH.minSetupQuality) {
+        decisionReason = !primaryConfirmed ? 'El setup aún no cumple su condición primaria.' : `Setup Quality ${quality}/100 por debajo del umbral (${TH.minSetupQuality}).`;
+    } else if (confirmation.state !== 'confirmed') {
+        decisionReason = confirmation.note || 'Setup válido esperando confirmación.';
+    } else if (entryQuality.state === 'extended' && entryType === 'market') {
+        decisionReason = entryQuality.note || 'Setup confirmado, pero la ejecución actual está extendida.';
+    } else {
+        status = 'READY';
+        decisionState = entryQuality.state === 'optimal' ? 'READY_OPTIMAL' : 'READY_ACCEPTABLE';
+        if (entryType === 'limit') {
+            decisionLabel = entryQuality.state === 'optimal' ? 'ORDEN LÍMITE ÓPTIMA' : 'ORDEN LÍMITE ACEPTABLE';
+            decisionReason = `Setup confirmado. Entrada límite en $${operationalEntry.toFixed(2)} (esperar retroceso desde $${(ctx?.price ?? entry).toFixed(2)}).`;
+        } else {
+            decisionLabel = entryQuality.state === 'optimal' ? 'ENTRADA ÓPTIMA' : 'ENTRADA ACEPTABLE';
+            decisionReason = entryQuality.note || 'Setup confirmado y ejecutable.';
+        }
+    }
 
     return {
         id, name, desc, status, quality, entryQuality,
-        entry, stop, stopSource,
-        t1: targets.t1, t1Source: targets.t1Source,
-        t2: targets.t2, t2Source: targets.t2Source,
-        risk, riskInAtr, rrT1,
-        rrT2: (targets.t2 - entry) / risk,
-        checks: checksWithEQ,
-        exitPlan: makeExitPlan(risk)
+        entry: operationalEntry,
+        entryType,
+        currentPrice: ctx?.price ?? operationalEntry,
+        stop: finalStop, stopSource: finalStopSource,
+        t1: finalTargets.t1, t1Source: finalTargets.t1Source,
+        t2: finalTargets.t2, t2Source: finalTargets.t2Source,
+        risk: finalRisk,
+        riskInAtr: finalRiskInAtr,
+        rrT1: finalRrT1,
+        rrT2: finalRrT2,
+        checks,
+        softFilters,
+        confirmation,
+        lifecycle,
+        decision: { state: decisionState, label: decisionLabel, reason: decisionReason },
+        exitPlan: makeExitPlan(finalRisk)
     };
 }
 
@@ -1812,10 +2369,8 @@ function setupDonchian(ctx) {
     if (dhPrev == null) return null;
     if (!(data[last].close > dhPrev)) return null;
     if (!(e50 > e200)) return null;
-
     const checks = [
         { label: 'Cierre > Donchian High 20', ok: true, detail: `$${dhPrev.toFixed(2)}`, category: 'trend' },
-        { label: 'Cierre fuerte (>66% rango)', ok: strongClose(data), detail: '', category: 'timing' },
         { label: 'EMA50 > EMA200', ok: e50 > e200, detail: '', category: 'trend' },
         { label: 'Precio > EMA20', ok: price > e20, detail: '', category: 'trend' },
         { label: 'Estructura HH/HL', ok: isUptrendStructure(data, 60), detail: '', category: 'structure' },
@@ -1826,7 +2381,6 @@ function setupDonchian(ctx) {
         ...regimeCheck(regime),
         ...contextChecks(ctx, true)
     ];
-
     const stopObj = computeStructuralStop(data, price, atr, e20);
     return finalizeSetup({
         id: 'donchian', name: 'Ruptura Donchian 20',
@@ -1836,22 +2390,18 @@ function setupDonchian(ctx) {
         atr, data, regime, ctx
     });
 }
-
 function setupPullback(ctx) {
     const { data, last, price, atr, e20, e50, e200, adx, r, regime } = ctx;
     const stack = e20 > e50 && e50 > e200;
     if (!stack) return null;
-
     let touched = false;
     for (let i = Math.max(0, last - 4); i <= last; i++) {
         const ref = (e20 != null && data[i].low <= e20 * 1.005) ? e20
                   : (e50 != null && data[i].low <= e50 * 1.005) ? e50 : null;
         if (ref != null && data[i].close >= ref * 0.995) { touched = true; break; }
     }
-
     const structureOk = isUptrendStructure(data, 60);
     const volHealthy = pullbackVolumeHealthy(data);
-
     const checks = [
         { label: 'EMA20 > EMA50 > EMA200', ok: true, detail: '', category: 'trend' },
         { label: 'Toque EMA20/50 (≤5 sesiones)', ok: touched, detail: '', category: 'timing' },
@@ -1864,7 +2414,6 @@ function setupPullback(ctx) {
         ...regimeCheck(regime),
         ...contextChecks(ctx, true)
     ];
-
     const stopObj = computeStructuralStop(data, price, atr, e50);
     return finalizeSetup({
         id: 'pullback', name: 'Pullback a EMA20/50',
@@ -1875,22 +2424,20 @@ function setupPullback(ctx) {
         atr, data, regime, ctx
     });
 }
-
 function setupSma200(ctx) {
-    const { data, last, price, atr, s200, r, regime } = ctx;
+    const { data, last, price, atr, s200, s200Series, r, regime } = ctx;
     if (s200 == null) return null;
     if (!(price > s200)) return null;
-
+    const s200Arr = s200Series || sma(ctx.closes, 200);
     let touched = false;
     for (let i = Math.max(0, last - 6); i <= last; i++) {
-        if (data[i].low <= s200 * 1.005) { touched = true; break; }
+        const s200At = s200Arr[i];
+        if (s200At != null && data[i].low <= s200At * 1.005) { touched = true; break; }
     }
     if (!touched) return null;
-
     const greenDay = data[last].close > data[last - 1].close;
     const structureOk = isUptrendStructure(data, 90);
     const volHealthy = pullbackVolumeHealthy(data);
-
     const checks = [
         { label: 'Precio > SMA200', ok: true, detail: `$${s200.toFixed(2)}`, category: 'trend' },
         { label: 'Toque SMA200 (≤7 sesiones)', ok: true, detail: '', category: 'timing' },
@@ -1901,7 +2448,6 @@ function setupSma200(ctx) {
         ...regimeCheck(regime),
         ...contextChecks(ctx, true)
     ];
-
     const stopObj = computeStructuralStop(data, price, atr, s200);
     return finalizeSetup({
         id: 'sma200', name: 'Rebote en SMA200',
@@ -1912,7 +2458,6 @@ function setupSma200(ctx) {
         atr, data, regime, ctx
     });
 }
-
 function setupGoldenCross(ctx) {
     const { data, last, price, atr, e50, e200, adx, volPct, regime } = ctx;
     const closes = data.map(d => d.close);
@@ -1925,21 +2470,18 @@ function setupGoldenCross(ctx) {
     }
     if (crossIdx === -1) return null;
     if (!(e50 > e200)) return null;
-
     const adxObj = adxCalc(data, 14);
     const adxPrev = adxObj.adx[last - 5];
     const adxRising = adx != null && adxPrev != null && adx > adxPrev;
-
     const checks = [
         { label: 'Cruce EMA20/50 (≤3 ses.)', ok: true, detail: '', category: 'trend' },
         { label: 'EMA50 > EMA200', ok: true, detail: '', category: 'trend' },
         { label: 'ADX > 20 y subiendo', ok: adx != null && adx > 20 && adxRising, detail: adx != null ? adx.toFixed(1) : '—', category: 'strength' },
         { label: 'Volumen P75 propio', ok: volPct != null && volPct >= 0.75, detail: volPct != null ? `P${Math.round(volPct*100)}` : '—', category: 'volume' },
-        { label: 'MACD > Signal', ok: (() => { const m = macd(closes, 12, 26, 9); return m.macd[last] != null && m.signal[last] != null && m.macd[last] > m.signal[last]; })(), detail: '', category: 'momentum' },
+        { label: 'MACD > Signal', ok: ctx.macd != null && ctx.macdSignal != null && ctx.macd > ctx.macdSignal, detail: '', category: 'momentum' },
         ...regimeCheck(regime),
         ...contextChecks(ctx, true)
     ];
-
     const stopObj = computeStructuralStop(data, price, atr, null);
     return finalizeSetup({
         id: 'golden_cross', name: 'Cruce dorado EMA20/50',
@@ -1949,33 +2491,26 @@ function setupGoldenCross(ctx) {
         atr, data, regime, ctx
     });
 }
-
 function setupBbBreakout(ctx) {
     const { data, last, price, atr, adx, r, bb, volPct, regime } = ctx;
     const closes = data.map(d => d.close);
     const bbUp = bb.upper[last], bbMid = bb.middle[last];
     if (bbUp == null) return null;
     if (!(closes[last] > bbUp)) return null;
-
-    const macdObj = macd(closes, 12, 26, 9);
-    const macdBull = macdObj.macd[last] != null && macdObj.signal[last] != null && macdObj.macd[last] > macdObj.signal[last];
-
     const checks = [
         { label: 'Cierre > BB superior', ok: true, detail: `$${bbUp.toFixed(2)}`, category: 'trend' },
         { label: 'Volumen P85 propio', ok: volPct != null && volPct >= 0.85, detail: volPct != null ? `P${Math.round(volPct*100)}` : '—', category: 'volume' },
-        { label: 'MACD > Signal', ok: macdBull, detail: '', category: 'momentum' },
         { label: 'ADX > 20', ok: adx != null && adx > 20, detail: adx != null ? adx.toFixed(1) : '—', category: 'strength' },
         { label: 'RSI 55-80', ok: r != null && r >= 55 && r <= 80, detail: r != null ? r.toFixed(1) : '—', category: 'momentum' },
         { label: 'Estructura HH/HL', ok: isUptrendStructure(data, 60), detail: '', category: 'structure' },
         ...regimeCheck(regime),
         ...contextChecks(ctx, true)
     ];
-
     const stopObj = computeStructuralStop(data, price, atr, null);
     if (bbMid != null && bbMid < price && bbMid > stopObj.price) {
         return finalizeSetup({
             id: 'bb_breakout', name: 'Ruptura Bollinger + Volumen',
-            desc: 'Expansión de volatilidad confirmada con volumen y MACD',
+            desc: 'Expansión de volatilidad confirmada con volumen y ADX',
             primaryConfirmed: true, momentumSetup: true,
             checks, entry: price, stop: bbMid, stopSource: 'ema',
             atr, data, regime, ctx
@@ -1983,7 +2518,7 @@ function setupBbBreakout(ctx) {
     }
     return finalizeSetup({
         id: 'bb_breakout', name: 'Ruptura Bollinger + Volumen',
-        desc: 'Expansión de volatilidad confirmada con volumen y MACD',
+        desc: 'Expansión de volatilidad confirmada con volumen y ADX',
         primaryConfirmed: true, momentumSetup: true,
         checks, entry: price, stop: stopObj.price, stopSource: stopObj.source,
         atr, data, regime, ctx
@@ -1993,7 +2528,6 @@ function setupBbBreakout(ctx) {
 function computeEntries(data, tech, regime) {
     if (!tech.atr || !isFinite(tech.atr)) return [];
     if (data.length < MIN_BARS) return [];
-
     const ctx = buildCtx(data, tech, regime);
     const setups = [
         setupDonchian(ctx),
@@ -2002,18 +2536,20 @@ function computeEntries(data, tech, regime) {
         setupGoldenCross(ctx),
         setupBbBreakout(ctx)
     ].filter(Boolean);
-
     setups.sort((a, b) => {
-        if (a.status !== b.status) return a.status === 'READY' ? -1 : 1;
+        if (a.status !== b.status) {
+            if (a.status === 'READY') return -1;
+            if (b.status === 'READY') return 1;
+            if (a.status === 'EXPIRED') return 1;
+            if (b.status === 'EXPIRED') return -1;
+        }
         if ((b.entryQuality?.score ?? 0) !== (a.entryQuality?.score ?? 0)) return (b.entryQuality?.score ?? 0) - (a.entryQuality?.score ?? 0);
         return b.quality - a.quality;
     });
     return setups;
 }
 
-/* =========================================================
-   RENDER SETUPS
-========================================================= */
+/* RENDER SETUPS */
 function getRiskConfig() {
     const size = parseFloat(localStorage.getItem('sa_account_size'));
     const pct = parseFloat(localStorage.getItem('sa_risk_pct'));
@@ -2031,10 +2567,10 @@ function saveRiskConfig() {
     const p = parseFloat(document.getElementById('riskPct').value);
     const m = parseFloat(document.getElementById('maxPositionPct').value);
     const h = parseFloat(document.getElementById('maxHeatR').value);
-    if (isFinite(s) && s > 0) safeSetItem('sa_account_size', s);
-    if (isFinite(p) && p > 0) safeSetItem('sa_risk_pct', Math.min(p, MAX_RISK_PCT_DEFAULT));
-    if (isFinite(m) && m > 0) safeSetItem('sa_max_position_pct', Math.min(m, 100));
-    if (isFinite(h) && h > 0) safeSetItem('sa_max_heat_r', h);
+    if (isFinite(s) && s > 0) trySave('sa_account_size', s);
+    if (isFinite(p) && p > 0) trySave('sa_risk_pct', Math.min(p, MAX_RISK_PCT_DEFAULT));
+    if (isFinite(m) && m > 0) trySave('sa_max_position_pct', Math.min(m, 100));
+    if (isFinite(h) && h > 0) trySave('sa_max_heat_r', h);
     toast('Configuración de riesgo guardada', 'success');
     if (currentChartSymbol) renderEntries(currentChartSymbol);
     renderPortfolioHeat();
@@ -2046,7 +2582,6 @@ function loadRiskConfig() {
     const mEl = document.getElementById('maxPositionPct'); if (mEl) mEl.value = c.maxPositionPct;
     const hEl = document.getElementById('maxHeatR'); if (hEl) hEl.value = c.maxHeatR;
 }
-
 function sourceLabel(src) {
     switch (src) {
         case 'swing': return 'bajo swing';
@@ -2057,7 +2592,6 @@ function sourceLabel(src) {
         default: return src;
     }
 }
-
 function renderContextBadges(symbol) {
     const live = lastSymbolsData?.[symbol];
     if (!live) return '';
@@ -2077,7 +2611,7 @@ function renderContextBadges(symbol) {
     }
     if (live.rvol != null) {
         const cls = live.rvol >= 1.5 ? 'info' : live.rvol < 0.7 ? 'neutral' : '';
-        badges.push(`<span class="ctx-badge ${cls}" title="Relative Volume">RVOL ${live.rvol.toFixed(2)}×</span>`);
+        badges.push(`<span class="ctx-badge ${cls}" title="RVOL diario sobre media de 20 sesiones">RVOL diario ${live.rvol.toFixed(2)}×</span>`);
     }
     if (live.daysEarnings != null) {
         const cls = live.daysEarnings <= 5 ? 'earnings' : live.daysEarnings <= 14 ? 'warn' : 'neutral';
@@ -2093,6 +2627,124 @@ function renderContextBadges(symbol) {
     return `<div class="ctx-badges">${badges.join('')}</div>`;
 }
 
+/* V4.5.5: helper badge Setup Q destacado */
+function setupQualityBadge(quality) {
+    const q = Number(quality);
+    if (!isFinite(q)) return '';
+    const cls = q >= 75 ? 'sq-high' : q >= 55 ? 'sq-mid' : 'sq-low';
+    return `<span class="setup-quality-badge ${cls}"><span class="sq-label">Setup Q</span><span class="sq-value">${q}</span></span>`;
+}
+
+function eqStateClass(state) {
+    if (state === 'optimal') return 'optimal';
+    if (state === 'acceptable') return 'acceptable';
+    return 'extended';
+}
+function eqStateColor(state) {
+    if (state === 'optimal') return 'var(--green)';
+    if (state === 'acceptable') return 'var(--orange)';
+    return 'var(--red)';
+}
+function eqStateLabel(state) {
+    if (state === 'optimal') return 'ÓPTIMA';
+    if (state === 'acceptable') return 'ACEPTABLE';
+    return 'EXTENDIDA';
+}
+function eqDistanceMetric(eq) {
+    const d = eq.distanceAtr;
+    if (d == null || !isFinite(d)) return { display: '—', fill: 0, color: 'var(--text-3)', hint: 'sin datos' };
+    let color, fill, hint;
+    if (d <= 0.50)      { color = 'var(--green)';  fill = 15;  hint = 'en zona'; }
+    else if (d <= 1.00) { color = 'var(--green)';  fill = 35;  hint = 'aceptable'; }
+    else if (d <= 1.50) { color = 'var(--orange)'; fill = 55;  hint = 'algo extendida'; }
+    else if (d <= 2.00) { color = 'var(--orange)'; fill = 72;  hint = 'extendida'; }
+    else                { color = 'var(--red)';    fill = 92;  hint = 'muy extendida'; }
+    return { display: `${d.toFixed(2)} ATR`, fill, color, hint };
+}
+function eqRvolMetric(eq) {
+    const r = eq.rvol;
+    if (r == null || !isFinite(r)) return { display: '—', fill: 0, color: 'var(--text-3)', hint: 'sin datos' };
+    let color, fill, hint;
+    if (r < 0.50)      { color = 'var(--red)';    fill = 20;  hint = 'muy bajo'; }
+    else if (r < 0.80) { color = 'var(--orange)'; fill = 42;  hint = 'bajo'; }
+    else if (r < 1.20) { color = 'var(--text-2)'; fill = 62;  hint = 'normal'; }
+    else if (r < 2.00) { color = 'var(--green)';  fill = 82;  hint = 'elevado'; }
+    else               { color = 'var(--green)';  fill = 100; hint = 'fuerte'; }
+    return { display: `${r.toFixed(2)}×`, fill, color, hint };
+}
+function eqRiskMetric(eq) {
+    const rk = eq.riskAtr;
+    if (rk == null || !isFinite(rk)) return { display: '—', fill: 0, color: 'var(--text-3)', hint: 'sin datos' };
+    let color, fill, hint;
+    if (rk < 0.80)       { color = 'var(--orange)'; fill = 30;  hint = 'stop muy ajustado'; }
+    else if (rk <= 2.00) { color = 'var(--green)';  fill = 55;  hint = 'razonable'; }
+    else if (rk <= 2.50) { color = 'var(--orange)'; fill = 78;  hint = 'amplio'; }
+    else                 { color = 'var(--red)';    fill = 100; hint = 'excesivo'; }
+    return { display: `${rk.toFixed(2)} ATR`, fill, color, hint };
+}
+function renderEntryQualityPanel(eq, title = 'Ejecución actual') {
+    if (!eq) return '';
+    const stateCls = eqStateClass(eq.state);
+    const stateColor = eqStateColor(eq.state);
+    const stateLabel = eqStateLabel(eq.state);
+    const d  = eqDistanceMetric(eq);
+    const rv = eqRvolMetric(eq);
+    const rk = eqRiskMetric(eq);
+    const hasTarget = eq.targetZone != null && isFinite(eq.targetZone) && eq.targetZone > 0;
+    const targetCallout = hasTarget ? `
+        <div class="eq-target-callout">
+            <div class="eq-tc-meta">
+                <div class="eq-tc-label">Zona de entrada</div>
+                <div class="eq-tc-hint">esperar retroceso antes de ejecutar</div>
+            </div>
+            <div class="eq-tc-value">$${eq.targetZone.toFixed(2)}</div>
+        </div>
+    ` : '';
+    return `
+        <div class="entry-quality-panel state-${stateCls}" style="--eq-color:${stateColor};">
+            <div class="eq-top">
+                <div class="eq-score-ring" style="--eq-score:${eq.score};">
+                    <span>${eq.score}</span>
+                </div>
+                <div class="eq-top-meta">
+                    <div class="eq-title-row">
+                        <span class="eq-title">${escapeHtml(title)}</span>
+                        <span class="eq-state-pill ${stateCls}">${stateLabel}</span>
+                    </div>
+                    <div class="eq-note-block">${escapeHtml(eq.note)}</div>
+                </div>
+            </div>
+            ${targetCallout}
+            <div class="eq-metrics">
+                <div class="eq-metric">
+                    <div class="eq-metric-head">
+                        <span class="k">Distancia</span>
+                        <span class="v" style="color:${d.color};">${d.display}</span>
+                    </div>
+                    <div class="eq-metric-bar"><div class="eq-metric-bar-fill" style="width:${d.fill}%; background:${d.color};"></div></div>
+                    <div class="eq-metric-hint">${d.hint}</div>
+                </div>
+                <div class="eq-metric">
+                    <div class="eq-metric-head">
+                        <span class="k">RVOL diario</span>
+                        <span class="v" style="color:${rv.color};">${rv.display}</span>
+                    </div>
+                    <div class="eq-metric-bar"><div class="eq-metric-bar-fill" style="width:${rv.fill}%; background:${rv.color};"></div></div>
+                    <div class="eq-metric-hint">${rv.hint}</div>
+                </div>
+                <div class="eq-metric">
+                    <div class="eq-metric-head">
+                        <span class="k">Riesgo</span>
+                        <span class="v" style="color:${rk.color};">${rk.display}</span>
+                    </div>
+                    <div class="eq-metric-bar"><div class="eq-metric-bar-fill" style="width:${rk.fill}%; background:${rk.color};"></div></div>
+                    <div class="eq-metric-hint">${rk.hint}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 function renderRecommendation(symbol, entries, accountSize, riskPct) {
     if (!entries.length) return '';
     const best = entries[0];
@@ -2101,35 +2753,58 @@ function renderRecommendation(symbol, entries, accountSize, riskPct) {
     const maxShares = Math.max(0, Math.floor((accountSize * getRiskConfig().maxPositionPct / 100) / best.entry));
     const shares = Math.min(rawShares, maxShares);
     const cost = shares * best.entry;
-    const statusText = best.status === 'READY' ? 'LISTO PARA OPERAR' : 'EN FORMACIÓN';
-    const statusClass = best.status === 'READY' ? 'ready' : 'waiting';
+    const isExpired = best.status === 'EXPIRED';
+    const statusText = isExpired ? 'SETUP EXPIRADO' : best.status === 'READY' ? 'LISTO PARA OPERAR' : 'EN FORMACIÓN';
+    const statusClass = isExpired ? 'expired' : best.status === 'READY' ? 'ready' : 'waiting';
+    const statusTag = isExpired ? 'EXPIRED' : best.status === 'READY' ? 'READY' : 'WAIT';
+    const conf = best.confirmation || {label:'SIN CONFIRMACIÓN', icon:'○', state:'none', note:''};
     const badges = renderContextBadges(symbol);
+    const softFilterHtml = (best.softFilters && best.softFilters.length)
+        ? `<div class="gate-note soft" style="margin-top:8px;"><b>⚠ Filtros no óptimos (soft):</b> ${best.softFilters.map(escapeHtml).join(' · ')}</div>`
+        : '';
+    const expiredHtml = isExpired
+        ? `<div class="confirmation-strip expired"><b>⏱ EXPIRADO:</b> ${escapeHtml(best.lifecycle?.reason || 'setup fuera de su ventana operativa')}</div>`
+        : '';
+    const checksHtml = (best.checks || []).map(c => `
+        <div class="check-item ${c.ok ? 'ok' : (c.soft ? 'soft' : 'no')}">
+            <span class="check-icon">${c.ok ? '✓' : (c.soft ? '⚠' : '○')}</span>
+            <span class="check-label">${escapeHtml(c.label)}</span>
+            ${c.detail ? `<span class="check-detail">${escapeHtml(c.detail)}</span>` : ''}
+        </div>`).join('');
+    const planHtml = best.exitPlan
+        ? `<div class="entry-exit-plan">
+             <b>Plan:</b> ${best.exitPlan.partials} · Trailing: ${best.exitPlan.trailing} · Time stop: ${best.exitPlan.timeStop} · Invalidación: ${best.exitPlan.invalidation}
+           </div>`
+        : '';
+    const entryLabel = best.entryType === 'limit' ? 'Entrada límite' : 'Entrada';
+    const entrySub = (best.entryType === 'limit' && best.currentPrice && Math.abs(best.currentPrice - best.entry) > 0.01)
+        ? `<div class="sub">actual $${best.currentPrice.toFixed(2)} · esperar retroceso</div>`
+        : '';
+
     return `
         <div class="rec-card">
             <div class="rec-head">
                 <div>
                     <div class="rec-title">${escapeHtml(symbol)} · ${escapeHtml(best.name)}</div>
-                    <div class="rec-sub">${statusText} · Contexto/Setup <b style="color:var(--text);">${best.quality}/100</b> · Ejecución <b style="color:${best.entryQuality.state === 'optimal' ? 'var(--green)' : best.entryQuality.state === 'acceptable' ? 'var(--orange)' : 'var(--red)'};">${entryQualityLabel(best.entryQuality)}</b></div>
+                    <div class="rec-sub">${statusText} · ${conf.icon} ${conf.label} · ${setupQualityBadge(best.quality)} · Ejecución <b style="color:${best.entryQuality.state === 'optimal' ? 'var(--green)' : best.entryQuality.state === 'acceptable' ? 'var(--orange)' : 'var(--red)'};">${entryQualityLabel(best.entryQuality)}</b>${best.entryType === 'limit' ? ' · <b style="color:#32d4e0;">ORDEN LÍMITE</b>' : ''}</div>
                 </div>
-                <span class="entry-status ${statusClass}">${best.status === 'READY' ? 'READY' : 'WAIT'}</span>
+                <span class="entry-status ${statusClass}">${statusTag}</span>
             </div>
             ${badges}
-            <div class="entry-quality-panel">
-                <div class="eq-head">
-                    <div class="eq-title">Calidad de entrada actual</div>
-                    <span class="entry-state ${best.entryQuality.state}">${best.entryQuality.label}</span>
-                </div>
-                <div class="eq-note">${escapeHtml(best.entryQuality.note)}</div>
-                <div class="eq-grid">
-                    <div class="eq-cell"><div class="k">Score entrada</div><div class="v">${best.entryQuality.score}/100</div></div>
-                    <div class="eq-cell"><div class="k">Distancia</div><div class="v">${best.entryQuality.distanceAtr != null ? best.entryQuality.distanceAtr.toFixed(2)+' ATR' : '—'}</div></div>
-                    <div class="eq-cell"><div class="k">RVOL</div><div class="v">${best.entryQuality.rvol != null ? best.entryQuality.rvol.toFixed(2)+'×' : '—'}</div></div>
-                </div>
-            </div>
+            ${softFilterHtml}
+            ${expiredHtml}
+            ${!isExpired ? `<div class="confirmation-strip ${conf.state}"><b>Confirmación:</b> ${conf.icon} ${escapeHtml(conf.label)} · ${escapeHtml(conf.note)}</div>` : ''}
+            ${renderEntryQualityPanel(best.entryQuality, 'Calidad de entrada actual')}
+            ${checksHtml ? `<div class="rec-checks-section">
+                <div class="rec-checks-label">Condiciones del setup</div>
+                <div class="entry-checks">${checksHtml}</div>
+            </div>` : ''}
+            ${planHtml}
             <div class="rec-prices">
                 <div class="rec-price entry">
-                    <div class="lbl">Entrada</div>
+                    <div class="lbl">${entryLabel}</div>
                     <div class="val">$${best.entry.toFixed(2)}</div>
+                    ${entrySub}
                 </div>
                 <div class="rec-price stop">
                     <div class="lbl">Stop</div>
@@ -2167,24 +2842,28 @@ function renderEntries(symbol) {
     if (!panel || !container) return;
     const live = lastSymbolsData?.[symbol];
     const entries = live?.entries || [];
-
     panel.style.display = 'block';
     if (!entries.length) {
         if (sub) sub.textContent = 'Sin setups activos. Comprueba régimen, tendencia, RS, MTF y estructura.';
         container.innerHTML = `<div class="empty-state" style="padding:20px; font-size:12px;">No hay setups que cumplan los filtros.<br>Revisa régimen, RS vs SPY, MTF semanal, earnings y R:R mínimo.</div>`;
         return;
     }
-
     const readyCount = entries.filter(e => e.status === 'READY').length;
+    const expiredCount = entries.filter(e => e.status === 'EXPIRED').length;
     const { size: accountSize, pct: riskPct } = getRiskConfig();
-    if (sub) sub.textContent = `${entries.length} setup${entries.length > 1 ? 's' : ''} · ${readyCount} listo${readyCount !== 1 ? 's' : ''} para operar`;
+    if (sub) sub.textContent = `${entries.length} setup${entries.length > 1 ? 's' : ''} · ${readyCount} listo${readyCount !== 1 ? 's' : ''} · ${expiredCount} expirado${expiredCount !== 1 ? 's' : ''}`;
 
-    const recHtml = renderRecommendation(symbol, entries, accountSize, riskPct);
+    const best = entries[0];
+    const showRec = best && best.status !== 'EXPIRED';
+    const recHtml = showRec ? renderRecommendation(symbol, entries, accountSize, riskPct) : '';
+    const setupsToRender = showRec ? entries.slice(1) : entries;
     const dollarRisk = accountSize * riskPct / 100;
 
-    const setupsHtml = entries.map(e => {
-        const statusClass = e.status === 'READY' ? 'ready' : 'waiting';
-        const statusText = e.status === 'READY' ? 'LISTO' : 'FORMÁNDOSE';
+    const setupsHtml = setupsToRender.map(e => {
+        const isExpired = e.status === 'EXPIRED';
+        const statusClass = isExpired ? 'expired' : e.status === 'READY' ? 'ready' : 'waiting';
+        const statusText = isExpired ? 'EXPIRADO' : e.status === 'READY' ? 'LISTO' : 'FORMÁNDOSE';
+        const conf = e.confirmation || {label:'SIN CONFIRMACIÓN', icon:'○', state:'none', note:''};
         const stopPct = ((e.entry - e.stop) / e.entry * 100).toFixed(2);
         const rawShares = Math.max(0, Math.floor(dollarRisk / e.risk));
         const maxShares = Math.max(0, Math.floor((accountSize * getRiskConfig().maxPositionPct / 100) / e.entry));
@@ -2193,11 +2872,21 @@ function renderEntries(symbol) {
         const costPct = (cost / accountSize * 100).toFixed(1);
 
         const checksHtml = e.checks.map(c => `
-            <div class="check-item ${c.ok ? 'ok' : 'no'}">
-                <span class="check-icon">${c.ok ? '✓' : '○'}</span>
+            <div class="check-item ${c.ok ? 'ok' : (c.soft ? 'soft' : 'no')}">
+                <span class="check-icon">${c.ok ? '✓' : (c.soft ? '⚠' : '○')}</span>
                 <span class="check-label">${escapeHtml(c.label)}</span>
                 ${c.detail ? `<span class="check-detail">${escapeHtml(c.detail)}</span>` : ''}
             </div>`).join('');
+        const softFilterHtml = (e.softFilters && e.softFilters.length)
+            ? `<div class="gate-note soft" style="margin-bottom:10px;"><b>⚠ Filtros no óptimos (soft):</b> ${e.softFilters.map(escapeHtml).join(' · ')}</div>`
+            : '';
+        const lifecycleStrip = isExpired
+            ? `<div class="confirmation-strip expired"><b>⏱ EXPIRADO:</b> ${escapeHtml(e.lifecycle?.reason || 'setup fuera de su ventana operativa')}</div>`
+            : `<div class="confirmation-strip ${conf.state}"><b>Confirmación:</b> ${conf.icon} ${escapeHtml(conf.label)} · ${escapeHtml(conf.note)}</div>`;
+        const entryLabel = e.entryType === 'limit' ? 'Entrada límite' : 'Entrada';
+        const entrySub = (e.entryType === 'limit' && e.currentPrice && Math.abs(e.currentPrice - e.entry) > 0.01)
+            ? `<div class="ep-sub">actual $${e.currentPrice.toFixed(2)}</div>`
+            : '';
 
         return `
             <div class="entry-card ${statusClass}">
@@ -2208,26 +2897,18 @@ function renderEntries(symbol) {
                     </div>
                     <div class="entry-badges">
                         <span class="entry-status ${statusClass}">${statusText}</span>
-                        <span class="entry-quality">Setup Q${e.quality}</span>
+                        ${setupQualityBadge(e.quality)}
                         <span class="entry-quality entry-quality-${e.entryQuality.state}">Entrada ${e.entryQuality.score}</span>
                     </div>
                 </div>
-                <div class="entry-quality-panel">
-                    <div class="eq-head">
-                        <div class="eq-title">Ejecución actual</div>
-                        <span class="entry-state ${e.entryQuality.state}">${e.entryQuality.label} · ${e.entryQuality.score}/100</span>
-                    </div>
-                    <div class="eq-note">${escapeHtml(e.entryQuality.note)}</div>
-                    <div class="eq-grid">
-                        <div class="eq-cell"><div class="k">Distancia</div><div class="v">${e.entryQuality.distanceAtr != null ? e.entryQuality.distanceAtr.toFixed(2)+' ATR' : '—'}</div></div>
-                        <div class="eq-cell"><div class="k">RVOL</div><div class="v">${e.entryQuality.rvol != null ? e.entryQuality.rvol.toFixed(2)+'×' : '—'}</div></div>
-                        <div class="eq-cell"><div class="k">Riesgo</div><div class="v">${e.entryQuality.riskAtr.toFixed(2)} ATR</div></div>
-                    </div>
-                </div>
+                ${softFilterHtml}
+                ${lifecycleStrip}
+                ${renderEntryQualityPanel(e.entryQuality)}
                 <div class="entry-prices">
                     <div class="entry-price-item">
-                        <div class="ep-label">Entrada</div>
+                        <div class="ep-label">${entryLabel}</div>
                         <div class="ep-value">$${e.entry.toFixed(2)}</div>
+                        ${entrySub}
                     </div>
                     <div class="entry-price-item stop">
                         <div class="ep-label">Stop</div>
@@ -2258,16 +2939,39 @@ function renderEntries(symbol) {
     container.innerHTML = recHtml + setupsHtml;
 }
 
-/* =========================================================
-   CARTERA
-========================================================= */
+/* CARTERA */
 let manualPositions = [];
-function saveManualPositions() { safeSetItem("sa_manual_positions", JSON.stringify(manualPositions)); }
+function saveManualPositions() { return trySave("sa_manual_positions", JSON.stringify(manualPositions)); }
 function loadManualPositions() {
-    try { const raw = localStorage.getItem("sa_manual_positions"); if (raw) manualPositions = JSON.parse(raw) || []; }
-    catch(e) { manualPositions = []; }
+    try {
+        const raw = localStorage.getItem("sa_manual_positions");
+        if (raw) manualPositions = JSON.parse(raw) || [];
+        else manualPositions = [];
+    } catch(e) { console.warn('[loadManualPositions] error', e); manualPositions = []; }
 }
-
+const CLOSED_HISTORY_KEY = 'sa_closed_positions';
+let _closedHistoryMem = null;
+function loadClosedHistory() {
+    if (_closedHistoryMem) return _closedHistoryMem.slice();
+    try {
+        const raw = localStorage.getItem(CLOSED_HISTORY_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        _closedHistoryMem = list;
+        return list.slice();
+    } catch(_) { return []; }
+}
+function saveClosedHistory(list) {
+    _closedHistoryMem = Array.isArray(list) ? list.slice() : [];
+    const payload = JSON.stringify(_closedHistoryMem);
+    let ok = safeSetItem(CLOSED_HISTORY_KEY, payload);
+    if (!ok) {
+        console.warn('[closed history] localStorage lleno, podando caches de precio...');
+        prunePriceCache(0.3);
+        ok = safeSetItem(CLOSED_HISTORY_KEY, payload);
+    }
+    if (!ok) console.error('[closed history] No se pudo persistir — sólo memoria. Exporta el JSON.');
+    return ok;
+}
 function addManualPosition() {
     const symbolEl = document.getElementById("posSymbol");
     const sharesEl = document.getElementById("posShares");
@@ -2280,12 +2984,10 @@ function addManualPosition() {
         return;
     }
     const id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-
     const live = lastSymbolsData?.[symbol];
     const topSetup = live?.entries?.[0] || null;
     const regimeBadgeEl = document.getElementById('regimeBadge');
     const regimeText = (regimeBadgeEl && regimeBadgeEl.style.display !== 'none') ? regimeBadgeEl.textContent.replace('● ', '').trim() : null;
-
     manualPositions.push({
         id, symbol, shares, entry,
         entryDate: new Date().toISOString(),
@@ -2294,6 +2996,7 @@ function addManualPosition() {
         setupQuality: topSetup?.quality ?? null,
         entryQualityScore: topSetup?.entryQuality?.score ?? null,
         entryQualityState: topSetup?.entryQuality?.state || null,
+        entryType: topSetup?.entryType || null,
         t1: topSetup?.t1 ?? null,
         t2: topSetup?.t2 ?? null,
         regime: regimeText,
@@ -2306,13 +3009,13 @@ function addManualPosition() {
     renderManualPositions();
     renderPortfolioHeat();
     if (topSetup) {
-        toast(`${symbol} añadido · Setup ${topSetup.name} Q${topSetup.quality}`, "success", 3500);
+        toast(`${symbol} añadido · Setup ${topSetup.name} Q${topSetup.quality}${topSetup.entryType === 'limit' ? ' · orden límite' : ''}`, "success", 3500);
     } else {
         toast(`${symbol} añadido a cartera`, "success");
     }
 }
 function removeManualPosition(id) {
-    manualPositions = manualPositions.filter(p => p.id !== id);
+    manualPositions = manualPositions.filter(p => String(p.id) !== String(id));
     saveManualPositions(); renderManualPositions(); renderPortfolioHeat();
 }
 function togglePositionExpand(id) {
@@ -2320,13 +3023,13 @@ function togglePositionExpand(id) {
     renderManualPositions();
 }
 function updatePositionField(id, field, value) {
-    const p = manualPositions.find(x => x.id === id);
+    const p = manualPositions.find(x => String(x.id) === String(id));
     if (!p) return;
     p[field] = value;
     saveManualPositions();
 }
 function updatePositionNumber(id, field, raw) {
-    const p = manualPositions.find(x => x.id === id);
+    const p = manualPositions.find(x => String(x.id) === String(id));
     if (!p) return;
     const v = parseFloat(raw);
     p[field] = isFinite(v) ? v : null;
@@ -2338,7 +3041,6 @@ function savePositionJournal(id) {
     toast("Journaling guardado", "success");
     renderPortfolioHeat();
 }
-
 function computeTrailingStops(position) {
     const live = lastSymbolsData?.[position.symbol];
     const fullData = lastFetchedData[position.symbol];
@@ -2347,22 +3049,17 @@ function computeTrailingStops(position) {
     if (!atr) return null;
     const price = live.price;
     const result = {};
-
     const last22 = fullData.slice(-22);
     const maxHigh = last22.reduce((m, d) => Math.max(m, d.high), -Infinity);
     result.chandelier = maxHigh - 3 * atr;
-
     const closes = fullData.map(d => d.close);
     const ema20Arr = ema(closes, 20);
     const ema20 = ema20Arr[ema20Arr.length - 1];
-    if (ema20 != null && price > ema20 * 1.02) result.ema20 = ema20 * 0.99;
-
+    if (ema20 != null && price > ema20 * 1.02) result.ema20 = ema20 - 0.5 * atr;
     const swing = recentSwingLow(fullData, 2, 10);
     if (swing) result.swing10 = swing.price - 0.5 * atr;
-
     return result;
 }
-
 function computeRMultiple(position) {
     const live = lastSymbolsData?.[position.symbol];
     const price = live?.price ?? position.entry;
@@ -2378,113 +3075,100 @@ function computeRMultiple(position) {
     return (price - position.entry) / riskPerShare;
 }
 
-/* =========================================================
-   EXIT SIGNAL ENGINE
-========================================================= */
-
+/* EXIT SIGNAL ENGINE */
 function detectRsiDivergence(data, lookback = 60, strength = 3) {
     const n = data.length;
     if (n < lookback + 5) return { bearish: false, bullish: false, detail: null };
-
     const closes = data.map(d => d.close);
     const rsiArr = rsi(closes, RSI_PERIOD);
     const { highs, lows } = findSwings(data, lookback, strength);
-
+    const recentRsi = rsiArr.slice(-60).filter(v => v != null);
+    if (recentRsi.length < 20) return { bearish: false, bullish: false, detail: null };
+    const meanR = recentRsi.reduce((a,b) => a+b, 0) / recentRsi.length;
+    const varR = recentRsi.reduce((a,b) => a + Math.pow(b-meanR, 2), 0) / recentRsi.length;
+    const stdevR = Math.sqrt(varR);
+    const threshold = Math.max(3, 0.5 * stdevR);
     let bearish = false, bearishDetail = null;
     if (highs.length >= 2) {
         const last = highs[highs.length - 1];
         const prev = highs[highs.length - 2];
         const rL = rsiArr[last.index], rP = rsiArr[prev.index];
         const recentEnough = (n - 1 - last.index) <= 15;
-        if (recentEnough && last.price > prev.price && rL != null && rP != null && rL < rP - 3) {
+        if (recentEnough && last.price > prev.price && rL != null && rP != null && rL < rP - threshold) {
             bearish = true;
-            bearishDetail = { priceDelta: last.price - prev.price, rsiDelta: rL - rP };
+            bearishDetail = { priceDelta: last.price - prev.price, rsiDelta: rL - rP, threshold };
         }
     }
-
     let bullish = false, bullishDetail = null;
     if (lows.length >= 2) {
         const last = lows[lows.length - 1];
         const prev = lows[lows.length - 2];
         const rL = rsiArr[last.index], rP = rsiArr[prev.index];
         const recentEnough = (n - 1 - last.index) <= 15;
-        if (recentEnough && last.price < prev.price && rL != null && rP != null && rL > rP + 3) {
+        if (recentEnough && last.price < prev.price && rL != null && rP != null && rL > rP + threshold) {
             bullish = true;
-            bullishDetail = { priceDelta: last.price - prev.price, rsiDelta: rL - rP };
+            bullishDetail = { priceDelta: last.price - prev.price, rsiDelta: rL - rP, threshold };
         }
     }
-
     return { bearish, bullish, detail: bearish ? bearishDetail : bullishDetail };
 }
-
 function detectVolumeClimax(data, lookback = 60) {
     const n = data.length;
     if (n < 25) return { exhaustion: false, capitulation: false };
-
     const last = data[n - 1];
     const recent = data.slice(-lookback, -1);
     if (recent.length < 20) return { exhaustion: false, capitulation: false };
-
     const avgVol = recent.reduce((a, d) => a + (d.volume || 0), 0) / recent.length;
     const avgRange = recent.reduce((a, d) => a + (d.high - d.low), 0) / recent.length;
     if (avgVol <= 0 || avgRange <= 0) return { exhaustion: false, capitulation: false };
-
     const rvol = (last.volume || 0) / avgVol;
     const lastRange = last.high - last.low;
     if (lastRange <= 0) return { exhaustion: false, capitulation: false };
     const rangeRatio = lastRange / avgRange;
-
     const upperWick = (last.high - Math.max(last.open, last.close)) / lastRange;
     const lowerWick = (Math.min(last.open, last.close) - last.low) / lastRange;
-
     return {
         exhaustion: rvol > 3 && rangeRatio > 1.5 && upperWick > 0.35,
         capitulation: rvol > 3 && rangeRatio > 1.5 && lowerWick > 0.35,
         rvol, rangeRatio
     };
 }
-
 function daysSinceEntry(position) {
     if (!position.entryDate) return null;
     const d1 = new Date(position.entryDate);
     const d2 = new Date();
     return Math.max(0, Math.floor((d2 - d1) / (1000 * 60 * 60 * 24)));
 }
-
 function computeHighWaterMark(position, fullData) {
-    if (!position.entryDate || !fullData) return null;
+    if (!position.entryDate || typeof position.entryDate !== 'string' || position.entryDate.length < 10) return null;
+    if (!Array.isArray(fullData) || !fullData.length) return null;
     const entryDay = position.entryDate.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(entryDay)) return null;
     let max = -Infinity;
     for (const d of fullData) {
-        if (d.datetime >= entryDay && d.high > max) max = d.high;
+        if (d?.datetime && d.datetime >= entryDay && isFinite(d.high) && d.high > max) max = d.high;
     }
     return max === -Infinity ? null : max;
 }
-
 function computeExitSignal(position, live, fullData) {
     if (!live || !fullData || fullData.length < 30) {
         return { action: 'HOLD', severity: 'ok', reasons: [], rMult: null, hwm: null, noData: true };
     }
-
     const reasons = [];
     let severity = 0;
     const addReason = (text, level) => {
         reasons.push({ text, level });
         if (level > severity) severity = level;
     };
-
     const price = live.price;
     const atr = live.atr;
     const stopInit = position.stopInitial;
-
     if (stopInit && price <= stopInit) {
         addReason(`Precio $${price.toFixed(2)} ≤ stop inicial $${stopInit.toFixed(2)}`, 3);
     }
-
     if (live.trend === 'BAJISTA') {
-        addReason('Tendencia diaria BAJISTA (precio < EMA20 < EMA50 < EMA200)', 3);
+        addReason('Tendencia diaria BAJISTA (precio < EMA20 < EMA50 < EMA200)', 2);
     }
-
     const closes = fullData.map(d => d.close);
     const macdObj = macd(closes, 12, 26, 9);
     const n = macdObj.macd.length;
@@ -2494,22 +3178,19 @@ function computeExitSignal(position, live, fullData) {
         const crossToday = macdPrev > sigPrev && macdLast <= sigLast;
         const crossRecent = macdLast < sigLast && (macdLast - sigLast) < (macdPrev - sigPrev);
         if (crossToday && live.ema20 != null && price < live.ema20) {
-            addReason('MACD cruce bajista hoy + precio < EMA20', 3);
+            addReason('MACD cruce bajista hoy + precio < EMA20', 2);
         } else if (crossRecent && live.rsi != null && live.rsi < 45) {
             addReason('MACD momentum bajista + RSI débil', 2);
         }
     }
-
     const div = detectRsiDivergence(fullData);
     if (div.bearish && div.detail) {
-        addReason(`Divergencia bajista RSI (ΔRSI ${div.detail.rsiDelta.toFixed(1)})`, 2);
+        addReason(`Divergencia bajista RSI (ΔRSI ${div.detail.rsiDelta.toFixed(1)} · umbral ±${div.detail.threshold.toFixed(1)})`, 2);
     }
-
     const climax = detectVolumeClimax(fullData);
     if (climax.exhaustion) {
         addReason(`Climax de agotamiento (RVOL ${climax.rvol.toFixed(1)}×, rango ${climax.rangeRatio.toFixed(1)}×)`, 2);
     }
-
     const hwm = computeHighWaterMark(position, fullData);
     const t1 = position.t1 || null;
     const reachedT1 = t1 != null && hwm != null && hwm >= t1;
@@ -2517,45 +3198,37 @@ function computeExitSignal(position, live, fullData) {
     if (days != null && days >= 20 && !reachedT1) {
         addReason(`${days} días desde entrada sin alcanzar T1`, 2);
     }
-
     if (live.ema20 != null && atr) {
         const ext = (price - live.ema20) / atr;
         if (ext > 3.0) addReason(`Parabólico: +${ext.toFixed(1)} ATR sobre EMA20`, 2);
         else if (ext > 2.5) addReason(`Extendido: +${ext.toFixed(1)} ATR sobre EMA20`, 1);
     }
-
     if (live.rsi != null && live.rsi > 80) {
         addReason(`RSI ${live.rsi.toFixed(0)} en sobrecompra extrema`, 1);
     }
-
     if (live.rsi != null && live.rsi < 50 && live.ema20 != null && price > live.ema20) {
         addReason('RSI < 50 con precio aún sobre EMA20 (momentum débil)', 1);
     }
-
     if (reachedT1) {
         addReason(`T1 $${t1.toFixed(2)} alcanzado — cerrar 50% y stop a BE`, 1);
     }
-
     const trailing = computeTrailingStops(position);
     if (trailing) {
         const chandelier = trailing.chandelier;
         if (chandelier != null && price <= chandelier) {
-            addReason(`Chandelier 22/3 violado: $${price.toFixed(2)} ≤ $${chandelier.toFixed(2)}`, 3);
+            addReason(`Chandelier 22/3 perforado: $${price.toFixed(2)} ≤ $${chandelier.toFixed(2)}`, 3);
         }
     }
-
     let action = 'HOLD', severityLabel = 'ok';
     if (severity >= 3) { action = 'CLOSE'; severityLabel = 'critical'; }
     else if (severity === 2) { action = 'REDUCE'; severityLabel = 'warning'; }
     else if (severity === 1) { action = 'TRAIL'; severityLabel = 'info'; }
-
     return {
         action, severity: severityLabel, reasons,
         rMult: computeRMultiple(position),
         hwm
     };
 }
-
 function renderExitSignalHTML(signal, positionId) {
     if (!signal || signal.noData) {
         return `
@@ -2568,21 +3241,17 @@ function renderExitSignalHTML(signal, positionId) {
                 </ul>
             </div>`;
     }
-
     const emoji = { CLOSE: '🚨', REDUCE: '⚠️', TRAIL: '📍', HOLD: '✓' }[signal.action] || '•';
     const rTxt = signal.rMult != null ? `<span class="es-rmult">${signal.rMult >= 0 ? '+' : ''}${signal.rMult.toFixed(2)}R</span>` : '';
-
     const reasonsHtml = signal.reasons.length
         ? `<ul class="es-reasons">${signal.reasons.map(r => `<li class="es-reason level-${r.level}">${escapeHtml(r.text)}</li>`).join('')}</ul>`
         : `<ul class="es-reasons"><li class="es-reason level-1">Ninguna señal de salida activa · mantén trailing</li></ul>`;
-
     const actionsHtml = (signal.action === 'CLOSE' || signal.action === 'REDUCE')
         ? `<div class="es-actions">
-             <button class="es-close-btn" onclick="closePositionWithReason('${positionId}')">Cerrar posición</button>
-             <button class="es-snooze-btn" onclick="togglePositionExpand('${positionId}')">Ver journaling</button>
+             <button class="es-close-btn" onclick="closePositionWithReason('${escapeHtml(String(positionId))}')">Cerrar posición</button>
+             <button class="es-snooze-btn" onclick="togglePositionExpand('${escapeHtml(String(positionId))}')">Ver journaling</button>
            </div>`
         : '';
-
     return `
         <div class="exit-signal ${signal.severity}">
             <div class="es-head">
@@ -2593,11 +3262,9 @@ function renderExitSignalHTML(signal, positionId) {
             ${actionsHtml}
         </div>`;
 }
-
 function renderManualPositions() {
     const container = document.getElementById("manualPositionsList"); if (!container) return;
     if (!manualPositions.length) { container.innerHTML = '<div class="empty-state" style="padding:16px;">Sin posiciones</div>'; return; }
-
     container.innerHTML = manualPositions.map(p => {
         const live = lastSymbolsData?.[p.symbol];
         const price = live?.price ?? p.entry;
@@ -2611,7 +3278,6 @@ function renderManualPositions() {
         const score = live?.score ?? null;
         const trailing = computeTrailingStops(p);
         const isExpanded = expandedPositionId === p.id;
-
         let state = "warn", statusText = "Sin análisis", statusDetail = "Analiza el ticker";
         if (live) {
             if (liveStop && price <= liveStop) { state = "danger"; statusText = "STOP TÉCNICO"; statusDetail = `≤ $${liveStop.toFixed(2)}`; }
@@ -2621,31 +3287,27 @@ function renderManualPositions() {
         }
         const pnlClass = pnlPct >= 0 ? "pos" : "neg";
         const rClass = rMult == null ? '' : rMult >= 0 ? 'pos' : 'neg';
-
-        // ═══ EXIT SIGNAL ═══
         const fullData = lastFetchedData[p.symbol];
         const exitSignal = live ? computeExitSignal(p, live, fullData) : null;
         const signalClass = exitSignal ? `signal-${exitSignal.severity}` : '';
         const exitHtml = exitSignal ? renderExitSignalHTML(exitSignal, p.id) : '';
-
         const trailingHtml = trailing ? `
             <div class="pos-trailing">
                 <span class="k">Chandelier 22/3</span><span class="v">$${trailing.chandelier.toFixed(2)}</span>
                 ${trailing.ema20 ? `<span class="k">EMA20 trailing</span><span class="v">$${trailing.ema20.toFixed(2)}</span>` : ''}
                 ${trailing.swing10 ? `<span class="k">Swing low 10</span><span class="v">$${trailing.swing10.toFixed(2)}</span>` : ''}
             </div>` : '';
-
         let setupHint = '';
         if (p.setupName) {
             const eqTxt = p.entryQualityScore != null
                 ? ` · Entrada ${p.entryQualityScore}${p.entryQualityState ? ' ('+p.entryQualityState+')' : ''}`
                 : '';
             const regimeTxt = p.regime ? ` · ${escapeHtml(p.regime)}` : '';
-            setupHint = `<div class="pos-orig-setup"><b>Setup entrada:</b> ${escapeHtml(p.setupName)} Q${p.setupQuality ?? '—'}${eqTxt}${regimeTxt}</div>`;
+            const limitTxt = p.entryType === 'limit' ? ' · <b style="color:#32d4e0;">orden límite</b>' : '';
+            setupHint = `<div class="pos-orig-setup"><b>Setup entrada:</b> ${escapeHtml(p.setupName)} Q${p.setupQuality ?? '—'}${eqTxt}${regimeTxt}${limitTxt}</div>`;
         } else if (live?.entries?.length) {
             setupHint = `<div class="pos-meta" style="font-size:10px;color:var(--text-3);">Setup actual: ${escapeHtml(live.entries[0].name)}</div>`;
         }
-
         return `
             <div class="pos-item ${state} ${isExpanded ? 'expanded' : ''} ${signalClass}">
                 <div>
@@ -2692,35 +3354,30 @@ function renderManualPositions() {
             </div>`;
     }).join("");
 }
-
 function closePositionWithReason(id) {
-    const pos = manualPositions.find(p => p.id === id);
-    if (!pos) return;
+    const pos = manualPositions.find(p => String(p.id) === String(id));
+    if (!pos) { toast('Posición no encontrada', 'error'); return; }
     const live = lastSymbolsData?.[pos.symbol];
     const signal = live ? computeExitSignal(pos, live, lastFetchedData[pos.symbol]) : null;
     const exitPrice = live?.price ?? pos.entry;
     const pnlPct = ((exitPrice - pos.entry) / pos.entry) * 100;
     const pnlDollar = (exitPrice - pos.entry) * pos.shares;
     const rMult = signal?.rMult ?? computeRMultiple(pos);
-
     const reasonText = signal && signal.reasons.length
         ? signal.reasons.filter(r => r.level >= 2).map(r => r.text).join(' · ')
         : 'Cierre manual';
-
     const confirmed = confirm(
         `Cerrar ${pos.symbol}\n\n` +
         `Entrada: $${pos.entry.toFixed(2)}\n` +
         `Salida: $${exitPrice.toFixed(2)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)\n` +
         `P&L: ${pnlDollar >= 0 ? '+' : ''}$${pnlDollar.toFixed(2)}\n` +
         `${rMult != null ? `R: ${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R\n` : ''}\n` +
-        `Motivo: ${reasonText}\n\n` +
-        `¿Confirmar cierre?`
+        `Motivo: ${reasonText}\n\n¿Confirmar cierre?`
     );
     if (!confirmed) return;
-
     const history = loadClosedHistory();
     history.push({
-        id: pos.id,
+        id: String(pos.id),
         symbol: pos.symbol,
         shares: pos.shares,
         entry: pos.entry,
@@ -2733,24 +3390,19 @@ function closePositionWithReason(id) {
         reason: reasonText,
         journal: pos.journal || ''
     });
-    saveClosedHistory(history);
-
-    manualPositions = manualPositions.filter(p => p.id !== id);
-    saveManualPositions();
+    const historySaved = saveClosedHistory(history);
+    manualPositions = manualPositions.filter(p => String(p.id) !== String(id));
+    const positionsSaved = saveManualPositions();
     renderManualPositions();
     renderPortfolioHeat();
     renderClosedHistory();
-    toast(`${pos.symbol} cerrada · ${rMult != null ? `${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R` : `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`}`, 'success', 4000);
+    if (!historySaved || !positionsSaved) {
+        toast('⚠ Cierre aplicado pero no persistido (almacenamiento lleno). Exporta el JSON y limpia caché en Config.', 'error', 7000);
+    } else {
+        toast(`${pos.symbol} cerrada · ${rMult != null ? `${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R` : `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`}`, 'success', 4000);
+    }
+    console.log('[close]', { id: pos.id, historySaved, positionsSaved, historyLen: history.length });
 }
-
-/* Historial de posiciones cerradas */
-const CLOSED_HISTORY_KEY = 'sa_closed_positions';
-function loadClosedHistory() {
-    try { const raw = localStorage.getItem(CLOSED_HISTORY_KEY); return raw ? JSON.parse(raw) : []; }
-    catch(_) { return []; }
-}
-function saveClosedHistory(list) { safeSetItem(CLOSED_HISTORY_KEY, JSON.stringify(list)); }
-
 function renderClosedHistory() {
     const container = document.getElementById('closedHistoryList');
     if (!container) return;
@@ -2762,7 +3414,6 @@ function renderClosedHistory() {
     const totalR = history.reduce((a, h) => a + (h.rMult || 0), 0);
     const wins = history.filter(h => (h.rMult || 0) > 0).length;
     const winRate = history.length ? Math.round((wins / history.length) * 100) : 0;
-
     container.innerHTML = `
         <div class="small" style="margin-bottom:8px;">${history.length} ops · Win rate ${winRate}% · R acumulado <b style="color:${totalR >= 0 ? 'var(--green)' : 'var(--red)'};">${totalR >= 0 ? '+' : ''}${totalR.toFixed(2)}R</b></div>
         ${history.slice(0, 20).map(h => {
@@ -2780,7 +3431,6 @@ function renderClosedHistory() {
         }).join('')}
     `;
 }
-
 function exportPositions() {
     const data = { positions: manualPositions, closed: loadClosedHistory(), exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -2791,29 +3441,31 @@ function exportPositions() {
     URL.revokeObjectURL(url);
     toast("Posiciones exportadas", "success");
 }
-
 function computePortfolioHeat() {
     const cfg = getRiskConfig();
+    const oneR = cfg.size * cfg.pct / 100;
     let totalHeatR = 0;
+    let totalDollarRisk = 0;
     const positions = [];
     for (const p of manualPositions) {
         const live = lastSymbolsData?.[p.symbol];
         const price = live?.price ?? p.entry;
         const atr = live?.atr;
         const stop = p.stopInitial ?? (atr ? price - 2 * atr : null);
-        let rRisk = 0;
+        let rRisk = 0, dollarRisk = 0;
         if (stop != null && stop > 0 && stop < price) {
-            rRisk = ((price - stop) / price) * (price * p.shares) / (cfg.size * cfg.pct / 100);
+            dollarRisk = (price - stop) * p.shares;
+            rRisk = dollarRisk / oneR;
         } else {
             rRisk = 1.0;
+            dollarRisk = oneR;
         }
-        const dollarRisk = rRisk * (cfg.size * cfg.pct / 100);
         totalHeatR += rRisk;
+        totalDollarRisk += dollarRisk;
         positions.push({ ...p, price, stop, rRisk, dollarRisk });
     }
-    return { totalHeatR, positions, cfg };
+    return { totalHeatR, totalDollarRisk, positions, cfg, oneR };
 }
-
 function computeCorrelation(posA, posB) {
     const a = lastFetchedData[posA.symbol];
     const b = lastFetchedData[posB.symbol];
@@ -2839,22 +3491,15 @@ function computeCorrelation(posA, posB) {
     if (da <= 0 || db <= 0) return null;
     return num / Math.sqrt(da * db);
 }
-
 function renderPortfolioHeat() {
     const panel = document.getElementById('portfolioHeatPanel');
     if (!panel) return;
-    const { totalHeatR, positions, cfg } = computePortfolioHeat();
-
-    if (!manualPositions.length) {
-        panel.innerHTML = '';
-        return;
-    }
-
+    const { totalHeatR, totalDollarRisk, positions, cfg, oneR } = computePortfolioHeat();
+    if (!manualPositions.length) { panel.innerHTML = ''; return; }
     const pct = Math.min(100, (totalHeatR / cfg.maxHeatR) * 100);
     let cls = '';
     if (pct >= 90) cls = 'danger';
     else if (pct >= 70) cls = 'warn';
-
     const warnings = [];
     for (let i = 0; i < positions.length; i++) {
         for (let j = i + 1; j < positions.length; j++) {
@@ -2864,9 +3509,6 @@ function renderPortfolioHeat() {
             }
         }
     }
-
-    const totalDollarRisk = positions.reduce((a, p) => a + p.dollarRisk, 0);
-
     panel.innerHTML = `
         <div class="heat-card ${cls}">
             <div class="heat-head">
@@ -2875,8 +3517,9 @@ function renderPortfolioHeat() {
             </div>
             <div class="heat-bar"><div class="heat-bar-fill ${cls}" style="width:${pct}%"></div></div>
             <div class="heat-rows">
-                <div class="heat-row"><span>Riesgo total abierto</span><b>$${totalDollarRisk.toFixed(0)}</b></div>
+                <div class="heat-row"><span>Riesgo total abierto ($)</span><b>$${totalDollarRisk.toFixed(0)}</b></div>
                 <div class="heat-row"><span>% de cuenta en riesgo</span><b>${(totalDollarRisk / cfg.size * 100).toFixed(2)}%</b></div>
+                <div class="heat-row"><span>1R objetivo por trade</span><b>$${oneR.toFixed(0)} (${cfg.pct}%)</b></div>
                 <div class="heat-row"><span>Posiciones abiertas</span><b>${positions.length}</b></div>
             </div>
             ${warnings.length ? `<div class="corr-warning"><b>⚠ Correlación alta detectada:</b> ${warnings.map(w => `${escapeHtml(w.a)}↔${escapeHtml(w.b)} (${w.c.toFixed(2)})`).join(' · ')} — considera reducir tamaño o tratar como una sola apuesta.</div>` : ''}
@@ -2884,9 +3527,90 @@ function renderPortfolioHeat() {
     `;
 }
 
-/* =========================================================
-   CHART CONTROLS
-========================================================= */
+/* REFRESH PRECIOS */
+function savePriceSnapshot() {
+    if (!lastSymbolsData) return;
+    const snapshot = {};
+    const symbols = new Set(manualPositions.map(p => p.symbol));
+    for (const sym of symbols) {
+        const live = lastSymbolsData[sym];
+        if (!live) continue;
+        const { entries, ...serializable } = live;
+        snapshot[sym] = serializable;
+    }
+    trySave(PRICE_SNAPSHOT_KEY, JSON.stringify({ ts: Date.now(), data: snapshot }));
+}
+function loadPriceSnapshot() {
+    try {
+        const raw = localStorage.getItem(PRICE_SNAPSHOT_KEY);
+        if (!raw) return;
+        const snap = JSON.parse(raw);
+        if (!snap || !snap.data) return;
+        if (!lastSymbolsData) lastSymbolsData = {};
+        for (const sym in snap.data) {
+            lastSymbolsData[sym] = { ...(lastSymbolsData[sym] || {}), ...snap.data[sym] };
+        }
+    } catch(_) {}
+}
+function updateLastPriceUpdate() {
+    const el = document.getElementById('lastPriceUpdate');
+    if (!el) return;
+    try {
+        const raw = localStorage.getItem(PRICE_SNAPSHOT_KEY);
+        if (!raw) { el.textContent = 'Sin actualización previa'; return; }
+        const { ts } = JSON.parse(raw);
+        const d = new Date(ts);
+        const diffMin = Math.round((Date.now() - ts) / 60000);
+        let ago;
+        if (diffMin < 1) ago = 'ahora mismo';
+        else if (diffMin < 60) ago = `hace ${diffMin} min`;
+        else if (diffMin < 1440) ago = `hace ${Math.round(diffMin/60)} h`;
+        else ago = `hace ${Math.round(diffMin/1440)} d`;
+        el.textContent = `Última actualización: ${d.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })} (${ago})`;
+    } catch(_) { el.textContent = ''; }
+}
+async function refreshPortfolioPrices() {
+    const key = document.getElementById('apikey')?.value || localStorage.getItem('td_key');
+    if (!key) { toast('Configura tu API Key primero', 'error'); return; }
+    const symbols = [...new Set(manualPositions.map(p => p.symbol))];
+    if (!symbols.length) { toast('Sin posiciones en cartera', 'warn'); return; }
+    const btn = document.getElementById('refreshPricesBtn');
+    const originalText = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; }
+    setStatus(`Actualizando ${symbols.length}…`, 'running');
+    let done = 0, ok = 0;
+    const outputsize = 300;
+    for (const sym of symbols) {
+        if (btn) btn.textContent = `${done + 1}/${symbols.length} · ${sym}`;
+        try {
+            const data = await fetchAllData(sym, key, outputsize, true);
+            if (!data || data.length < MIN_BARS) throw new Error(`datos insuficientes (${data?.length ?? 0})`);
+            lastFetchedData[sym] = data;
+            const tech = analyzeTechnicals(data);
+            const prev = lastSymbolsData?.[sym] || {};
+            ['rsRating','weeklyTrend','weeklyRsi','rsVsSector','sectorETF','daysEarnings','earningsDate']
+                .forEach(k => { if (prev[k] !== undefined) tech[k] = prev[k]; });
+            if (prev.entries) tech.entries = prev.entries;
+            if (!lastSymbolsData) lastSymbolsData = {};
+            lastSymbolsData[sym] = { ...prev, ...tech };
+            ok++;
+        } catch (e) {
+            console.warn('[refresh] error en', sym, e);
+        }
+        done++;
+    }
+    savePriceSnapshot();
+    renderManualPositions();
+    renderPortfolioHeat();
+    updateLastPriceUpdate();
+    if (btn) { btn.disabled = false; btn.textContent = originalText; }
+    setStatus('Listo', 'done');
+    setTimeout(() => setStatus('Listo', 'done'), 2000);
+    if (ok === symbols.length) toast(`Precios actualizados · ${ok}/${symbols.length}`, 'success');
+    else toast(`Actualizados ${ok}/${symbols.length} · revisa consola`, 'warn', 4000);
+}
+
+/* CHART CONTROLS */
 function setChartStyle(style) {
     chartStyle = style;
     document.querySelectorAll('[data-chart-style]').forEach(b => b.classList.toggle('active', b.dataset.chartStyle === style));
@@ -2907,9 +3631,7 @@ document.addEventListener('click', (e) => {
     if (currentChartSymbol) renderPriceChart(currentChartSymbol);
 });
 
-/* =========================================================
-   RESULT CARDS
-========================================================= */
+/* RESULT CARDS */
 function renderResultCards(results) {
     const container = document.getElementById("resultCards"); if (!container) return;
     if (!results.length) { container.innerHTML = '<div class="empty-state"><span class="icon">📊</span>Sin datos.</div>'; return; }
@@ -2922,11 +3644,12 @@ function renderResultCards(results) {
         const chg20 = r.change20 != null ? r.change20 : 0;
         const chg20Color = chg20 >= 0 ? 'var(--green)' : 'var(--red)';
         const readyEntries = (r.entries || []).filter(e => e.status === 'READY').length;
+        const activeEntries = (r.entries || []).filter(e => e.status !== 'EXPIRED').length;
         const totalEntries = (r.entries || []).length;
+        const limitEntries = (r.entries || []).filter(e => e.entryType === 'limit').length;
         const entryBadge = readyEntries
-            ? `<span class="entry-badge-mini">● ${readyEntries} setup${readyEntries > 1 ? 's' : ''}</span>`
-            : (totalEntries ? `<span class="small" style="opacity:0.5;">${totalEntries} en formación</span>` : '');
-
+            ? `<span class="entry-badge-mini">● ${readyEntries} setup${readyEntries > 1 ? 's' : ''}${limitEntries ? ` (${limitEntries} límite)` : ''}</span>`
+            : (activeEntries ? `<span class="small" style="opacity:0.5;">${activeEntries} en formación</span>` : (totalEntries ? `<span class="small" style="opacity:0.4;">${totalEntries} expirado${totalEntries>1?'s':''}</span>` : ''));
         const rsBadge = r.rsRating != null
             ? `<span class="ctx-badge ${r.rsRating > 2 ? 'rs-strong' : r.rsRating < -2 ? 'rs-weak' : 'rs-neutral'}">RS ${r.rsRating >= 0 ? '+' : ''}${r.rsRating.toFixed(1)}%</span>`
             : '';
@@ -2936,7 +3659,7 @@ function renderResultCards(results) {
         const eBadge = r.daysEarnings != null
             ? `<span class="ctx-badge ${r.daysEarnings <= 5 ? 'earnings' : r.daysEarnings <= 14 ? 'warn' : 'neutral'}">E ${r.daysEarnings}d</span>`
             : '';
-
+        const bestQuality = (r.entries || [])[0]?.quality;
         return `
             <div class="result-card" data-idx="${i}">
                 <div class="head">
@@ -2944,22 +3667,10 @@ function renderResultCards(results) {
                     <span class="price">$${r.price.toFixed(2)}</span>
                 </div>
                 <div class="grid">
-                    <div class="field">
-                        <div class="lbl">Score</div>
-                        <div class="val" style="color:${cls.color};">${r.score}</div>
-                    </div>
-                    <div class="field">
-                        <div class="lbl">RSI 14</div>
-                        <div class="val">${rsiTxt}</div>
-                    </div>
-                    <div class="field">
-                        <div class="lbl">ADX 14</div>
-                        <div class="val">${adxTxt}</div>
-                    </div>
-                    <div class="field">
-                        <div class="lbl">Δ 20d</div>
-                        <div class="val" style="color:${chg20Color};">${chg20 >= 0 ? '+' : ''}${chg20.toFixed(1)}%</div>
-                    </div>
+                    <div class="field"><div class="lbl">Score</div><div class="val" style="color:${cls.color};">${r.score}</div></div>
+                    <div class="field"><div class="lbl">RSI 14</div><div class="val">${rsiTxt}</div></div>
+                    <div class="field"><div class="lbl">ADX 14</div><div class="val">${adxTxt}</div></div>
+                    <div class="field"><div class="lbl">Δ 20d</div><div class="val" style="color:${chg20Color};">${chg20 >= 0 ? '+' : ''}${chg20.toFixed(1)}%</div></div>
                 </div>
                 ${r.scoreParts ? `<div class="score-breakdown">
                     <div class="score-component"><div class="k">Trend</div><div class="v">${r.scoreParts.trend}</div></div>
@@ -2968,7 +3679,7 @@ function renderResultCards(results) {
                     <div class="score-component"><div class="k">Vol</div><div class="v">${r.scoreParts.participation}</div></div>
                     <div class="score-component"><div class="k">Estr</div><div class="v">${r.scoreParts.structure}</div></div>
                 </div>` : ''}
-                ${(rsBadge || wBadge || eBadge) ? `<div class="ctx-badges" style="margin-top:8px;padding-top:0;border-top:none;">${rsBadge}${wBadge}${eBadge}</div>` : ''}
+                ${(rsBadge || wBadge || eBadge || bestQuality != null) ? `<div class="ctx-badges" style="margin-top:8px;padding-top:0;border-top:none;align-items:center;">${rsBadge}${wBadge}${eBadge}${bestQuality != null ? setupQualityBadge(bestQuality) : ''}</div>` : ''}
                 <div class="foot">
                     <span class="signal-badge ${trendClass}">${trend}</span>
                     <span class="small">MACD <b style="color:${r.macdBull ? 'var(--green)' : 'var(--red)'};">${r.macdBull ? 'Bull' : 'Bear'}</b></span>
@@ -2990,25 +3701,20 @@ document.addEventListener("click", (e) => {
     showMobileTab("chart");
 });
 
-/* =========================================================
-   PRICE CHART
-========================================================= */
+/* PRICE CHART */
 function renderPriceChart(symbol) {
     if (!hasChartJs()) return;
     const fullData = lastFetchedData[symbol];
     if (!fullData || fullData.length < 20) return;
     currentChartSymbol = symbol;
-
     const card = document.getElementById("priceChartCard");
     const empty = document.getElementById("chartEmpty");
     if (card) card.style.display = "block";
     if (empty) empty.style.display = "none";
-
     const totalLen = fullData.length;
     const startIdx = visibleWindow === Infinity ? 0 : Math.max(0, totalLen - visibleWindow);
     const data = fullData.slice(startIdx);
     const dates = data.map(d => new Date(d.datetime + 'T12:00:00').toLocaleDateString("es-ES", { day: "2-digit", month: "short" }));
-
     const closesFull = fullData.map(d => d.close);
     const ema20Full = ema(closesFull, 20);
     const ema50Full = ema(closesFull, 50);
@@ -3022,7 +3728,6 @@ function renderPriceChart(symbol) {
     const dhFull = donchianHighSeries(fullData, DONCHIAN_ENTRY);
     const dlFull = donchianLowSeries(fullData, DONCHIAN_EXIT);
     const channel = calculateTrendChannel(data);
-
     const closes = closesFull.slice(startIdx);
     const volumes = data.map(d => d.volume || 0);
     const ema20 = ema20Full.slice(startIdx);
@@ -3038,17 +3743,14 @@ function renderPriceChart(symbol) {
     const macdHist = macdFull.hist.slice(startIdx);
     const dhSeries = dhFull.slice(startIdx);
     const dlSeries = dlFull.slice(startIdx);
-
     const last = closes[closes.length - 1];
     const first = closes[0];
     const changePct = ((last - first) / first) * 100;
-
     document.getElementById("chartSymbol").textContent = symbol;
     document.getElementById("chartPrice").textContent = `$${last.toFixed(2)}`;
     const changeEl = document.getElementById("chartChange");
     changeEl.textContent = `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
     changeEl.className = `change ${changePct >= 0 ? 'pos' : 'neg'}`;
-
     const periodLabel = visibleWindow === Infinity ? 'Todo' :
                         visibleWindow === 30 ? '30 días' :
                         visibleWindow === 90 ? '90 días' :
@@ -3056,14 +3758,12 @@ function renderPriceChart(symbol) {
     const live = lastSymbolsData?.[symbol];
     document.getElementById("chartPeriod").textContent =
         `${periodLabel} · ${data.length} sesiones · Score ${live?.score ?? '—'} · ${live?.trend ?? ''}`;
-
     const atr = atrFull[atrFull.length - 1];
     const lastEma20 = ema20[ema20.length - 1];
     const lastEma50 = ema50[ema50.length - 1];
     const lastEma200 = ema200[ema200.length - 1];
     const lastRsi = rsiS[rsiS.length - 1];
     const lastAdx = adxFull.adx[adxFull.adx.length - 1];
-
     document.getElementById("csPrice").textContent = `$${last.toFixed(2)}`;
     document.getElementById("csEma20").textContent = lastEma20 != null ? `$${lastEma20.toFixed(2)}` : '—';
     document.getElementById("csEma50").textContent = lastEma50 != null ? `$${lastEma50.toFixed(2)}` : '—';
@@ -3074,9 +3774,7 @@ function renderPriceChart(symbol) {
     document.getElementById("csScore").textContent = live?.score ?? '—';
     document.getElementById("csRvol").textContent = live?.rvol != null ? `${live.rvol.toFixed(2)}×` : '—';
     document.getElementById("csRs").textContent = live?.rsRating != null ? `${live.rsRating >= 0 ? '+' : ''}${live.rsRating.toFixed(1)}%` : '—';
-
     const datasets = [];
-
     if (chartStyle === 'candles') {
         const N = data.length;
         const bodyPct = N <= 40 ? 0.90 : N <= 90 ? 0.85 : N <= 180 ? 0.75 : 0.62;
@@ -3098,7 +3796,6 @@ function renderPriceChart(symbol) {
             pointRadius: 0, fill: true, tension: 0.15, order: 0, yAxisID: "y"
         });
     }
-
     const pushPoint = (label, arr, color, order, dash, width) => {
         const pts = buildPointSeries(arr, dates);
         if (pts.length > 1) {
@@ -3115,7 +3812,6 @@ function renderPriceChart(symbol) {
     if (seriesVisibility.ema50) pushPoint('EMA50', ema50, '#ff9f0a', 2);
     if (seriesVisibility.ema200) pushPoint('EMA200', ema200, '#0a84ff', 2);
     if (seriesVisibility.sma200) pushPoint('SMA200', sma200, '#8e8e93', 2, [5, 4]);
-
     if (seriesVisibility.bb) {
         const bbUPts = buildPointSeries(bbU, dates);
         const bbLPts = buildPointSeries(bbL, dates);
@@ -3145,12 +3841,10 @@ function renderPriceChart(symbol) {
             }
         }
     }
-
     if (seriesVisibility.donchian) {
         pushPoint('Donchian High 20d', dhSeries, '#32d4e0', 4, [4, 3], 1.4);
         pushPoint('Donchian Low 10d', dlSeries, '#1a8a99', 4, [4, 3], 1.2);
     }
-
     if (seriesVisibility.channel && channel) {
         const upPts = buildPointSeries(channel.upper, dates);
         const loPts = buildPointSeries(channel.lower, dates);
@@ -3169,7 +3863,6 @@ function renderPriceChart(symbol) {
             });
         }
     }
-
     let priceMin = Infinity, priceMax = -Infinity;
     for (const d of data) {
         if (d.low < priceMin) priceMin = d.low;
@@ -3194,7 +3887,6 @@ function renderPriceChart(symbol) {
     const yPad = (priceMax - priceMin) * 0.06 || priceMax * 0.03;
     const yMin = Math.max(0, priceMin - yPad);
     const yMax = priceMax + yPad;
-
     const scales = {
         x: { grid: { color: "rgba(255,255,255,0.03)" },
              ticks: { color: "#636366", font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
@@ -3213,9 +3905,7 @@ function renderPriceChart(symbol) {
             yAxisID: "yVol", order: 8, grouped: false, categoryPercentage: 1.0, barPercentage: 0.7
         });
     }
-
     const structureKey = `${symbol}|${chartStyle}|${seriesVisibility.volume}|${seriesVisibility.ema20}|${seriesVisibility.ema50}|${seriesVisibility.ema200}|${seriesVisibility.sma200}|${seriesVisibility.bb}|${seriesVisibility.donchian}|${seriesVisibility.channel}|${visibleWindow}`;
-
     if (priceChart && priceChartStructureKey === structureKey) {
         priceChart.data.labels = dates;
         priceChart.data.datasets = datasets;
@@ -3250,12 +3940,10 @@ function renderPriceChart(symbol) {
             priceChartStructureKey = structureKey;
         } catch(e) { console.error(e); }
     }
-
     renderRsiPanel(dates, rsiS);
     renderMacdPanel(dates, macdLine, macdSig, macdHist);
     renderEntries(symbol);
 }
-
 function renderRsiPanel(dates, rsiS) {
     const canvas = document.getElementById("rsiChartCanvas"); if (!canvas) return;
     const datasets = [{
@@ -3291,7 +3979,6 @@ function renderRsiPanel(dates, rsiS) {
     if (rsiChart) { rsiChart.data = config.data; rsiChart.update('none'); }
     else { try { rsiChart = new Chart(canvas.getContext('2d'), config); } catch(e) { console.error(e); } }
 }
-
 function renderMacdPanel(dates, macdLine, macdSig, macdHist) {
     const canvas = document.getElementById("macdChartCanvas"); if (!canvas) return;
     const histColors = macdHist.map(v => v == null ? 'transparent' : v >= 0 ? 'rgba(48,209,88,0.7)' : 'rgba(255,69,58,0.7)');
@@ -3328,11 +4015,9 @@ function renderMacdPanel(dates, macdLine, macdSig, macdHist) {
     else { try { macdChart = new Chart(canvas.getContext('2d'), config); } catch(e) { console.error(e); } }
 }
 
-/* =========================================================
-   API COUNTER / CONFIG
-========================================================= */
+/* API COUNTER / CONFIG */
 function getApiCalls() { const s = localStorage.getItem("api_calls"); if (s) { try { const d = JSON.parse(s); if (d.date === today()) return d.count; } catch(_) {} } return 0; }
-function incrementApiCall() { safeSetItem("api_calls", JSON.stringify({date: today(), count: getApiCalls() + 1})); updateApiCounterDisplay(); }
+function incrementApiCall() { trySave("api_calls", JSON.stringify({date: today(), count: getApiCalls() + 1})); updateApiCounterDisplay(); }
 function updateApiCounterDisplay() {
     const calls = getApiCalls(); const pct = (calls / API_DAILY_LIMIT) * 100;
     const countEl = document.getElementById("apiCallsCount"); if (countEl) countEl.textContent = calls;
@@ -3345,8 +4030,8 @@ function updateApiCounterDisplay() {
         else { msg.textContent = `Quedan ${API_DAILY_LIMIT - calls}`; msg.className = "api-msg"; }
     }
 }
-function resetApiCounter() { safeSetItem("api_calls", JSON.stringify({date: today(), count: 0})); updateApiCounterDisplay(); }
-function saveKey() { const k = document.getElementById("apikey").value; if (k) safeSetItem("td_key", k); toast("API Key guardada", "success"); }
+function resetApiCounter() { trySave("api_calls", JSON.stringify({date: today(), count: 0})); updateApiCounterDisplay(); }
+function saveKey() { const k = document.getElementById("apikey").value; if (k) trySave("td_key", k); toast("API Key guardada", "success"); }
 function loadKey() { const k = localStorage.getItem("td_key"); if (k) { const el = document.getElementById("apikey"); if (el) el.value = k; } }
 function clearCache() {
     const toRemove = [];
@@ -3367,9 +4052,7 @@ function updateProgress(percent, text) {
     if (text) setStatus(text, percent >= 100 ? "done" : "running");
 }
 
-/* =========================================================
-   FETCH
-========================================================= */
+/* FETCH */
 let apiTimestamps = [], apiQueue = Promise.resolve();
 function apiGate() {
     const next = apiQueue.then(async () => {
@@ -3402,22 +4085,24 @@ async function fetchWithRetry(url, retries = MAX_RETRIES) {
         }
     }
 }
-async function fetchTimeSeries(symbol, key, outputsize, interval = '1day') {
+async function fetchTimeSeries(symbol, key, outputsize, interval = '1day', forceRefresh = false) {
     const ck = `price_${symbol}_${outputsize}_${interval}`;
-    const cached = localStorage.getItem(ck);
-    if (cached) {
-        try { const p = JSON.parse(cached); if (Date.now() - p.time < 5 * 60 * 1000) return p.data; } catch(_) {}
+    if (!forceRefresh) {
+        const cached = localStorage.getItem(ck);
+        if (cached) {
+            try { const p = JSON.parse(cached); if (Date.now() - p.time < 5 * 60 * 1000) return p.data; } catch(_) {}
+        }
     }
     const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&apikey=${key}`;
     await apiGate();
     const data = await fetchWithRetry(url);
     if (!data?.values?.length) return [];
     const values = data.values.reverse();
-    safeSetItem(ck, JSON.stringify({ time: Date.now(), data: values }));
+    trySave(ck, JSON.stringify({ time: Date.now(), data: values }));
     return values;
 }
-async function fetchAllData(symbol, key, outputsize) {
-    const price = await fetchTimeSeries(symbol, key, outputsize, '1day');
+async function fetchAllData(symbol, key, outputsize, forceRefresh = false) {
+    const price = await fetchTimeSeries(symbol, key, outputsize, '1day', forceRefresh);
     if (!price.length) throw new Error("sin precios");
     const out = [];
     for (const v of price) {
@@ -3435,14 +4120,11 @@ async function fetchAllData(symbol, key, outputsize) {
     return out;
 }
 
-/* =========================================================
-   ANÁLISIS TÉCNICO
-========================================================= */
+/* ANÁLISIS TÉCNICO */
 function analyzeTechnicals(data) {
     const n = data.length;
     const closes = data.map(d => d.close);
     const volumes = data.map(d => d.volume || 0);
-
     const ema20Arr = ema(closes, 20);
     const ema50Arr = ema(closes, 50);
     const ema200Arr = ema(closes, 200);
@@ -3451,25 +4133,20 @@ function analyzeTechnicals(data) {
     const macdObj = macd(closes, 12, 26, 9);
     const adxObj = adxCalc(data, 14);
     const atrArr = atrSeries(data, ATR_PERIOD);
-
     const last = n - 1;
     const price = closes[last];
     const prevClose = n > 1 ? closes[last-1] : price;
     const dayChange = prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
-
     let volSum = 0, volCount = 0;
     for (let i = Math.max(0, last - 19); i <= last; i++) { volSum += volumes[i]; volCount++; }
     const avgVolume = volCount ? volSum / volCount : 0;
     const volRatio = avgVolume > 0 ? volumes[last] / avgVolume : 0;
-
     const change20 = n > 20 ? ((price / closes[last - 20]) - 1) * 100 : null;
     const change50 = n > 50 ? ((price / closes[last - 50]) - 1) * 100 : null;
     const change200 = n > 200 ? ((price / closes[last - 200]) - 1) * 100 : null;
-
     const obvArr = computeOBV(data);
     const obvSlope = normalizedSlope(obvArr, 20);
     const rvol = computeRVOL(data, 20);
-
     const tech = {
         price, dayChange,
         ema20: ema20Arr[last], ema50: ema50Arr[last], ema200: ema200Arr[last],
@@ -3484,7 +4161,6 @@ function analyzeTechnicals(data) {
         obvSlope,
         rvol
     };
-
     tech.macdBull = tech.macd != null && tech.macdSignal != null && tech.macd > tech.macdSignal;
     tech.trend = classifyTrend(tech, tech.price);
     const structureState = isUptrendStructure(data, 60);
@@ -3494,10 +4170,8 @@ function analyzeTechnicals(data) {
     tech.rsiStatus = classifyRsi(tech.rsi);
     tech.stop = tech.atr ? tech.price - 2 * tech.atr : null;
     tech.target2R = tech.stop ? tech.price + 2 * (tech.price - tech.stop) : null;
-
     return tech;
 }
-
 function analyzeWeekly(weeklyData) {
     if (!weeklyData || weeklyData.length < 30) return { trend: null, rsi: null };
     const closes = weeklyData.map(d => d.close);
@@ -3516,7 +4190,6 @@ function analyzeWeekly(weeklyData) {
     }
     return { trend, rsi: rsiArr[last] };
 }
-
 function setAnalyzing(active, label) {
     const btn = document.getElementById('analyzeBtn');
     if (!btn) return;
@@ -3531,22 +4204,17 @@ function setAnalyzing(active, label) {
     }
 }
 
-/* =========================================================
-   RUN
-========================================================= */
+/* RUN */
 async function run() {
     const key = document.getElementById("apikey").value;
     if (!key) { toast("Introduce tu API Key en Config", "error"); return; }
-
     const tickers = document.getElementById("ticker").value.split(",").map(t => t.trim().toUpperCase()).filter(Boolean);
     if (!tickers.length) { toast("Introduce al menos un ticker", "error"); return; }
     const outputsize = parseInt(document.getElementById("outputsize").value);
-
     setAnalyzing(true, `Analizando ${tickers.length}…`);
     try {
         renderErrors([]);
         updateProgress(2, `Analizando ${tickers.length}...`);
-
         let regime = null;
         let spyData = null;
         try {
@@ -3557,12 +4225,9 @@ async function run() {
             if (!spyData) spyData = await fetchAllData('SPY', key, 300);
             spyDataCache = spyData;
         } catch (e) { console.warn('Régimen no disponible:', e); }
-
         const spyCloses = spyData ? spyData.map(d => d.close) : null;
-
         const results = [], symbolsData = {}, errors = [];
         lastFetchedData = {};
-
         for (let i = 0; i < tickers.length; i++) {
             const symbol = tickers[i];
             updateProgress(5 + (i / tickers.length) * 90, `${symbol}...`);
@@ -3571,14 +4236,11 @@ async function run() {
                 const data = await fetchAllData(symbol, key, outputsize);
                 if (data.length < MIN_BARS) { errors.push({ symbol, reason: `datos insuficientes (${data.length}, min ${MIN_BARS})` }); continue; }
                 lastFetchedData[symbol] = data;
-
                 const tech = analyzeTechnicals(data);
                 const closes = data.map(d => d.close);
-
                 if (spyCloses && spyCloses.length > 200) {
                     tech.rsRating = computeRsRating(closes, spyCloses);
                 }
-
                 try {
                     const weeklyRaw = await fetchTimeSeries(symbol, key, 300, '1week');
                     if (weeklyRaw && weeklyRaw.length > 30) {
@@ -3594,8 +4256,7 @@ async function run() {
                         tech.weeklyTrend = w.trend;
                         tech.weeklyRsi = w.rsi;
                     }
-                } catch(e) { /* silencioso */ }
-
+                } catch(e) {}
                 const sectorEtf = getSectorETF(symbol);
                 if (sectorEtf && spyCloses) {
                     try {
@@ -3606,15 +4267,13 @@ async function run() {
                         const sectorCloses = sectorCache[sectorEtf].map(d => d.close);
                         tech.rsVsSector = computeRsRating(closes, sectorCloses);
                         tech.sectorETF = sectorEtf;
-                    } catch(e) { /* silencioso */ }
+                    } catch(e) {}
                 }
-
                 try {
                     const eDate = await fetchEarningsDate(symbol, key);
                     tech.daysEarnings = daysUntil(eDate);
                     tech.earningsDate = eDate;
-                } catch(e) { /* silencioso */ }
-
+                } catch(e) {}
                 tech.entries = computeEntries(data, tech, regime);
                 results.push({ symbol, ...tech });
                 symbolsData[symbol] = tech;
@@ -3623,17 +4282,16 @@ async function run() {
                 console.error(symbol, e);
             }
         }
-
         results.sort((a, b) => b.score - a.score);
-
         if (results.length > 0) {
             const top = results[0];
             const topEl = document.getElementById("topDetails");
             if (topEl) {
                 const cls = classifyScore(top.score);
                 const readyTop = (top.entries || []).filter(e => e.status === 'READY').length;
+                const limitTop = (top.entries || []).filter(e => e.entryType === 'limit' && e.status === 'READY').length;
                 const rsTxt = top.rsRating != null ? ` · RS ${top.rsRating >= 0 ? '+' : ''}${top.rsRating.toFixed(1)}%` : '';
-                topEl.innerHTML = `<b>${escapeHtml(top.symbol)}</b> · Score <b style="color:${cls.color};">${top.score}</b> · ${top.trend}${rsTxt} · RSI ${top.rsi != null ? top.rsi.toFixed(1) : '—'}${readyTop ? ` · <b style="color:var(--green);">● ${readyTop} setup${readyTop > 1 ? 's' : ''}</b>` : ''}`;
+                topEl.innerHTML = `<b>${escapeHtml(top.symbol)}</b> · Score <b style="color:${cls.color};">${top.score}</b> · ${top.trend}${rsTxt} · RSI ${top.rsi != null ? top.rsi.toFixed(1) : '—'}${readyTop ? ` · <b style="color:var(--green);">● ${readyTop} setup${readyTop > 1 ? 's' : ''}${limitTop ? ` (${limitTop} límite)` : ''}</b>` : ''}`;
                 const bd = document.getElementById('topBreakdown');
                 if (bd && top.scoreParts) bd.innerHTML = `<div class="score-breakdown">
                     <div class="score-component"><div class="k">Trend</div><div class="v">${top.scoreParts.trend}/30</div></div>
@@ -3641,10 +4299,9 @@ async function run() {
                     <div class="score-component"><div class="k">Fuerza</div><div class="v">${top.scoreParts.strength}/20</div></div>
                     <div class="score-component"><div class="k">Vol</div><div class="v">${top.scoreParts.participation}/15</div></div>
                     <div class="score-component"><div class="k">Estr</div><div class="v">${top.scoreParts.structure}/15</div></div>
-                </div><div class="gate-note"><b>Lectura:</b> Score = estado técnico. Quality = confirmación del setup. Entry Score = calidad de ejecución adaptada al régimen. Exit Signal = motor de salida sobre posiciones abiertas.</div>`;
+                </div><div class="gate-note"><b>Lectura V4.5.5:</b> Golden Cross confirma. MTF semanal BAJISTA degrada la confirmación. Entradas extendidas se convierten en órdenes límite. Umbrales del motor editables en Config → Umbrales del motor.</div>`;
             }
         }
-
         window.currentResults = results;
         lastSymbolsData = symbolsData;
         renderResultCards(results);
@@ -3652,22 +4309,16 @@ async function run() {
         renderPortfolioHeat();
         renderClosedHistory();
         renderErrors(errors);
-
         updateProgress(100, `✓ ${results.length}/${tickers.length}`);
         setTimeout(() => setStatus("Listo", "done"), 2000);
-
         if (results.length > 0) {
             const firstCard = document.querySelector(`.result-card[data-idx="0"]`);
             if (firstCard) firstCard.classList.add("selected");
             try { renderPriceChart(results[0].symbol); } catch(_) {}
         }
-
         showMobileTab("results");
-
         if (errors.length) toast(`${errors.length} ticker(s) con incidencias`, "warn");
         else toast(`Análisis completado: ${results.length} ticker(s)`, "success");
-
-        // Aviso si alguna posición tiene exit signal CLOSE
         const closing = manualPositions.filter(p => {
             const l = lastSymbolsData?.[p.symbol];
             if (!l) return false;
@@ -3675,7 +4326,7 @@ async function run() {
             return s && s.action === 'CLOSE';
         });
         if (closing.length) {
-            toast(`🚨 ${closing.length} posición(es) con señal de CIERRE: ${closing.map(p => p.symbol).join(', ')}`, 'error', 8000);
+            toast(`${closing.length} posición(es) con señal de CIERRE: ${closing.map(p => p.symbol).join(', ')}`, 'error', 8000);
         }
     } finally {
         setAnalyzing(false);
@@ -3688,9 +4339,7 @@ function renderErrors(errors) {
     box.classList.add("visible");
 }
 
-/* =========================================================
-   INIT
-========================================================= */
+/* INIT */
 let appInitialized = false;
 function initApp() {
     if (appInitialized) return;
@@ -3699,18 +4348,19 @@ function initApp() {
     try { loadKey(); } catch(e) { console.warn(e); }
     try { updateApiCounterDisplay(); } catch(e) { console.warn(e); }
     try { loadManualPositions(); } catch(e) { console.warn(e); }
+    try { loadPriceSnapshot(); } catch(e) { console.warn(e); }
     try { renderManualPositions(); } catch(e) { console.warn(e); }
     try { renderPortfolioHeat(); } catch(e) { console.warn(e); }
     try { renderClosedHistory(); } catch(e) { console.warn(e); }
     try { renderWatchlist(); } catch(e) { console.warn(e); }
     try { loadRiskConfig(); } catch(e) { console.warn(e); }
     try { loadContextConfig(); } catch(e) { console.warn(e); }
-
+    try { loadThresholds(); } catch(e) { console.warn(e); }
+    try { updateLastPriceUpdate(); } catch(e) { console.warn(e); }
     document.querySelectorAll('[data-series]').forEach(b => {
         const s = b.dataset.series;
         if (s in seriesVisibility) b.classList.toggle('active', seriesVisibility[s]);
     });
-
     let resizeTimer;
     window.addEventListener("resize", () => {
         clearTimeout(resizeTimer);
@@ -3720,10 +4370,8 @@ function initApp() {
             try { if (macdChart) macdChart.resize(); } catch(_) {}
         }, 150);
     });
-
-    console.log('%cStockAnalyzer Pro V4 — Entry Quality + Exit Signal + RS + MTF + Portfolio Heat', 'color: #30d158; font-weight: bold;');
+    console.log('%cStockAnalyzer Pro V4.5.5 — Fix 1·7·9·10 + Setup Q destacado', 'color: #30d158; font-weight: bold;');
 }
-
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
 </script>
