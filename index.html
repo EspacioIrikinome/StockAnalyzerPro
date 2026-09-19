@@ -524,6 +524,65 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .ai-summary { font-size: 13.5px; line-height: 1.55; color: var(--text); margin-bottom: 14px; font-weight: 500; }
 .ai-pick-block { font-size: 11.5px; color: var(--text-2); line-height: 1.5; margin-top: 6px; }
 .ai-pick-block b { color: var(--text); font-weight: 700; }
+/* ═══ FIX MOBILE — Indicadores pestaña Gráfico ═══ */
+
+/* 1. Contenedores flex: permitir envolver correctamente, no desbordar */
+.chart-header,
+.chart-header .left,
+.chart-controls,
+.trades-window,
+.chart-stats-row,
+.chart-legend {
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* 2. Items: no permitir que se compriman por debajo de su contenido */
+.chart-toggle,
+.chart-stat,
+.legend-item {
+    flex-shrink: 0;
+}
+
+/* 3. Trades window: envolver en lugar de comprimir */
+.trades-window {
+    flex-wrap: wrap;
+}
+.trades-window button {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 60px;
+}
+
+/* 4. Chips de stats: una línea, sin romper el texto */
+.chart-stat {
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+/* 5. Leyenda: items que no se corten a mitad */
+.legend-item {
+    white-space: nowrap;
+}
+
+/* 6. Ajuste fino en pantallas pequeñas */
+@media (max-width: 520px) {
+    .chart-controls { gap: 5px; }
+    .chart-toggle { padding: 6px 9px; font-size: 10.5px; min-height: 30px; }
+
+    .trades-window button { padding: 6px 4px; font-size: 10.5px; min-height: 30px; }
+
+    .chart-stats-row { gap: 5px; }
+    .chart-stat { padding: 5px 8px; font-size: 10.5px; gap: 4px; }
+    .chart-stat b { font-size: 11.5px; }
+
+    .chart-legend { gap: 8px; font-size: 9.5px; }
+    .legend-line { width: 12px; }
+    .legend-dot { width: 9px; height: 9px; }
+
+    .chart-header .symbol,
+    .chart-header .price { font-size: 17px; }
+    .chart-header .change { font-size: 12px; }
+}
 </style>
 </head>
 
