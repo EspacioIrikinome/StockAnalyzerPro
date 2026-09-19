@@ -508,6 +508,22 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .ai-ticker-reason { font-size: 11.5px; color: var(--text-2); line-height: 1.45; }
 .ai-conviction { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.06em; background: rgba(191,90,242,0.15); color: var(--purple); text-transform: uppercase; margin: 0 6px; }
 .ai-summary { font-size: 13.5px; line-height: 1.55; color: var(--text); margin-bottom: 14px; font-weight: 500; }
+/* V4.6.4: enriquecimiento del render IA */
+.ai-ticker-list { display: flex; flex-direction: column; gap: 10px; }
+.ai-ticker-row { background: rgba(0,0,0,0.22); border-radius: 8px; padding: 10px 12px; border-left: 2px solid var(--text-3); }
+.ai-ticker-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.ai-ticker-sym { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+.ai-ticker-verdict { font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.06em; }
+.ai-ticker-buy  { background: rgba(48,209,88,0.18); color: var(--green); }
+.ai-ticker-wait { background: rgba(255,159,10,0.18); color: var(--orange); }
+.ai-ticker-skip { background: rgba(255,69,58,0.18); color: var(--red); }
+.ai-ticker-block { font-size: 11.5px; color: var(--text-2); line-height: 1.5; margin-top: 4px; }
+.ai-ticker-block b { color: var(--text); font-weight: 700; }
+.ai-ticker-reason { font-size: 11.5px; color: var(--purple); line-height: 1.45; margin-top: 6px; font-weight: 600; }
+.ai-conviction { font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.06em; background: rgba(191,90,242,0.15); color: var(--purple); text-transform: uppercase; }
+.ai-summary { font-size: 13.5px; line-height: 1.55; color: var(--text); margin-bottom: 14px; font-weight: 500; }
+.ai-pick-block { font-size: 11.5px; color: var(--text-2); line-height: 1.5; margin-top: 6px; }
+.ai-pick-block b { color: var(--text); font-weight: 700; }
 </style>
 </head>
 
@@ -3763,139 +3779,341 @@ function clearAICache() {
 
 function buildAIPayload(results, regime) {
     const max = getGeminiMaxTickers();
+    const SERIES_LEN = 20;   // últimas N barras de cada indicador
+
+    const tail = (arr, n = SERIES_LEN) => {
+        if (!Array.isArray(arr) || !arr.length) return [];
+        return arr.slice(-n).map(v => (v == null || !isFinite(v)) ? null : +v.toFixed(2));
+    };
+    const last = (arr) => {
+        if (!Array.isArray(arr) || !arr.length) return null;
+        for (let i = arr.length - 1; i >= 0; i--) {
+            if (arr[i] != null && isFinite(arr[i])) return +arr[i].toFixed(2);
+        }
+        return null;
+    };
+    const distPct = (price, v) => (price > 0 && v != null) ? +(((price - v) / v) * 100).toFixed(2) : null;
+
     const top = results.slice(0, max).map(r => {
-        const live = r;
-        // Score breakdown (los 5 componentes)
-        const breakdown = r.scoreParts ? {
+        const symbol = r.symbol;
+        const data = lastFetchedData[symbol] || [];
+        const price = r.price;
+
+        /* ── Históricos (recalculamos del data crudo para tener series) ── */
+        const closes = data.map(d => d.close);
+        const volumes = data.map(d => d.volume || 0);
+
+        const ema20S = ema(closes, 20);
+        const ema50S = ema(closes, 50);
+        const ema200S = ema(closes, 200);
+        const sma200S = sma(closes, 200);
+        const rsiS = rsi(closes, RSI_PERIOD);
+        const macdO = macd(closes, 12, 26, 9);
+        const adxO = adxCalc(data, 14);
+        const atrS = atrSeries(data, ATR_PERIOD);
+        const bbO = bollinger(closes, 20, 2);
+        const dh20S = donchianHighSeries(data, 20);
+        const dl10S = donchianLowSeries(data, 10);
+
+        /* ── Precio y acción reciente ── */
+        const closesTail = tail(closes, 30);
+        const priceChange = (n) => closes.length > n
+            ? +(((closes[closes.length-1] / closes[closes.length-1-n]) - 1) * 100).toFixed(2)
+            : null;
+
+        const priceAction = {
+            last_5_closes: tail(closes, 5),
+            last_20_closes: closesTail,
+            last_high_20d: data.length >= 20 ? +Math.max(...data.slice(-20).map(d => d.high)).toFixed(2) : null,
+            last_low_20d:  data.length >= 20 ? +Math.min(...data.slice(-20).map(d => d.low)).toFixed(2)  : null,
+            change_1d_pct: r.dayChange != null ? +r.dayChange.toFixed(2) : null,
+            change_5d_pct: priceChange(5),
+            change_20d_pct: r.change20 != null ? +r.change20.toFixed(2) : null,
+            change_50d_pct: r.change50 != null ? +r.change50.toFixed(2) : null,
+            change_200d_pct: r.change200 != null ? +r.change200.toFixed(2) : null,
+            structure_uptrend: isUptrendStructure(data, 60),
+            recent_swing_low: (() => {
+                const s = recentSwingLow(data, 3, 30);
+                return s ? +s.price.toFixed(2) : null;
+            })()
+        };
+
+        /* ── Medias móviles: valor, distancia, pendiente, alineación ── */
+        const slopeArr = (arr, lookback = 5) => {
+            const s = arr.slice(-lookback - 1).filter(v => v != null);
+            if (s.length < 2) return null;
+            const first = s[0], last = s[s.length - 1];
+            if (!isFinite(first) || first === 0) return null;
+            return +(((last - first) / Math.abs(first)) * 100).toFixed(2);
+        };
+        const e20v = last(ema20S), e50v = last(ema50S), e200v = last(ema200S), s200v = last(sma200S);
+        const stack = (price > e20v ? 1 : 0) + (e20v > e50v ? 1 : 0) + (e50v > e200v ? 1 : 0);
+        const maAlignment = stack === 3 ? 'full_bullish' : stack === 0 ? 'full_bearish' : stack === 2 ? 'bullish_partial' : 'mixed';
+
+        const movingAverages = {
+            ema20: {
+                value: e20v,
+                dist_from_price_pct: distPct(price, e20v),
+                slope_5d_pct: slopeArr(ema20S, 5),
+                position: price > e20v ? 'above' : 'below',
+                history: tail(ema20S)
+            },
+            ema50: {
+                value: e50v,
+                dist_from_price_pct: distPct(price, e50v),
+                slope_5d_pct: slopeArr(ema50S, 5),
+                position: price > e50v ? 'above' : 'below',
+                history: tail(ema50S)
+            },
+            ema200: {
+                value: e200v,
+                dist_from_price_pct: distPct(price, e200v),
+                slope_10d_pct: slopeArr(ema200S, 10),
+                position: price > e200v ? 'above' : 'below',
+                history: tail(ema200S, 30)
+            },
+            sma200: {
+                value: s200v,
+                dist_from_price_pct: distPct(price, s200v),
+                position: price > s200v ? 'above' : 'below'
+            },
+            alignment: maAlignment,
+            stack_score: stack
+        };
+
+        /* ── Momentum: RSI + MACD + ADX con histórico ── */
+        const rsiV = last(rsiS);
+        const rsiPrev = (() => {
+            const valid = rsiS.filter(v => v != null);
+            return valid.length >= 2 ? +valid[valid.length - 2].toFixed(2) : null;
+        })();
+        const macdV = last(macdO.macd);
+        const macdSigV = last(macdO.signal);
+        const macdHistV = last(macdO.hist);
+        const macdHistPrevV = (() => {
+            const valid = macdO.hist.filter(v => v != null);
+            return valid.length >= 2 ? +valid[valid.length - 2].toFixed(2) : null;
+        })();
+        const macdHistTrend = (macdHistV != null && macdHistPrevV != null)
+            ? (macdHistV > macdHistPrevV ? 'expanding' : macdHistV < macdHistPrevV ? 'contracting' : 'flat')
+            : null;
+        const macdState = (macdV != null && macdSigV != null)
+            ? (macdV > macdSigV ? 'bullish' : 'bearish') : null;
+
+        const adxV = last(adxO.adx);
+        const plusDIv = last(adxO.plusDI);
+        const minusDIv = last(adxO.minusDI);
+        const diSpread = (plusDIv != null && minusDIv != null) ? +(plusDIv - minusDIv).toFixed(1) : null;
+        const trendStrength = adxV == null ? null
+            : adxV >= 40 ? 'very_strong'
+            : adxV >= 25 ? 'strong'
+            : adxV >= 20 ? 'moderate'
+            : 'weak';
+
+        const momentum = {
+            rsi: {
+                value: rsiV,
+                prev_value: rsiPrev,
+                delta_1d: (rsiV != null && rsiPrev != null) ? +(rsiV - rsiPrev).toFixed(2) : null,
+                state: r.rsiStatus || classifyRsi(rsiV),
+                interpretation: rsiV == null ? null
+                    : rsiV >= 70 ? 'sobrecompra'
+                    : rsiV <= 30 ? 'sobreventa'
+                    : rsiV >= 50 ? 'zona alcista'
+                    : 'zona bajista',
+                history: tail(rsiS)
+            },
+            macd: {
+                macd_line: macdV,
+                signal_line: macdSigV,
+                histogram: macdHistV,
+                hist_prev: macdHistPrevV,
+                hist_trend: macdHistTrend,
+                state: macdState,
+                crossover_recent: (() => {
+                    const valid = macdO.macd.map((v, i) => ({ m: v, s: macdO.signal[i] }))
+                        .filter(x => x.m != null && x.s != null).slice(-5);
+                    for (let i = 1; i < valid.length; i++) {
+                        const prevCross = valid[i-1].m - valid[i-1].s;
+                        const curCross = valid[i].m - valid[i].s;
+                        if (prevCross <= 0 && curCross > 0) return 'bullish_cross';
+                        if (prevCross >= 0 && curCross < 0) return 'bearish_cross';
+                    }
+                    return null;
+                })(),
+                histogram_history: tail(macdO.hist),
+                macd_history: tail(macdO.macd),
+                signal_history: tail(macdO.signal)
+            },
+            adx: {
+                value: adxV,
+                plus_di: plusDIv,
+                minus_di: minusDIv,
+                di_spread: diSpread,
+                trend_strength: trendStrength,
+                dominant: diSpread == null ? null : (diSpread > 0 ? 'bulls' : 'bears'),
+                history: tail(adxO.adx)
+            }
+        };
+
+        /* ── Volatilidad: ATR + Bollinger ── */
+        const atrV = last(atrS);
+        const atrPct = (atrV != null && price > 0) ? +((atrV / price) * 100).toFixed(2) : null;
+        const atrHistory = tail(atrS);
+        const atrAvg20 = (() => {
+            const valid = atrS.slice(-20).filter(v => v != null);
+            if (!valid.length) return null;
+            return +(valid.reduce((a, b) => a + b, 0) / valid.length).toFixed(2);
+        })();
+        const atrRegime = (atrV != null && atrAvg20 != null)
+            ? (atrV > atrAvg20 * 1.2 ? 'expanding' : atrV < atrAvg20 * 0.8 ? 'contracting' : 'stable')
+            : null;
+
+        const bbU = last(bbO.upper), bbM = last(bbO.middle), bbL = last(bbO.lower);
+        const bbWidth = (bbU != null && bbL != null && bbM != null && bbM > 0)
+            ? +(((bbU - bbL) / bbM) * 100).toFixed(2) : null;
+        const bbPosition = (bbU != null && bbL != null && bbU > bbL)
+            ? +(((price - bbL) / (bbU - bbL)) * 100).toFixed(1) : null;
+
+        const volatility = {
+            atr: {
+                value: atrV,
+                atr_pct_of_price: atrPct,
+                avg_20d: atrAvg20,
+                regime: atrRegime,
+                history: atrHistory
+            },
+            bollinger: {
+                upper: bbU,
+                middle: bbM,
+                lower: bbL,
+                width_pct: bbWidth,
+                position_pct: bbPosition,
+                position_label: bbPosition == null ? null
+                    : bbPosition >= 95 ? 'above_upper'
+                    : bbPosition >= 80 ? 'upper_zone'
+                    : bbPosition <= 5 ? 'below_lower'
+                    : bbPosition <= 20 ? 'lower_zone'
+                    : 'middle'
+            }
+        };
+
+        /* ── Volumen y flujo ── */
+        const obvArr = computeOBV(data);
+        const obvSlope = normalizedSlope(obvArr, 20);
+        const volPct60 = volumePercentile(volumes, 60);
+        const volAvg5 = volumes.slice(-5).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(5, volumes.length));
+        const volAvg20 = volumes.slice(-20).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(20, volumes.length));
+
+        const volumeFlow = {
+            rvol_daily: r.rvol != null ? +r.rvol.toFixed(2) : null,
+            vol_ratio_20d: r.volRatio != null ? +r.volRatio.toFixed(2) : null,
+            vol_percentile_60d: volPct60 != null ? +volPct60.toFixed(2) : null,
+            avg_vol_5d_vs_20d: volAvg20 > 0 ? +(volAvg5 / volAvg20).toFixed(2) : null,
+            obv_slope_20d: obvSlope != null ? +obvSlope.toFixed(2) : null,
+            obv_signal: obvSlope == null ? null
+                : obvSlope > 0.5 ? 'accumulation'
+                : obvSlope < -0.5 ? 'distribution'
+                : 'neutral',
+            volume_history: tail(volumes, 20).map(v => v != null ? Math.round(v) : null)
+        };
+
+        /* ── Contexto relativo ── */
+        const context = {
+            sector_etf: r.sectorETF || getSectorETF(symbol) || null,
+            rs_spy_3m6m12m_weighted: r.rsRating != null ? +r.rsRating.toFixed(2) : null,
+            rs_sector_3m6m12m_weighted: r.rsVsSector != null ? +r.rsVsSector.toFixed(2) : null,
+            mtf_weekly_trend: r.weeklyTrend || null,
+            mtf_weekly_rsi: r.weeklyRsi != null ? +r.weeklyRsi.toFixed(1) : null,
+            days_to_earnings: r.daysEarnings ?? null,
+            earnings_date: r.earningsDate || null,
+            earnings_blackout_risk: r.daysEarnings != null && r.daysEarnings <= 5
+        };
+
+        /* ── Score breakdown ── */
+        const scoreBreakdown = r.scoreParts ? {
             trend: r.scoreParts.trend,
             momentum: r.scoreParts.momentum,
             strength: r.scoreParts.strength,
             participation: r.scoreParts.participation,
-            structure: r.scoreParts.structure
+            structure: r.scoreParts.structure,
+            total: r.score
         } : null;
 
-        // EMAs / medias con distancia % respecto al precio
-        const price = r.price;
-        const distPct = (v) => (v != null && price > 0) ? +(((price - v) / v) * 100).toFixed(2) : null;
-        const mas = {
-            ema20: r.ema20 != null ? +r.ema20.toFixed(2) : null,
-            ema50: r.ema50 != null ? +r.ema50.toFixed(2) : null,
-            ema200: r.ema200 != null ? +r.ema200.toFixed(2) : null,
-            sma200: r.sma200 != null ? +r.sma200.toFixed(2) : null,
-            dist_ema20_pct: distPct(r.ema20),
-            dist_ema50_pct: distPct(r.ema50),
-            dist_ema200_pct: distPct(r.ema200),
-            dist_sma200_pct: distPct(r.sma200)
-        };
-
-        // Momentum y flujo
-        const flow = {
-            macd_bull: r.macdBull ?? null,
-            macd_hist: r.macdHist != null ? +r.macdHist.toFixed(3) : null,
-            macd_hist_prev: r.macdHistPrev != null ? +r.macdHistPrev.toFixed(3) : null,
-            rsi: r.rsi != null ? +r.rsi.toFixed(1) : null,
-            rsi_state: r.rsiStatus || null,
-            adx: r.adx != null ? +r.adx.toFixed(1) : null,
-            plus_di: r.plusDI != null ? +r.plusDI.toFixed(1) : null,
-            minus_di: r.minusDI != null ? +r.minusDI.toFixed(1) : null,
-            obv_slope_20d: r.obvSlope != null ? +r.obvSlope.toFixed(2) : null
-        };
-
-        // Contexto
-        const context = {
-            rs_spy_3m6m12m: r.rsRating != null ? +r.rsRating.toFixed(2) : null,
-            rs_sector_3m6m12m: r.rsVsSector != null ? +r.rsVsSector.toFixed(2) : null,
-            sector_etf: r.sectorETF || null,
-            mtf_weekly: r.weeklyTrend || null,
-            mtf_weekly_rsi: r.weeklyRsi != null ? +r.weeklyRsi.toFixed(1) : null,
-            days_to_earnings: r.daysEarnings ?? null,
-            earnings_date: r.earningsDate || null,
-            rvol_daily: r.rvol != null ? +r.rvol.toFixed(2) : null,
-            vol_ratio_20d: r.volRatio != null ? +r.volRatio.toFixed(2) : null
-        };
-
-        // Movimiento
-        const movement = {
-            price: +price.toFixed(2),
-            atr: r.atr != null ? +r.atr.toFixed(2) : null,
-            atr_pct: r.atr && price > 0 ? +((r.atr / price) * 100).toFixed(2) : null,
-            day_change_pct: r.dayChange != null ? +r.dayChange.toFixed(2) : null,
-            change_20d_pct: r.change20 != null ? +r.change20.toFixed(2) : null,
-            change_50d_pct: r.change50 != null ? +r.change50.toFixed(2) : null,
-            change_200d_pct: r.change200 != null ? +r.change200.toFixed(2) : null
-        };
-
-        // Setups detallados con precios, no sólo scores
+        /* ── Setups con TODOS los checks ── */
         const setups = (r.entries || []).map(e => ({
-            name: e.name,
             id: e.id,
+            name: e.name,
+            desc: e.desc,
             status: e.status,
             setup_quality: e.quality,
-            entry_quality_score: e.entryQuality?.score,
-            entry_quality_state: e.entryQuality?.state,
-            entry_quality_note: e.entryQuality?.note,
-            confirmation: e.confirmation?.state,
-            confirmation_label: e.confirmation?.label,
-            confirmation_note: e.confirmation?.note,
-            lifecycle: e.lifecycle?.state,
-            lifecycle_reason: e.lifecycle?.reason,
+            entry_quality: {
+                score: e.entryQuality?.score,
+                state: e.entryQuality?.state,
+                note: e.entryQuality?.note,
+                distance_atr: e.entryQuality?.distanceAtr,
+                risk_atr: e.entryQuality?.riskAtr,
+                rr: e.entryQuality?.rr,
+                target_zone: e.entryQuality?.targetZone
+            },
+            confirmation: {
+                state: e.confirmation?.state,
+                label: e.confirmation?.label,
+                note: e.confirmation?.note
+            },
+            lifecycle: {
+                state: e.lifecycle?.state,
+                age_bars: e.lifecycle?.age,
+                reason: e.lifecycle?.reason
+            },
+            decision: e.decision,
             entry_type: e.entryType,
-            entry: +e.entry.toFixed(2),
-            current_price: e.currentPrice != null ? +e.currentPrice.toFixed(2) : null,
-            stop: +e.stop.toFixed(2),
-            stop_pct_from_entry: e.entry > 0 ? +(((e.entry - e.stop) / e.entry) * 100).toFixed(2) : null,
-            t1: +e.t1.toFixed(2),
-            t2: +e.t2.toFixed(2),
-            risk_in_atr: e.riskInAtr != null ? +e.riskInAtr.toFixed(2) : null,
-            rr_t1: e.rrT1 != null ? +e.rrT1.toFixed(2) : null,
-            rr_t2: e.rrT2 != null ? +e.rrT2.toFixed(2) : null,
-            target_zone: e.entryQuality?.targetZone != null ? +e.entryQuality.targetZone.toFixed(2) : null,
+            prices: {
+                entry: +e.entry.toFixed(2),
+                current_price: e.currentPrice != null ? +e.currentPrice.toFixed(2) : null,
+                stop: +e.stop.toFixed(2),
+                stop_source: e.stopSource,
+                stop_pct_from_entry: e.entry > 0 ? +(((e.entry - e.stop) / e.entry) * 100).toFixed(2) : null,
+                t1: +e.t1.toFixed(2),
+                t1_source: e.t1Source,
+                t2: +e.t2.toFixed(2),
+                t2_source: e.t2Source
+            },
+            ratios: {
+                risk_in_atr: e.riskInAtr != null ? +e.riskInAtr.toFixed(2) : null,
+                rr_t1: e.rrT1 != null ? +e.rrT1.toFixed(2) : null,
+                rr_t2: e.rrT2 != null ? +e.rrT2.toFixed(2) : null
+            },
             soft_filters: e.softFilters || [],
-            failed_checks: (e.checks || []).filter(c => !c.ok).map(c => c.label),
-            passed_checks_count: (e.checks || []).filter(c => c.ok).length,
-            total_checks: (e.checks || []).length
+            checks: (e.checks || []).map(c => ({
+                label: c.label,
+                ok: c.ok,
+                detail: c.detail || null,
+                category: c.category
+            }))
         }));
 
         return {
-            symbol: r.symbol,
+            symbol,
             score: r.score,
             trend: r.trend,
-            breakdown,
-            mas,
-            flow,
+            score_breakdown: scoreBreakdown,
+            price_action: priceAction,
+            moving_averages: movingAverages,
+            momentum,
+            volatility,
+            volume_flow: volumeFlow,
             context,
-            movement,
             setups
         };
     });
 
-    // Cartera actual — para que la IA vea exposición existente
-    const portfolio = manualPositions.map(p => {
-        const live = lastSymbolsData?.[p.symbol];
-        const rMult = computeRMultiple(p);
-        return {
-            symbol: p.symbol,
-            shares: p.shares,
-            entry: +p.entry.toFixed(2),
-            current_price: live?.price != null ? +live.price.toFixed(2) : null,
-            stop_initial: p.stopInitial != null ? +p.stopInitial.toFixed(2) : null,
-            setup_name: p.setupName || null,
-            setup_quality: p.setupQuality ?? null,
-            entry_quality_state: p.entryQualityState || null,
-            r_multiple: rMult != null ? +rMult.toFixed(2) : null,
-            days_held: daysSinceEntry(p)
-        };
-    });
-
-    const heat = computePortfolioHeat();
-
     return {
         meta: {
             generated_at: new Date().toISOString(),
-            app_version: '4.6.2',
+            app_version: '4.6.4',
             universe_size: results.length,
-            tickers_analyzed: top.length,
-            risk_config: getRiskConfig()
+            tickers_analyzed: top.length
         },
         regime: regime ? {
             name: regime.regime,
@@ -3905,68 +4123,89 @@ function buildAIPayload(results, regime) {
             dist_sma200_pct: +regime.distPct.toFixed(2),
             slope_sma200_20d_pct: +regime.slopePct.toFixed(2)
         } : null,
-        portfolio: {
-            positions: portfolio,
-            open_positions_count: portfolio.length,
-            total_heat_r: +heat.totalHeatR.toFixed(2),
-            max_heat_r: heat.cfg.maxHeatR,
-            total_dollar_risk: +heat.totalDollarRisk.toFixed(0)
-        },
         tickers: top
     };
 }
 
 function buildAIPrompt(payload) {
-    return `Eres un analista técnico senior con 15 años operando en mercados americanos, combinando sistemático con discrecional. Trabajas junto a un motor técnico por capas (Contexto → Setup → Validación → Confirmación → Ejecución → Riesgo) que ya ha hecho su análisis cuantitativo.
+    return `Eres un analista técnico senior con 15 años operando en mercados americanos, combinando sistemático con discrecional. Trabajas junto a un motor técnico por capas que ya ha procesado el cuantitativo. Tu misión NO es repetir números: es interpretarlos, contextualizarlos y señalar lo que el motor no ve.
 
-Recibirás un JSON con el output COMPLETO del motor: régimen, cartera abierta con heat, y hasta N tickers con score desglosado, EMAs, momentum, contexto (RS vs SPY/sector, MTF semanal, earnings, RVOL) y setups detallados con precios (entry/stop/t1/t2), ratios y checks fallidos.
+Recibirás un JSON con:
+- Régimen SPY actual (price, SMA50, SMA200, distancia, pendiente).
+- Para cada ticker: score total y breakdown (trend, momentum, strength, participation, structure), price action (cambios %, estructura, swing low), medias móviles (valor, distancia al precio, pendiente, alineación, histórico 20 barras), momentum (RSI + MACD + ADX con histórico y estados), volatilidad (ATR, régimen ATR, Bollinger con posición en banda), volumen y flujo (RVOL, OBV slope, percentil), contexto (RS vs SPY/sector, MTF semanal, earnings) y setups completos con checks detallados.
 
-TU TRABAJO:
-1. Validar coherencia interna (setup vs régimen, entry_quality vs contexto, etc).
-2. Detectar sesgos del motor (tickers sobrevalorados, setups que el motor marca READY pero tú no tocarías).
-3. Aportar contexto que el motor NO ve: macro implícito, correlaciones sectoriales, gestión de la cartera abierta.
-4. Priorizar operativamente: qué operar hoy, qué vigilar, qué descartar.
+TU TRABAJO, por bloques:
+
+**1. COHERENCIA DEL MOTOR**
+Valida si el score breakdown se corresponde con los datos crudos. Si el motor da trend 25/30 pero EMA20 < EMA50, hay incoherencia — señálala. Lo mismo con momentum score alto y RSI débil o MACD bearish.
+
+**2. LECTURA POR INDICADOR (obligatorio para cada ticker del top 3)**
+Interpreta explícitamente:
+- Medias: alineación (full_bullish / mixed / bearish), distancia del precio a cada una (extendido si >1.5 ATR), pendiente.
+- RSI: nivel + evolución 20 barras + divergencias implícitas con precio.
+- MACD: línea vs señal, histograma expandiendo o contrayendo, cruce reciente si lo hay.
+- ADX: fuerza de tendencia + quién domina (bulls/bears por DI spread).
+- ATR: régimen (expanding/contracting/stable) y qué implica para el stop.
+- Bollinger: posición en banda (95%+ es techo, 5%- es suelo) y ancho.
+- Volumen: RVOL >1.5 confirma, <0.7 seca, OBV slope indica acumulación/distribución.
+
+**3. ANÁLISIS POR SETUP**
+Para cada setup, valora si los checks fallidos son críticos o menores. Si hay 2+ checks fallidos en categorías clave (trend, structure, momentum), dilo. Si la Entry Quality es EXTENDIDA pero el Setup Quality es alto, explica que el setup es bueno pero la entrada actual no.
+
+**4. CORRELACIONES ENTRE TICKERS**
+Detecta si varios tickers comparten sector ETF o tienen behavior similar (mismo RS vs SPY, mismo MTF). Advierte sobre concentración implícita.
+
+**5. CONTEXTO MACRO IMPLÍCITO**
+Del régimen + slope SMA200, infiere qué tipo de setups favorece (breakout en RISK_ON, pullback en NEUTRAL, defensivo en RISK_OFF).
+
+**6. LECTURA OPERATIVA**
+Prioriza qué operar hoy, qué vigilar, qué descartar. Con sizing relativo (ej. "tamaño completo en X, medio en Y, cero en Z").
 
 REGLAS DE ESTILO:
-- Español, directo, sin disclaimers, sin rodeos.
-- NO repitas métricas literales del JSON. Interpreta.
-- Si algo no lo sabes (ej. eventos macro recientes), NO inventes fechas.
-- Sé específico: "AAPL pullback a EMA20 con RSI 58 y volumen 0.9× es una entrada limpia" mejor que "AAPL tiene buen setup".
-- Si un setup es malo, dilo claro.
-
-ANÁLISIS POR TICKER (obligatorio para los 5 primeros): veredicto de una frase (BUY / WAIT / SKIP) con razón.
-
-CORRELACIONES (obligatorio): detecta si varios tickers del top están en el mismo sector o tienen alta correlación esperada. Si la cartera abierta tiene concentración, señálalo.
-
-CONTEXTO MACRO: infiere del régimen (RISK_ON / OFF / NEUTRAL) y del slope SMA200 qué tipo de setups están favorecidos y qué evitar.
+- Español, directo, sin disclaimers, sin relleno.
+- NO repitas valores literales del JSON sin interpretarlos. "RSI 62" no aporta; "RSI 62 saliendo de sobreventa con MACD expandiendo" sí.
+- Sé específico por ticker. "Buen setup" es inútil; "pullback a EMA20 con volumen decreciente y RSI 55 limpio" sirve.
+- Si algo no lo sabes (eventos macro recientes, earnings exactos), NO inventes.
+- Si un ticker es malo, dilo sin rodeos.
 
 OUTPUT DEL MOTOR:
 ${JSON.stringify(payload, null, 2)}
 
-Devuelve EXCLUSIVAMENTE un JSON válido (sin markdown, sin backticks, sin texto adicional) con esta estructura EXACTA:
+Devuelve EXCLUSIVAMENTE JSON válido (sin markdown, sin backticks, sin texto extra):
 
 {
   "verdict": "COHERENTE" | "MIXTO" | "INCOHERENTE",
-  "summary": "3-4 frases densas. Qué está diciendo el motor, dónde acierta, dónde falla. Sin relleno.",
-  "market_read": "2-3 frases sobre el régimen y qué tipo de setups favorece/penaliza HOY.",
-  "macro_context": "2-3 frases sobre lo que implica el régimen para el tipo de operativa (continuación vs reversión, momentum vs pullback).",
-  "portfolio_review": "2-3 frases sobre la cartera abierta: heat, concentración, correlaciones, si conviene abrir más o está sobrecargada. Si no hay cartera, di 'sin posiciones abiertas'.",
+  "summary": "4-6 frases densas. Qué dice el motor, dónde acierta, dónde falla. Menciona coherencias o incoherencias del breakdown.",
+  "market_read": "3-4 frases. Régimen actual + qué tipo de setups favorece/penaliza HOY + qué espera el motor implícitamente.",
+  "macro_context": "3-4 frases. Implicaciones del régimen para momentum vs reversión, breakout vs pullback, tech vs value si es inferible.",
   "correlations": [
-    { "symbols": ["AAPL","MSFT"], "sector": "XLK", "note": "una frase sobre el riesgo de concentración" }
+    { "symbols": ["AAPL","MSFT"], "sector": "XLK", "note": "riesgo concreto de concentración" }
   ],
   "per_ticker": [
-    { "symbol": "XXX", "verdict": "BUY" | "WAIT" | "SKIP", "reason": "una frase concreta y accionable" }
+    {
+      "symbol": "XXX",
+      "verdict": "BUY" | "WAIT" | "SKIP",
+      "conviction": "ALTA" | "MEDIA" | "BAJA",
+      "technical_read": "3-4 frases interpretando medias + momentum + volatilidad + volumen de ESTE ticker, con explicación pedagógica de lo que dicen los indicadores.",
+      "setup_read": "2-3 frases sobre el mejor setup del ticker, checks críticos, si los fallos son graves.",
+      "reason": "1 frase accionable final"
+    }
   ],
-  "top_pick": { "symbol": "XXX", "conviction": "ALTA" | "MEDIA" | "BAJA", "reason": "2 frases con qué lo hace mejor que el resto" } | null,
+  "top_pick": {
+    "symbol": "XXX",
+    "conviction": "ALTA" | "MEDIA" | "BAJA",
+    "technical_case": "3 frases explicando por qué técnicamente es el mejor del lote.",
+    "operational_case": "2 frases sobre entrada, stop, objetivo."
+  } | null,
   "alternatives": [
-    { "symbol": "XXX", "conviction": "ALTA" | "MEDIA" | "BAJA", "reason": "una frase" }
+    { "symbol": "XXX", "conviction": "ALTA" | "MEDIA" | "BAJA", "reason": "2 frases" }
   ],
   "watchlist": [
-    { "symbol": "XXX", "trigger": "qué tiene que pasar para que sea operable", "setup": "nombre del setup" }
+    { "symbol": "XXX", "setup": "nombre", "trigger": "qué tiene que pasar exactamente para operarlo" }
   ],
-  "risks": [ "riesgo concreto y específico de este output, no genérico" ],
-  "blind_spots": [ "qué está ignorando el motor que importa en este análisis concreto" ],
-  "action_plan": "3-4 frases. Qué abrir hoy (o no), con qué tamaño relativo, qué vigilar en las próximas sesiones, qué descartar."
+  "risks": [ "riesgo específico y concreto de este output" ],
+  "blind_spots": [ "qué está ignorando el motor en este análisis concreto" ],
+  "action_plan": "4-5 frases. Qué abrir hoy (o no), con sizing relativo, qué vigilar en las próximas 3-5 sesiones, qué descartar definitivamente."
 }`;
 }
 
@@ -3979,7 +4218,7 @@ async function callGemini(prompt) {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
             temperature: 0.4,
-            maxOutputTokens: 1500,
+            maxOutputTokens: 8000,
             responseMimeType: 'application/json'
         }
     };
@@ -4107,24 +4346,28 @@ function renderAIError(msg) {
 function renderAICard(data, opts = {}) {
     const body = document.getElementById('aiBody');
     if (!body) return;
+
     const verdictCls = data.verdict === 'COHERENTE' ? 'ai-ok'
                      : data.verdict === 'INCOHERENTE' ? 'ai-bad'
                      : 'ai-warn';
-    const verdictLabel = data.verdict || 'MIXTO';
 
     const perTickerHtml = (data.per_ticker || []).length
         ? `<div class="ai-section">
-             <div class="ai-label">Análisis por ticker</div>
+             <div class="ai-label">Análisis detallado por ticker</div>
              <div class="ai-ticker-list">
                  ${data.per_ticker.map(t => {
                      const v = String(t.verdict || '').toUpperCase();
                      const cls = v === 'BUY' ? 'ai-ticker-buy' : v === 'SKIP' ? 'ai-ticker-skip' : 'ai-ticker-wait';
+                     const conv = t.conviction ? `<span class="ai-conviction">${escapeHtml(t.conviction)}</span>` : '';
                      return `<div class="ai-ticker-row">
                          <div class="ai-ticker-head">
                              <span class="ai-ticker-sym">${escapeHtml(t.symbol)}</span>
                              <span class="ai-ticker-verdict ${cls}">${escapeHtml(v)}</span>
+                             ${conv}
                          </div>
-                         <div class="ai-ticker-reason">${escapeHtml(t.reason)}</div>
+                         ${t.technical_read ? `<div class="ai-ticker-block"><b>Técnico:</b> ${escapeHtml(t.technical_read)}</div>` : ''}
+                         ${t.setup_read ? `<div class="ai-ticker-block"><b>Setup:</b> ${escapeHtml(t.setup_read)}</div>` : ''}
+                         ${t.reason ? `<div class="ai-ticker-reason">${escapeHtml(t.reason)}</div>` : ''}
                      </div>`;
                  }).join('')}
              </div>
@@ -4151,24 +4394,19 @@ function renderAICard(data, opts = {}) {
            </div>` : '';
 
     const risksHtml = (data.risks || []).length
-        ? `<div class="ai-section">
-             <div class="ai-label">Riesgos</div>
-             <ul class="ai-list">${data.risks.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
-           </div>` : '';
+        ? `<div class="ai-section"><div class="ai-label">Riesgos</div><ul class="ai-list">${data.risks.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>` : '';
 
     const blindHtml = (data.blind_spots || []).length
-        ? `<div class="ai-section">
-             <div class="ai-label">Puntos ciegos del motor</div>
-             <ul class="ai-list">${data.blind_spots.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul>
-           </div>` : '';
+        ? `<div class="ai-section"><div class="ai-label">Puntos ciegos del motor</div><ul class="ai-list">${data.blind_spots.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul></div>` : '';
 
     const pickHtml = data.top_pick
         ? `<div class="ai-pick">
-             <div class="ai-label">Top pick IA${data.top_pick.conviction ? ` · convicción ${escapeHtml(data.top_pick.conviction)}` : ''}</div>
+             <div class="ai-label">Top pick IA · convicción ${escapeHtml(data.top_pick.conviction || 'MEDIA')}</div>
              <div class="ai-pick-row">
                  <div class="ai-pick-symbol">${escapeHtml(data.top_pick.symbol)}</div>
-                 <div class="ai-pick-reason">${escapeHtml(data.top_pick.reason)}</div>
              </div>
+             ${data.top_pick.technical_case ? `<div class="ai-pick-block"><b>Caso técnico:</b> ${escapeHtml(data.top_pick.technical_case)}</div>` : ''}
+             ${data.top_pick.operational_case ? `<div class="ai-pick-block"><b>Operativa:</b> ${escapeHtml(data.top_pick.operational_case)}</div>` : ''}
            </div>` : '';
 
     body.innerHTML = `
@@ -4176,7 +4414,7 @@ function renderAICard(data, opts = {}) {
             <div class="ai-title-row">
                 <span class="ai-icon">✦</span>
                 <span class="ai-title">Análisis IA</span>
-                <span class="ai-verdict ${verdictCls}">${escapeHtml(verdictLabel)}</span>
+                <span class="ai-verdict ${verdictCls}">${escapeHtml(data.verdict || 'MIXTO')}</span>
             </div>
             <div class="ai-meta">
                 ${escapeHtml(getGeminiModel())} · ${opts.cached ? 'caché' : 'generado ahora'}
@@ -4186,7 +4424,6 @@ function renderAICard(data, opts = {}) {
         <div class="ai-summary">${escapeHtml(data.summary || '—')}</div>
         ${data.market_read ? `<div class="ai-section"><div class="ai-label">Lectura de mercado</div><div class="ai-text">${escapeHtml(data.market_read)}</div></div>` : ''}
         ${data.macro_context ? `<div class="ai-section"><div class="ai-label">Contexto macro implícito</div><div class="ai-text">${escapeHtml(data.macro_context)}</div></div>` : ''}
-        ${data.portfolio_review ? `<div class="ai-section"><div class="ai-label">Revisión de cartera</div><div class="ai-text">${escapeHtml(data.portfolio_review)}</div></div>` : ''}
         ${pickHtml}
         ${perTickerHtml}
         ${corrHtml}
