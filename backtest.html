@@ -3,1055 +3,881 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Backtest · StockAnalyzer</title>
+<title>Backtest</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-:root{--bg:#000;--card:#1c1c1e;--elev:#2c2c2e;--border:#38383a;--text:#fff;--text-2:#8e8e93;--text-3:#636366;--green:#30d158;--red:#ff453a;--orange:#ff9f0a;--blue:#32d4e0;--purple:#bf5af2;--font:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif}
-*{box-sizing:border-box;-webkit-font-smoothing:antialiased}
-html,body{margin:0;padding:0;min-height:100%;font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.45}
-.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
-h1{font-size:22px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
-h1 .a{background:linear-gradient(135deg,#8e8e93,#32d4e0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.sub{font-size:12px;color:var(--text-2);margin:0 0 20px}
-.card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px}
-.card h2{font-size:14px;font-weight:700;margin:0 0 4px}
-.card .cs{font-size:11px;color:var(--text-2);margin:0 0 12px}
+:root{--bg:#000;--card:#1c1c1e;--elev:#2c2c2e;--border:#38383a;--text:#fff;--text-2:#8e8e93;--text-3:#636366;--green:#30d158;--red:#ff453a;--orange:#ff9f0a;--blue:#32d4e0}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.45}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+h1{font-size:20px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+h2{font-size:14px;font-weight:700;margin:0 0 4px}
+.sub{font-size:11px;color:var(--text-2);margin:0 0 14px}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
 label{display:block;font-size:11px;color:var(--text-2);margin-bottom:4px;font-weight:500}
-input,select{width:100%;padding:10px 12px;background:var(--elev);border:1px solid transparent;color:var(--text);border-radius:8px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px;min-height:38px}
-input:focus,select:focus{border-color:var(--blue)}
+input,select{width:100%;padding:9px 11px;background:var(--elev);border:1px solid transparent;color:var(--text);border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:8px;min-height:36px}
+input:focus{border-color:var(--blue)}
+button{padding:10px 14px;background:var(--elev);border:none;color:var(--text);border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;min-height:38px}
+button:hover{background:#3a3a3c}
+button.primary{background:var(--blue);color:#001417}
+button:disabled{opacity:.4;cursor:not-allowed}
 .row{display:grid;gap:8px}
 .row.c2{grid-template-columns:1fr 1fr}
 .row.c3{grid-template-columns:1fr 1fr 1fr}
-button{padding:10px 14px;background:var(--elev);border:none;color:var(--text);border-radius:8px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .15s,transform .1s;min-height:40px}
-button:hover{background:#3a3a3c}
-button:active{transform:scale(.98)}
-button.primary{background:var(--blue);color:#001417}
-button.primary:hover{background:#28bccc}
-button:disabled{opacity:.4;cursor:not-allowed}
-.drop{border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;font-size:12px;color:var(--text-2);cursor:pointer;transition:all .15s;margin-bottom:10px}
-.drop:hover,.drop.over{border-color:var(--blue);background:rgba(50,212,224,.05);color:var(--text)}
-.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 10px;background:var(--elev);border-radius:20px;font-size:11px;font-weight:600;margin:3px 3px 0 0}
-.chip.spy{background:rgba(50,212,224,.12);color:var(--blue)}
+.drop{border:2px dashed var(--border);border-radius:12px;padding:20px;text-align:center;font-size:12px;color:var(--text-2);cursor:pointer;margin-bottom:10px}
+.drop:hover{border-color:var(--blue);background:rgba(50,212,224,.05)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px 4px 10px;background:var(--elev);border-radius:20px;font-size:11px;font-weight:600;margin:3px 3px 0 0}
+.chip.spy{background:rgba(50,212,224,.15);color:var(--blue)}
 .chip small{color:var(--text-3);font-weight:400}
 .chip button{background:transparent;color:var(--text-3);padding:2px 6px;min-height:auto;width:auto;margin:0;font-size:14px;line-height:1;border-radius:50%}
-.chip button:hover{color:var(--red);background:rgba(255,69,58,.15)}
 table{width:100%;font-size:11px;border-collapse:collapse}
 th{text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em}
 th:first-child{text-align:left}
 td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums}
 td:first-child{text-align:left}
-.metric{background:var(--elev);border-radius:10px;padding:12px}
-.metric .k{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:4px}
-.metric .v{font-size:20px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
-.metric .s{font-size:10px;color:var(--text-3);margin-top:3px}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-@media(max-width:640px){.grid4{grid-template-columns:repeat(2,1fr)}.grid3{grid-template-columns:1fr 1fr}}
-.hint{font-size:11px;color:var(--text-2);padding:10px 12px;background:rgba(50,212,224,.06);border:1px solid rgba(50,212,224,.2);border-radius:9px;line-height:1.55;margin-top:10px}
-.hint b{color:var(--blue)}
-.chart-box{position:relative;height:260px;background:#0d0d0f;border-radius:10px;padding:8px}
+.metric{background:var(--elev);border-radius:10px;padding:11px}
+.metric .k{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:3px}
+.metric .v{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.metric .s{font-size:9px;color:var(--text-3);margin-top:3px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+@media(max-width:640px){.grid4,.grid3{grid-template-columns:1fr 1fr}}
 .status{font-size:11px;color:var(--text-2);margin-top:6px;min-height:16px}
-.progress{height:3px;background:var(--elev);border-radius:2px;overflow:hidden;margin:8px 0 4px;display:none}
-.progress.on{display:block}
-.progress > div{height:100%;width:0%;background:var(--blue);transition:width .15s linear}
-.tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700}
+.hint{font-size:11px;color:var(--text-2);padding:10px 12px;background:rgba(50,212,224,.06);border:1px solid rgba(50,212,224,.2);border-radius:9px;line-height:1.5;margin-top:10px}
+.hint b{color:var(--blue)}
+.tag{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700}
 .tag.win{background:rgba(48,209,88,.15);color:var(--green)}
 .tag.loss{background:rgba(255,69,58,.15);color:var(--red)}
-.setup-tog{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--elev);border-radius:8px;margin-bottom:5px;cursor:pointer;font-size:12px;user-select:none}
-.setup-tog.on{background:rgba(50,212,224,.10);border:1px solid rgba(50,212,224,.3)}
-.setup-tog input{width:auto;margin:0;min-height:auto}
-.cfg-badge{display:inline-block;padding:3px 8px;background:var(--elev);border-radius:6px;font-size:10px;font-weight:600;color:var(--text-2);margin-right:4px;margin-bottom:4px}
+.chart-box{position:relative;height:240px;background:#0d0d0f;border-radius:10px;padding:8px;margin-top:10px}
+.mode{display:inline-block;padding:3px 8px;background:var(--elev);border-radius:6px;font-size:10px;font-weight:600;color:var(--text-2);margin-bottom:10px}
+.mode.live{background:rgba(48,209,88,.15);color:var(--green)}
+.cfg-badge{display:inline-block;padding:3px 8px;background:var(--elev);border-radius:6px;font-size:10px;font-weight:600;color:var(--text-2);margin:0 4px 4px 0}
 </style>
 </head>
 <body>
 <div class="wrap">
-    <h1>Backtest <span class="a">walk-forward</span></h1>
-    <p class="sub">Motor independiente · sin lookahead · reutiliza la lógica de setups de StockAnalyzer</p>
+    <h1>Backtest walk-forward</h1>
+    <p class="sub">Sin lookahead · slippage + comisiones · reutiliza la lógica del motor</p>
 
-    <div class="card" id="cfgCard">
-        <h2>Configuración recibida</h2>
-        <p class="cs" id="cfgStatus">Cargando…</p>
-        <div id="cfgPreview"></div>
-    </div>
+    <div id="modeBox" style="margin-bottom:10px;"><span class="mode" id="modeLabel">Esperando datos…</span></div>
 
     <div class="card">
-        <h2>Datos históricos</h2>
-        <p class="cs">Necesitas <b>SPY</b> + al menos 1 ticker. Formato Yahoo / Stooq / TwelveData (CSV con datetime,open,high,low,close,volume)</p>
+        <h2>Config</h2>
+        <div id="cfgSummary" class="sub" style="margin:6px 0 0;">—</div>
+    </div>
+
+    <div class="card" id="dataCard">
+        <h2>Datos</h2>
+        <p class="sub">Necesitas SPY + al menos 1 ticker. CSV con datetime,open,high,low,close,volume</p>
         <div class="drop" id="drop" onclick="document.getElementById('fileInput').click()">
-            Arrastra los CSV aquí o pulsa para seleccionar<br>
-            <small style="opacity:.65;">También puedes usar "Descargar ejemplo" si no tienes datos a mano</small>
+            Arrastra CSVs aquí o pulsa para seleccionar
         </div>
         <input type="file" id="fileInput" accept=".csv" multiple style="display:none"/>
-        <div id="chips" style="min-height:20px;margin-bottom:10px;"></div>
-        <button onclick="loadSampleData()" style="font-size:12px;">Descargar ejemplo (sintético · 3 años)</button>
+        <div id="chips" style="min-height:20px;margin-bottom:6px;"><span style="font-size:11px;color:var(--text-3);">Sin datos cargados</span></div>
     </div>
 
     <div class="card">
         <h2>Parámetros de ejecución</h2>
-        <p class="cs">Overrides sobre la config recibida</p>
         <div class="row c2">
-            <div><label>Capital inicial ($)</label><input type="number" id="pCapital" value="10000" step="any"/></div>
-            <div><label>Riesgo base por trade (%)</label><input type="number" id="pRiskPct" value="1" step="0.1"/></div>
+            <div><label>Capital ($)</label><input type="number" id="pCapital" value="10000" step="any"/></div>
+            <div><label>Riesgo/trade (%)</label><input type="number" id="pRisk" value="1" step="0.1"/></div>
         </div>
         <div class="row c3">
-            <div><label>Slippage (bps)</label><input type="number" id="pSlippage" value="5" step="1"/></div>
-            <div><label>Comisión ($/op)</label><input type="number" id="pComm" value="2" step="0.5"/></div>
+            <div><label>Slippage (bps)</label><input type="number" id="pSlip" value="5" step="1"/></div>
+            <div><label>Comisión ($)</label><input type="number" id="pComm" value="2" step="0.5"/></div>
             <div><label>Time stop (barras)</label><input type="number" id="pMaxBars" value="20" step="1"/></div>
         </div>
-        <div class="row c2">
-            <div><label>Fecha desde (opcional)</label><input type="date" id="pStart"/></div>
-            <div><label>Fecha hasta (opcional)</label><input type="date" id="pEnd"/></div>
-        </div>
-        <label>Setups activos</label>
-        <div id="setupToggles"></div>
-        <button class="primary" id="runBtn" onclick="runBacktest()" style="width:100%;margin-top:8px;">Ejecutar backtest</button>
-        <div class="progress" id="prog"><div id="progFill"></div></div>
+        <button class="primary" id="runBtn" onclick="runBacktest()" style="width:100%;margin-top:6px;">Ejecutar backtest</button>
         <div class="status" id="status"></div>
     </div>
 
     <div class="card" id="resultsCard" style="display:none;">
         <h2>Resultados</h2>
-        <p class="cs" id="resultsSub"></p>
+        <p class="sub" id="resultsSub"></p>
         <div class="grid4" id="metrics"></div>
         <div class="grid3" id="metrics2"></div>
-        <div class="chart-box" style="height:280px;"><canvas id="equityChart"></canvas></div>
-        <div class="grid3" style="margin-top:12px;">
-            <div class="chart-box" style="height:180px;"><canvas id="distChart"></canvas></div>
-            <div class="chart-box" style="height:180px;"><canvas id="maeMfeChart"></canvas></div>
-            <div class="chart-box" style="height:180px;"><canvas id="bySetupChart"></canvas></div>
-        </div>
+        <div class="chart-box"><canvas id="eqChart"></canvas></div>
+        <div id="bySetup" style="margin-top:12px;"></div>
         <div class="hint">
-            <b>Lectura honesta.</b> Un backtest no dice lo que va a pasar. Dice lo que pasó en el pasado bajo unas reglas. Si el intervalo de confianza de la expectancy cruza cero, no hay edge demostrable. Si la muestra es menor a 30 trades, no es estadísticamente significativa.
+            <b>Lectura honesta.</b> Si el IC95% de la expectancy cruza cero, no hay edge demostrable con esta muestra. Bajo 30 trades no es significativo.
         </div>
     </div>
 
     <div class="card" id="tradesCard" style="display:none;">
-        <h2>Trades simulados</h2>
-        <p class="cs" id="tradesSub"></p>
-        <div class="row c2" style="margin-bottom:10px;">
+        <h2>Trades</h2>
+        <p class="sub" id="tradesSub"></p>
+        <div class="row c2" style="margin-bottom:8px;">
             <button onclick="exportCSV()">Exportar CSV</button>
-            <button onclick="sendToMain()" style="background:rgba(50,212,224,.12);color:var(--blue);">Enviar a StockAnalyzer</button>
+            <button onclick="sendResultsToParent()" id="sendBtn" style="display:none;background:rgba(50,212,224,.12);color:var(--blue);">Enviar al principal</button>
         </div>
-        <div id="tradesList" style="max-height:500px;overflow-y:auto;"></div>
+        <div id="tradesList" style="max-height:400px;overflow-y:auto;"></div>
     </div>
 </div>
 
 <script>
 /* ══════════════════════════════════════════════════════════════════════════
-   BACKTEST ENGINE — autocontenido
+   BACKTEST ENGINE
    ══════════════════════════════════════════════════════════════════════════ */
-
 const CFG_KEY = 'sa_bt_config';
-const RES_KEY = 'sa_bt_results';
+const IN_IFRAME = window.parent && window.parent !== window;
+let DATASETS = {};
+let LAST = null;
+let CFG = null;
+let eqChart = null;
 
-const DEFAULT_CFG = {
-    version: '4.9',
-    thresholds: { minSetupQuality: 55, minRrT1: 1.5, maxRiskAtr: 3.0, minRiskAtr: 0.8 },
-    context:    { minRs: 0, minDaysEarnings: 5, minDollarVolume: 5000000 },
-    risk:       { accountSize: 10000, riskPct: 1, maxPositionPct: 20 },
-    setupsEnabled: { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true },
-    meta: { generatedAt: null, source: 'defaults' }
-};
-
-let DATASETS = {};      // { SYMBOL: [{datetime,o,h,l,c,v}] }
-let LAST_RESULT = null;
-let equityChart, distChart, maeMfeChart, bySetupChart;
-
-/* ─── Cargar config desde localStorage ─── */
-function loadConfig() {
-    try {
-        const raw = localStorage.getItem(CFG_KEY);
-        if (!raw) return { ...DEFAULT_CFG };
-        const cfg = JSON.parse(raw);
-        return {
-            version: cfg.version || '4.9',
-            thresholds: { ...DEFAULT_CFG.thresholds, ...(cfg.thresholds || {}) },
-            context:    { ...DEFAULT_CFG.context,    ...(cfg.context    || {}) },
-            risk:       { ...DEFAULT_CFG.risk,       ...(cfg.risk       || {}) },
-            setupsEnabled: { ...DEFAULT_CFG.setupsEnabled, ...(cfg.setupsEnabled || {}) },
-            meta: cfg.meta || { source: 'localStorage' }
-        };
-    } catch(_) { return { ...DEFAULT_CFG }; }
+function notifyParent(type, payload) {
+    if (!IN_IFRAME) return;
+    try { window.parent.postMessage(Object.assign({ type: type }, payload || {}), '*'); } catch(_) {}
 }
 
-/* ─── UI: previsualización de la config ─── */
-function renderConfigPreview(cfg) {
-    const t = cfg.thresholds, c = cfg.context, r = cfg.risk;
-    const badges = [
-        `Q≥${t.minSetupQuality}`, `R:R≥${t.minRrT1}`, `ATR ${t.minRiskAtr}–${t.maxRiskAtr}`,
-        `RS≥${c.minRs}%`, `Earn>${c.minDaysEarnings}d`, `DV≥$${(c.minDollarVolume/1e6).toFixed(1)}M`,
-        `Riesgo ${r.riskPct}%`, `MaxPos ${r.maxPositionPct}%`
+let _initReceived = false;
+let _announceTimer = null;
+function announceReady() {
+    if (_initReceived) { clearInterval(_announceTimer); return; }
+    notifyParent('bt_ready');
+}
+function startAnnouncing() {
+    announceReady();
+    _announceTimer = setInterval(announceReady, 700);
+    setTimeout(function() { clearInterval(_announceTimer); }, 15000);
+}
+
+window.addEventListener('message', function(ev) {
+    var msg = ev.data;
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type !== 'sa_bt_init') return;
+
+    _initReceived = true;
+    clearInterval(_announceTimer);
+    console.log('[bt] init recibido ·', Object.keys(msg.data || {}).length, 'símbolos');
+
+    if (msg.cfg) {
+        CFG = msg.cfg;
+        try { localStorage.setItem(CFG_KEY, JSON.stringify(msg.cfg)); } catch(_) {}
+        renderCfgSummary(msg.cfg);
+    }
+
+    if (msg.data) {
+        DATASETS = {};
+        var ok = 0;
+        for (var sym in msg.data) {
+            if (!msg.data.hasOwnProperty(sym)) continue;
+            var bars = msg.data[sym];
+            if (Array.isArray(bars) && bars.length >= 250) {
+                DATASETS[sym] = bars;
+                ok++;
+            }
+        }
+        renderChips();
+        if (ok) {
+            setMode('Datos recibidos · ' + ok + ' símbolos', true);
+            setStatus(ok + ' datasets cargados desde StockAnalyzer');
+        } else {
+            setMode('Sin datos válidos');
+            setStatus('Los datos recibidos no tienen barras suficientes (min 250)');
+        }
+    }
+
+    notifyParent('bt_ack');
+});
+
+function setStatus(t) { var el = document.getElementById('status'); if (el) el.textContent = t || ''; }
+function setMode(t, live) {
+    var el = document.getElementById('modeLabel');
+    if (!el) return;
+    el.textContent = t;
+    el.className = 'mode' + (live ? ' live' : '');
+}
+function renderCfgSummary(cfg) {
+    var t = cfg.thresholds || {};
+    var c = cfg.context || {};
+    var r = cfg.risk || {};
+    var badges = [
+        'Q≥' + (t.minSetupQuality != null ? t.minSetupQuality : '—'),
+        'R:R≥' + (t.minRrT1 != null ? t.minRrT1 : '—'),
+        'ATR ' + (t.minRiskAtr != null ? t.minRiskAtr : '—') + '–' + (t.maxRiskAtr != null ? t.maxRiskAtr : '—'),
+        'RS≥' + (c.minRs != null ? c.minRs : '—') + '%',
+        'Earn>' + (c.minDaysEarnings != null ? c.minDaysEarnings : '—') + 'd',
+        'Riesgo ' + (r.riskPct != null ? r.riskPct : '—') + '%',
+        'MaxPos ' + (r.maxPositionPct != null ? r.maxPositionPct : '—') + '%'
     ];
-    const setups = Object.entries(cfg.setupsEnabled).filter(([,v]) => v).map(([k]) => k);
-    document.getElementById('cfgPreview').innerHTML = `
-        <div style="margin-bottom:8px;">
-            ${badges.map(b => `<span class="cfg-badge">${b}</span>`).join('')}
-        </div>
-        <div style="font-size:11px;color:var(--text-2);">
-            Setups activos: <b style="color:var(--text);">${setups.join(', ') || 'ninguno'}</b>
-        </div>
-    `;
-    const srcTxt = cfg.meta && cfg.meta.generatedAt
-        ? `Config recibida desde StockAnalyzer · ${new Date(cfg.meta.generatedAt).toLocaleString('es-ES')}`
-        : 'Sin config recibida. Usando defaults.';
-    document.getElementById('cfgStatus').textContent = srcTxt;
+    var setups = [];
+    for (var k in (cfg.setupsEnabled || {})) {
+        if (cfg.setupsEnabled[k]) setups.push(k);
+    }
+    document.getElementById('cfgSummary').innerHTML =
+        badges.map(function(b) { return '<span class="cfg-badge">' + b + '</span>'; }).join('') +
+        '<div style="margin-top:6px;font-size:11px;color:var(--text-2);">Setups: <b style="color:var(--text);">' + (setups.join(', ') || '—') + '</b></div>';
+    if (r.accountSize) document.getElementById('pCapital').value = r.accountSize;
+    if (r.riskPct) document.getElementById('pRisk').value = r.riskPct;
 }
 
-/* ─── Cargar config en los inputs ─── */
-function applyConfigToInputs(cfg) {
-    document.getElementById('pCapital').value = cfg.risk.accountSize;
-    document.getElementById('pRiskPct').value = cfg.risk.riskPct;
-    renderSetupToggles(cfg.setupsEnabled);
-}
-function renderSetupToggles(enabled) {
-    const SETUPS = [
-        { id: 'donchian',     label: 'Ruptura Donchian 20' },
-        { id: 'pullback',     label: 'Pullback EMA20/50' },
-        { id: 'sma200',       label: 'Rebote SMA200' },
-        { id: 'golden_cross', label: 'Cruce dorado EMA20/50' },
-        { id: 'bb_breakout',  label: 'Ruptura Bollinger' }
-    ];
-    document.getElementById('setupToggles').innerHTML = SETUPS.map(s => `
-        <label class="setup-tog ${enabled[s.id] ? 'on' : ''}" data-setup="${s.id}">
-            <input type="checkbox" ${enabled[s.id] ? 'checked' : ''} onchange="toggleSetup('${s.id}', this.checked)"/>
-            <span>${s.label}</span>
-        </label>
-    `).join('');
-}
-function toggleSetup(id, on) {
-    const el = document.querySelector(`.setup-tog[data-setup="${id}"]`);
-    if (el) el.classList.toggle('on', on);
-}
-
-/* ─── Cargar CSV ─── */
+/* ── Carga CSV ── */
 function parseCSVLine(line) {
-    const out = []; let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        if (ch === '"') { if (inQ && line[i+1] === '"') { cur += '"'; i++; } else inQ = !inQ; }
-        else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
+    var out = [], cur = '', q = false;
+    for (var i = 0; i < line.length; i++) {
+        var ch = line[i];
+        if (ch === '"') { if (q && line[i+1] === '"') { cur += '"'; i++; } else q = !q; }
+        else if (ch === ',' && !q) { out.push(cur); cur = ''; }
         else cur += ch;
     }
     out.push(cur); return out;
 }
 function parseCSV(text) {
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    var lines = text.split(/\r?\n/).filter(function(l) { return l.trim(); });
     if (lines.length < 2) return [];
-    const hdr = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g,''));
-    const find = (...names) => {
-        for (const n of names) { const i = hdr.indexOf(n); if (i !== -1) return i; }
-        for (const n of names) { const i = hdr.findIndex(h => h.includes(n)); if (i !== -1) return i; }
+    var hdr = lines[0].split(',').map(function(h) { return h.trim().toLowerCase().replace(/"/g, ''); });
+    function find() {
+        for (var a = 0; a < arguments.length; a++) { var i = hdr.indexOf(arguments[a]); if (i !== -1) return i; }
+        for (var b = 0; b < arguments.length; b++) {
+            for (var j = 0; j < hdr.length; j++) {
+                if (hdr[j].indexOf(arguments[b]) !== -1) return j;
+            }
+        }
         return -1;
-    };
-    const iD = find('datetime','date','timestamp','time');
-    const iO = find('open'), iH = find('high'), iL = find('low');
-    const iC = find('adj close','adj_close','adjusted close','close');
-    const iV = find('volume','vol');
+    }
+    var iD = find('datetime','date','timestamp','time');
+    var iO = find('open'), iH = find('high'), iL = find('low');
+    var iC = find('adj close','adj_close','adjusted close','close');
+    var iV = find('volume','vol');
     if (iD === -1 || iC === -1) return [];
-    const out = [];
-    for (let i = 1; i < lines.length; i++) {
-        const c = parseCSVLine(lines[i]);
+    var out = [];
+    for (var i = 1; i < lines.length; i++) {
+        var c = parseCSVLine(lines[i]);
         if (c.length <= Math.max(iD, iC)) continue;
-        const close = parseFloat(c[iC]);
+        var close = parseFloat(c[iC]);
         if (!isFinite(close)) continue;
-        const raw = c[iD].trim();
-        const dt = raw.length === 10 ? raw : raw.slice(0, 10);
+        var raw = c[iD].trim();
+        var dt = raw.length >= 10 ? raw.slice(0, 10) : raw;
         out.push({
             datetime: dt,
-            open:  iO >= 0 && isFinite(parseFloat(c[iO])) ? parseFloat(c[iO]) : close,
-            high:  iH >= 0 && isFinite(parseFloat(c[iH])) ? parseFloat(c[iH]) : close,
-            low:   iL >= 0 && isFinite(parseFloat(c[iL])) ? parseFloat(c[iL]) : close,
-            close,
+            open: iO >= 0 && isFinite(parseFloat(c[iO])) ? parseFloat(c[iO]) : close,
+            high: iH >= 0 && isFinite(parseFloat(c[iH])) ? parseFloat(c[iH]) : close,
+            low: iL >= 0 && isFinite(parseFloat(c[iL])) ? parseFloat(c[iL]) : close,
+            close: close,
             volume: iV >= 0 && isFinite(parseFloat(c[iV])) ? parseFloat(c[iV]) : 0
         });
     }
-    out.sort((a,b) => a.datetime.localeCompare(b.datetime));
+    out.sort(function(a, b) { return a.datetime.localeCompare(b.datetime); });
     return out;
 }
 function handleFiles(files) {
-    const list = [...files]; if (!list.length) return;
-    let pending = list.length, ok = 0;
-    list.forEach(f => {
-        const r = new FileReader();
-        r.onload = e => {
-            const sym = f.name.replace(/\.csv$/i,'').toUpperCase().replace(/[^A-Z0-9.\-]/g,'');
-            const bars = parseCSV(e.target.result || '');
+    var list = Array.prototype.slice.call(files);
+    if (!list.length) return;
+    var pending = list.length, ok = 0;
+    list.forEach(function(f) {
+        var r = new FileReader();
+        r.onload = function(e) {
+            var sym = f.name.replace(/\.csv$/i, '').toUpperCase().replace(/[^A-Z0-9.\-]/g, '');
+            var bars = parseCSV(e.target.result || '');
             if (bars.length >= 250) { DATASETS[sym] = bars; ok++; }
-            else console.warn(`[bt] ${sym}: ${bars.length} barras (min 250)`);
-            if (--pending === 0) { renderChips(); setStatus(ok ? `${ok} dataset(s) cargado(s)` : 'Ningún dataset válido'); }
+            if (--pending === 0) {
+                renderChips();
+                setStatus(ok ? (ok + ' dataset(s) cargado(s)') : 'Ningún dataset válido');
+            }
         };
         r.readAsText(f);
     });
 }
 function renderChips() {
-    const keys = Object.keys(DATASETS);
-    const el = document.getElementById('chips');
+    var keys = Object.keys(DATASETS);
+    var el = document.getElementById('chips');
     if (!keys.length) { el.innerHTML = '<span style="font-size:11px;color:var(--text-3);">Sin datos cargados</span>'; return; }
-    el.innerHTML = keys.map(sym => {
-        const d = DATASETS[sym];
-        const isSpy = sym === 'SPY';
-        return `<span class="chip ${isSpy ? 'spy' : ''}">
-            ${sym} <small>${d.length}b · ${d[0].datetime}→${d[d.length-1].datetime}</small>
-            <button onclick="removeSymbol('${sym}')">×</button>
-        </span>`;
+    el.innerHTML = keys.map(function(sym) {
+        var d = DATASETS[sym];
+        return '<span class="chip ' + (sym === 'SPY' ? 'spy' : '') + '">' +
+            sym + ' <small>' + d.length + 'b · ' + d[0].datetime + '→' + d[d.length-1].datetime + '</small>' +
+            '<button onclick="delSym(\'' + sym + '\')">×</button></span>';
     }).join('');
 }
-function removeSymbol(sym) { delete DATASETS[sym]; renderChips(); }
-function setStatus(t) { document.getElementById('status').textContent = t || ''; }
+function delSym(s) { delete DATASETS[s]; renderChips(); }
 
-/* ─── Datos sintéticos para probar sin CSV ─── */
-function loadSampleData() {
-    const N = 756; // 3 años
-    const gen = (seed, drift, vol) => {
-        const out = []; let p = 100; let s = seed;
-        const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
-        const start = new Date(); start.setDate(start.getDate() - N);
-        for (let i = 0; i < N; i++) {
-            const d = new Date(start); d.setDate(d.getDate() + i);
-            if (d.getDay() === 0 || d.getDay() === 6) continue;
-            const ret = drift + (rnd() - 0.5) * vol;
-            p = p * (1 + ret);
-            const h = p * (1 + Math.abs(rnd() - 0.5) * 0.012);
-            const l = p * (1 - Math.abs(rnd() - 0.5) * 0.012);
-            out.push({
-                datetime: d.toISOString().slice(0,10),
-                open: p * (1 + (rnd() - 0.5) * 0.006),
-                high: Math.max(h, p), low: Math.min(l, p),
-                close: p,
-                volume: 5e6 + rnd() * 5e6
-            });
-        }
-        return out;
-    };
-    DATASETS['SPY'] = gen(42, 0.0004, 0.018);
-    DATASETS['AAPL'] = gen(17, 0.0007, 0.025);
-    DATASETS['MSFT'] = gen(88, 0.0006, 0.022);
-    DATASETS['TSLA'] = gen(55, 0.0005, 0.045);
-    DATASETS['NVDA'] = gen(11, 0.0012, 0.038);
-    renderChips();
-    setStatus('Datos sintéticos cargados · solo para validar el motor');
+/* ── Indicadores ── */
+function sma(v, p) {
+    var o = new Array(v.length).fill(null), s = 0;
+    for (var i = 0; i < v.length; i++) {
+        s += v[i];
+        if (i >= p) s -= v[i - p];
+        if (i >= p - 1) o[i] = s / p;
+    }
+    return o;
 }
-
-/* ═══ INDICADORES ═══ */
-function sma(v, p) { const o = new Array(v.length).fill(null); let s = 0; for (let i = 0; i < v.length; i++) { s += v[i]; if (i >= p) s -= v[i-p]; if (i >= p-1) o[i] = s/p; } return o; }
 function ema(v, p) {
-    const o = new Array(v.length).fill(null);
+    var o = new Array(v.length).fill(null);
     if (v.length < p) return o;
-    const k = 2/(p+1); let s = 0;
-    for (let i = 0; i < p; i++) s += v[i];
-    o[p-1] = s/p;
-    for (let i = p; i < v.length; i++) o[i] = o[i-1] != null ? v[i]*k + o[i-1]*(1-k) : null;
+    var k = 2 / (p + 1), s = 0;
+    for (var i = 0; i < p; i++) s += v[i];
+    o[p-1] = s / p;
+    for (var j = p; j < v.length; j++) o[j] = o[j-1] != null ? v[j] * k + o[j-1] * (1 - k) : null;
     return o;
 }
-function rsiCalc(v, p = 14) {
-    const o = new Array(v.length).fill(null);
-    if (v.length < p+1) return o;
-    let g = 0, l = 0;
-    for (let i = 1; i <= p; i++) { const d = v[i] - v[i-1]; if (d >= 0) g += d; else l -= d; }
-    let ag = g/p, al = l/p;
-    o[p] = al === 0 ? 100 : 100 - 100/(1 + ag/al);
-    for (let i = p+1; i < v.length; i++) {
-        const d = v[i] - v[i-1];
-        ag = (ag*(p-1) + (d > 0 ? d : 0))/p;
-        al = (al*(p-1) + (d < 0 ? -d : 0))/p;
-        o[i] = al === 0 ? 100 : 100 - 100/(1 + ag/al);
+function rsiC(v, p) {
+    p = p || 14;
+    var o = new Array(v.length).fill(null);
+    if (v.length < p + 1) return o;
+    var g = 0, l = 0;
+    for (var i = 1; i <= p; i++) { var d = v[i] - v[i-1]; if (d >= 0) g += d; else l -= d; }
+    var ag = g / p, al = l / p;
+    o[p] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+    for (var j = p + 1; j < v.length; j++) {
+        var d2 = v[j] - v[j-1];
+        ag = (ag * (p - 1) + (d2 > 0 ? d2 : 0)) / p;
+        al = (al * (p - 1) + (d2 < 0 ? -d2 : 0)) / p;
+        o[j] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
     }
     return o;
 }
-function atrCalc(data, p = 14) {
-    const o = new Array(data.length).fill(null);
-    if (data.length < p+1) return o;
-    const tr = [0];
-    for (let i = 1; i < data.length; i++) {
-        tr.push(Math.max(data[i].high - data[i].low, Math.abs(data[i].high - data[i-1].close), Math.abs(data[i].low - data[i-1].close)));
+function atrC(data, p) {
+    p = p || 14;
+    var o = new Array(data.length).fill(null);
+    if (data.length < p + 1) return o;
+    var tr = [0];
+    for (var i = 1; i < data.length; i++) {
+        tr.push(Math.max(
+            data[i].high - data[i].low,
+            Math.abs(data[i].high - data[i-1].close),
+            Math.abs(data[i].low - data[i-1].close)
+        ));
     }
-    let s = 0;
-    for (let i = 1; i <= p; i++) s += tr[i];
-    o[p] = s/p;
-    for (let i = p+1; i < data.length; i++) o[i] = (o[i-1]*(p-1) + tr[i])/p;
+    var s = 0;
+    for (var j = 1; j <= p; j++) s += tr[j];
+    o[p] = s / p;
+    for (var k = p + 1; k < data.length; k++) o[k] = (o[k-1] * (p - 1) + tr[k]) / p;
     return o;
 }
-function adxCalc(data, p = 14) {
-    const n = data.length;
-    if (n < p*2+1) return { adx: new Array(n).fill(null), plusDI: new Array(n).fill(0), minusDI: new Array(n).fill(0) };
-    const tr = new Array(n).fill(0), pdm = new Array(n).fill(0), mdm = new Array(n).fill(0);
-    for (let i = 1; i < n; i++) {
-        const h = data[i].high, l = data[i].low, pc = data[i-1].close;
+function adxC(data, p) {
+    p = p || 14;
+    var n = data.length;
+    if (n < p * 2 + 1) return { adx: new Array(n).fill(null), pDI: new Array(n).fill(0), mDI: new Array(n).fill(0) };
+    var tr = new Array(n).fill(0), pdm = new Array(n).fill(0), mdm = new Array(n).fill(0);
+    for (var i = 1; i < n; i++) {
+        var h = data[i].high, l = data[i].low, pc = data[i-1].close;
         tr[i] = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
-        const up = h - data[i-1].high, dn = data[i-1].low - l;
+        var up = h - data[i-1].high, dn = data[i-1].low - l;
         pdm[i] = (up > dn && up > 0) ? up : 0;
         mdm[i] = (dn > up && dn > 0) ? dn : 0;
     }
-    const sTR = new Array(n).fill(0), sP = new Array(n).fill(0), sM = new Array(n).fill(0);
-    for (let i = 1; i <= p; i++) { sTR[p] += tr[i]; sP[p] += pdm[i]; sM[p] += mdm[i]; }
-    for (let i = p+1; i < n; i++) {
-        sTR[i] = sTR[i-1] - sTR[i-1]/p + tr[i];
-        sP[i] = sP[i-1] - sP[i-1]/p + pdm[i];
-        sM[i] = sM[i-1] - sM[i-1]/p + mdm[i];
+    var sTR = new Array(n).fill(0), sP = new Array(n).fill(0), sM = new Array(n).fill(0);
+    for (var a = 1; a <= p; a++) { sTR[p] += tr[a]; sP[p] += pdm[a]; sM[p] += mdm[a]; }
+    for (var b = p + 1; b < n; b++) {
+        sTR[b] = sTR[b-1] - sTR[b-1]/p + tr[b];
+        sP[b] = sP[b-1] - sP[b-1]/p + pdm[b];
+        sM[b] = sM[b-1] - sM[b-1]/p + mdm[b];
     }
-    const pDI = new Array(n).fill(0), mDI = new Array(n).fill(0);
-    for (let i = p; i < n; i++) {
-        pDI[i] = sTR[i] > 0 ? (sP[i]/sTR[i])*100 : 0;
-        mDI[i] = sTR[i] > 0 ? (sM[i]/sTR[i])*100 : 0;
+    var pDI = new Array(n).fill(0), mDI = new Array(n).fill(0);
+    for (var c = p; c < n; c++) {
+        pDI[c] = sTR[c] > 0 ? (sP[c] / sTR[c]) * 100 : 0;
+        mDI[c] = sTR[c] > 0 ? (sM[c] / sTR[c]) * 100 : 0;
     }
-    const dx = new Array(n).fill(0);
-    for (let i = p; i < n; i++) {
-        const s = pDI[i] + mDI[i];
-        dx[i] = s > 0 ? Math.abs(pDI[i] - mDI[i])/s*100 : 0;
+    var dx = new Array(n).fill(0);
+    for (var e = p; e < n; e++) {
+        var sum = pDI[e] + mDI[e];
+        dx[e] = sum > 0 ? Math.abs(pDI[e] - mDI[e]) / sum * 100 : 0;
     }
-    const adx = new Array(n).fill(null);
-    let fs = 0;
-    for (let i = p; i < p*2 && i < n; i++) fs += dx[i];
-    if (p*2 - 1 < n) {
-        adx[p*2-1] = fs/p;
-        for (let i = p*2; i < n; i++) adx[i] = (adx[i-1]*(p-1) + dx[i])/p;
+    var adx = new Array(n).fill(null);
+    var fs = 0;
+    for (var f = p; f < p * 2 && f < n; f++) fs += dx[f];
+    if (p * 2 - 1 < n) {
+        adx[p * 2 - 1] = fs / p;
+        for (var g = p * 2; g < n; g++) adx[g] = (adx[g-1] * (p - 1) + dx[g]) / p;
     }
-    return { adx, plusDI: pDI, minusDI: mDI };
+    return { adx: adx, pDI: pDI, mDI: mDI };
 }
-function donchianHigh(data, p) {
-    const o = new Array(data.length).fill(null);
-    for (let i = p-1; i < data.length; i++) {
-        let m = -Infinity;
-        for (let j = i-p+1; j <= i; j++) if (data[j].high > m) m = data[j].high;
+function donHi(data, p) {
+    var o = new Array(data.length).fill(null);
+    for (var i = p - 1; i < data.length; i++) {
+        var m = -Infinity;
+        for (var j = i - p + 1; j <= i; j++) if (data[j].high > m) m = data[j].high;
         o[i] = m;
     }
     return o;
 }
-function donchianLow(data, p) {
-    const o = new Array(data.length).fill(null);
-    for (let i = p-1; i < data.length; i++) {
-        let m = Infinity;
-        for (let j = i-p+1; j <= i; j++) if (data[j].low < m) m = data[j].low;
-        o[i] = m;
+function boll(v, p, k) {
+    p = p || 20; k = k || 2;
+    var mid = sma(v, p);
+    var up = new Array(v.length).fill(null), lo = new Array(v.length).fill(null);
+    for (var i = p - 1; i < v.length; i++) {
+        var s = 0;
+        for (var j = i - p + 1; j <= i; j++) s += Math.pow(v[j] - mid[i], 2);
+        var sd = Math.sqrt(s / p);
+        up[i] = mid[i] + k * sd;
+        lo[i] = mid[i] - k * sd;
     }
-    return o;
-}
-function bollinger(v, p = 20, k = 2) {
-    const mid = sma(v, p);
-    const up = new Array(v.length).fill(null), lo = new Array(v.length).fill(null);
-    for (let i = p-1; i < v.length; i++) {
-        let s = 0;
-        for (let j = i-p+1; j <= i; j++) s += Math.pow(v[j] - mid[i], 2);
-        const sd = Math.sqrt(s/p);
-        up[i] = mid[i] + k*sd;
-        lo[i] = mid[i] - k*sd;
-    }
-    return { upper: up, middle: mid, lower: lo };
+    return { up: up, mid: mid, lo: lo };
 }
 
-/* ═══ REGÍMENES (serie completa, sin lookahead) ═══ */
-function buildRegimeSeries(spyData) {
-    const closes = spyData.map(d => d.close);
-    const s50 = sma(closes, 50), s200 = sma(closes, 200);
-    const out = new Array(spyData.length).fill(null);
-    for (let i = 210; i < spyData.length; i++) {
+/* ── Régimen SPY ── */
+function buildRegime(spy) {
+    var closes = spy.map(function(d) { return d.close; });
+    var s50 = sma(closes, 50), s200 = sma(closes, 200);
+    var out = new Array(spy.length).fill(null);
+    for (var i = 210; i < spy.length; i++) {
         if (s50[i] == null || s200[i] == null || s200[i-20] == null || s200[i-20] === 0) continue;
-        const price = closes[i], s200v = s200[i], s200p = s200[i-20];
-        const distPct = ((price - s200v)/s200v)*100;
-        const slopePct = ((s200v - s200p)/s200p)*100;
-        let regime = 'NEUTRAL';
-        if (price > s200v && s50[i] > s200v && slopePct > 0.5) regime = 'STRONG_RISK_ON';
-        else if (price > s200v && slopePct >= 0) regime = 'RISK_ON';
-        else if (price < s200v && s50[i] < s200v && slopePct < -0.5) regime = 'STRONG_RISK_OFF';
-        else if (price < s200v && slopePct <= 0) regime = 'RISK_OFF';
-        out[i] = regime;
+        var price = closes[i], s200v = s200[i], s200p = s200[i-20];
+        var slopePct = ((s200v - s200p) / s200p) * 100;
+        var r = 'NEUTRAL';
+        if (price > s200v && s50[i] > s200v && slopePct > 0.5) r = 'STRONG_RISK_ON';
+        else if (price > s200v && slopePct >= 0) r = 'RISK_ON';
+        else if (price < s200v && s50[i] < s200v && slopePct < -0.5) r = 'STRONG_RISK_OFF';
+        else if (price < s200v && slopePct <= 0) r = 'RISK_OFF';
+        out[i] = r;
     }
     return out;
 }
-function buildRegimeMap(spyData, regimeSeries) {
-    const m = Object.create(null);
-    for (let i = 0; i < spyData.length; i++) if (regimeSeries[i]) m[spyData[i].datetime] = regimeSeries[i];
-    return m;
-}
 
-/* ═══ SETUPS (versión simplificada y causal) ═══ */
-function isUptrendStructure(data, i, lookback = 60, strength = 3) {
-    const start = Math.max(strength, i - lookback + 1);
-    const end = i - strength;
+/* ── Estructura HH/HL ── */
+function isUptrend(data, i, lookback, strength) {
+    lookback = lookback || 60; strength = strength || 3;
+    var start = Math.max(strength, i - lookback + 1);
+    var end = i - strength;
     if (end <= start) return false;
-    const highs = [], lows = [];
-    for (let k = start; k <= end; k++) {
-        let isH = true, isL = true;
-        for (let j = 1; j <= strength; j++) {
+    var highs = [], lows = [];
+    for (var k = start; k <= end; k++) {
+        var isH = true, isL = true;
+        for (var j = 1; j <= strength; j++) {
             if (data[k].high <= data[k-j].high || data[k].high <= data[k+j].high) isH = false;
-            if (data[k].low  >= data[k-j].low  || data[k].low  >= data[k+j].low)  isL = false;
+            if (data[k].low >= data[k-j].low || data[k].low >= data[k+j].low) isL = false;
         }
         if (isH) highs.push(data[k].high);
         if (isL) lows.push(data[k].low);
     }
     if (highs.length < 2 || lows.length < 2) return false;
-    const rH = highs.slice(-3), rL = lows.slice(-3);
-    let hh = 0, hl = 0;
-    for (let k = 1; k < rH.length; k++) if (rH[k] > rH[k-1]) hh++;
-    for (let k = 1; k < rL.length; k++) if (rL[k] > rL[k-1]) hl++;
-    return hh >= Math.max(1, Math.ceil((rH.length-1)*0.5)) && hl >= Math.max(1, Math.ceil((rL.length-1)*0.5));
+    var rH = highs.slice(-3), rL = lows.slice(-3);
+    var hh = 0, hl = 0;
+    for (var a = 1; a < rH.length; a++) if (rH[a] > rH[a-1]) hh++;
+    for (var b = 1; b < rL.length; b++) if (rL[b] > rL[b-1]) hl++;
+    return hh >= Math.max(1, Math.ceil((rH.length - 1) * 0.5)) && hl >= Math.max(1, Math.ceil((rL.length - 1) * 0.5));
 }
-function recentSwingLow(data, i, strength = 3, lookback = 30) {
-    const start = Math.max(strength, i - lookback);
-    const end = i - strength;
-    let best = null;
-    for (let k = start; k <= end; k++) {
-        let isL = true;
-        for (let j = 1; j <= strength; j++) if (data[k].low >= data[k-j].low || data[k].low >= data[k+j].low) { isL = false; break; }
-        if (isL) best = { price: data[k].low, index: k };
+function recentLow(data, i, strength, lookback) {
+    strength = strength || 3; lookback = lookback || 30;
+    var start = Math.max(strength, i - lookback);
+    var end = i - strength;
+    var best = null;
+    for (var k = start; k <= end; k++) {
+        var isL = true;
+        for (var j = 1; j <= strength; j++) {
+            if (data[k].low >= data[k-j].low || data[k].low >= data[k+j].low) { isL = false; break; }
+        }
+        if (isL) best = { price: data[k].low, idx: k };
     }
     return best;
 }
 
-/* Cada setup devuelve: {id, entry, stop, t1, t2, quality, checksOk, checksTotal} o null */
-function trySetupDonchian(data, i, ctx, thresholds) {
-    const { dh20, e20, e50, e200, adx, plusDI, minusDI, rsi: r, atr, volAvg20 } = ctx;
-    if (dh20[i-1] == null || e50[i] == null || e200[i] == null || atr[i] == null) return null;
-    if (!(data[i].close > dh20[i-1])) return null;
-    if (!(e50[i] > e200[i])) return null;
-    if (!(data[i].close > e20[i])) return null;
-    if (!isUptrendStructure(data, i, 60, 3)) return null;
-
-    const checks = [
-        data[i].close > dh20[i-1],
-        e50[i] > e200[i],
-        data[i].close > e20[i],
-        adx[i] != null && adx[i] > 20,
-        plusDI[i] > minusDI[i],
-        volAvg20[i] != null && data[i].volume > volAvg20[i] * 1.5,
-        r[i] != null && r[i] >= 50 && r[i] <= 80
+/* ── Setups ── */
+function tryDonchian(d, i, c, TH) {
+    if (c.dh20[i-1] == null || c.e50[i] == null || c.e200[i] == null || c.atr[i] == null) return null;
+    if (!(d[i].close > c.dh20[i-1]) || !(c.e50[i] > c.e200[i]) || !(d[i].close > c.e20[i])) return null;
+    if (!isUptrend(d, i)) return null;
+    var checks = [
+        d[i].close > c.dh20[i-1],
+        c.e50[i] > c.e200[i],
+        d[i].close > c.e20[i],
+        c.adx[i] != null && c.adx[i] > 20,
+        c.pDI[i] > c.mDI[i],
+        c.vol20[i] != null && d[i].volume > c.vol20[i] * 1.5,
+        c.rsi[i] != null && c.rsi[i] >= 50 && c.rsi[i] <= 80
     ];
-    const okCount = checks.filter(Boolean).length;
-    if (okCount / checks.length < thresholds.minSetupQuality / 100) return null;
-
-    const price = data[i].close;
-    let stopPrice = price - 2.5 * atr[i];
-    const sw = recentSwingLow(data, i, 3, 30);
-    if (sw && sw.price < price) {
-        const swStop = sw.price - 0.5 * atr[i];
-        if (swStop < price - 1.0 * atr[i] && swStop > stopPrice) stopPrice = swStop;
+    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
+    if (ok / checks.length < TH.minSetupQuality / 100) return null;
+    var p = d[i].close;
+    var stop = p - 2.5 * c.atr[i];
+    var sw = recentLow(d, i, 3, 30);
+    if (sw && sw.price < p) {
+        var s = sw.price - 0.5 * c.atr[i];
+        if (s < p - 1.0 * c.atr[i] && s > stop) stop = s;
     }
-    if (stopPrice >= price) return null;
-    const risk = price - stopPrice;
-    const riskAtr = risk / atr[i];
-    if (riskAtr > thresholds.maxRiskAtr || riskAtr < thresholds.minRiskAtr) return null;
-    const t1 = price + Math.max(1.5 * risk, Math.min(2 * atr[i], 3 * risk));
-    const t2 = price + 3.0 * atr[i];
+    if (stop >= p) return null;
+    var risk = p - stop;
+    var rAtr = risk / c.atr[i];
+    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
+    var t1 = p + Math.max(1.5 * risk, Math.min(2 * c.atr[i], 3 * risk));
+    var t2 = p + 3.0 * c.atr[i];
     if (t2 <= t1) return null;
-    const rr = (t1 - price) / risk;
-    if (rr < thresholds.minRrT1) return null;
-    return { id: 'donchian', entry: price, stop: stopPrice, t1, t2, rrT1: rr, riskAtr, quality: Math.round(okCount/checks.length*100) };
+    var rr = (t1 - p) / risk;
+    if (rr < TH.minRrT1) return null;
+    return { id: 'donchian', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
 }
-
-function trySetupPullback(data, i, ctx, thresholds) {
-    const { e20, e50, e200, adx, rsi: r, atr } = ctx;
-    if (e20[i] == null || e50[i] == null || e200[i] == null || atr[i] == null) return null;
-    if (!(e20[i] > e50[i] && e50[i] > e200[i])) return null;
-    let touched = false;
-    for (let k = Math.max(0, i-4); k <= i; k++) {
-        if (e20[k] != null && data[k].low <= e20[k]*1.005 && data[k].close >= e20[k]*0.995) { touched = true; break; }
-        if (e50[k] != null && data[k].low <= e50[k]*1.005 && data[k].close >= e50[k]*0.995) { touched = true; break; }
+function tryPullback(d, i, c, TH) {
+    if (c.e20[i] == null || c.e50[i] == null || c.e200[i] == null || c.atr[i] == null) return null;
+    if (!(c.e20[i] > c.e50[i] && c.e50[i] > c.e200[i])) return null;
+    var touched = false;
+    for (var k = Math.max(0, i - 4); k <= i; k++) {
+        if (c.e20[k] != null && d[k].low <= c.e20[k] * 1.005 && d[k].close >= c.e20[k] * 0.995) { touched = true; break; }
+        if (c.e50[k] != null && d[k].low <= c.e50[k] * 1.005 && d[k].close >= c.e50[k] * 0.995) { touched = true; break; }
     }
-    if (!touched) return null;
-    if (!(data[i].close > e20[i])) return null;
-    const d20 = (data[i].close - e20[i]) / atr[i];
-    const d50 = (data[i].close - e50[i]) / atr[i];
-    const minD = Math.min(d20, d50);
-    if (minD > 1.25) return null;
-    if (!isUptrendStructure(data, i, 60, 3)) return null;
-
-    const checks = [
-        e20[i] > e50[i] && e50[i] > e200[i],
+    if (!touched || !(d[i].close > c.e20[i])) return null;
+    var d20 = (d[i].close - c.e20[i]) / c.atr[i];
+    var d50 = (d[i].close - c.e50[i]) / c.atr[i];
+    var mD = Math.min(d20, d50);
+    if (mD > 1.25 || !isUptrend(d, i)) return null;
+    var checks = [
+        c.e20[i] > c.e50[i] && c.e50[i] > c.e200[i],
         touched,
-        data[i].close > e20[i],
-        minD <= 1.25,
-        adx[i] != null && adx[i] > 20,
-        r[i] != null && r[i] >= 40 && r[i] <= 65
+        d[i].close > c.e20[i],
+        mD <= 1.25,
+        c.adx[i] != null && c.adx[i] > 20,
+        c.rsi[i] != null && c.rsi[i] >= 40 && c.rsi[i] <= 65
     ];
-    const okCount = checks.filter(Boolean).length;
-    if (okCount / checks.length < thresholds.minSetupQuality / 100) return null;
-
-    const price = data[i].close;
-    let stopPrice = price - 2.5 * atr[i];
-    const ref = e50[i];
-    const refStop = ref - 0.5 * atr[i];
-    if (refStop < price - 1.0 * atr[i] && refStop > stopPrice) stopPrice = refStop;
-    if (stopPrice >= price) return null;
-    const risk = price - stopPrice;
-    const riskAtr = risk / atr[i];
-    if (riskAtr > thresholds.maxRiskAtr || riskAtr < thresholds.minRiskAtr) return null;
-    const t1 = price + 2.0 * atr[i];
-    const t2 = price + 3.0 * atr[i];
-    const rr = (t1 - price) / risk;
-    if (rr < thresholds.minRrT1) return null;
-    return { id: 'pullback', entry: price, stop: stopPrice, t1, t2, rrT1: rr, riskAtr, quality: Math.round(okCount/checks.length*100) };
+    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
+    if (ok / checks.length < TH.minSetupQuality / 100) return null;
+    var p = d[i].close;
+    var stop = p - 2.5 * c.atr[i];
+    var rs = c.e50[i] - 0.5 * c.atr[i];
+    if (rs < p - 1.0 * c.atr[i] && rs > stop) stop = rs;
+    if (stop >= p) return null;
+    var risk = p - stop;
+    var rAtr = risk / c.atr[i];
+    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
+    var t1 = p + 2.0 * c.atr[i];
+    var t2 = p + 3.0 * c.atr[i];
+    var rr = (t1 - p) / risk;
+    if (rr < TH.minRrT1) return null;
+    return { id: 'pullback', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
 }
-
-function trySetupSma200(data, i, ctx, thresholds) {
-    const { s200, atr, rsi: r } = ctx;
-    if (s200[i] == null || atr[i] == null) return null;
-    if (!(data[i].close > s200[i])) return null;
-    let touched = false;
-    for (let k = Math.max(0, i-6); k <= i; k++) {
-        if (s200[k] != null && data[k].low <= s200[k]*1.005) { touched = true; break; }
+function trySma200(d, i, c, TH) {
+    if (c.s200[i] == null || c.atr[i] == null) return null;
+    if (!(d[i].close > c.s200[i])) return null;
+    var touched = false;
+    for (var k = Math.max(0, i - 6); k <= i; k++) {
+        if (c.s200[k] != null && d[k].low <= c.s200[k] * 1.005) { touched = true; break; }
     }
-    if (!touched) return null;
-    if (!(data[i].close > data[i-1].close)) return null;
-    if (!(r[i] != null && r[i] < 50)) return null;
-
-    const checks = [
-        data[i].close > s200[i],
+    if (!touched || !(d[i].close > d[i-1].close)) return null;
+    if (!(c.rsi[i] != null && c.rsi[i] < 50)) return null;
+    var checks = [
+        d[i].close > c.s200[i],
         touched,
-        data[i].close > data[i-1].close,
-        r[i] < 50,
-        isUptrendStructure(data, i, 90, 3)
+        d[i].close > d[i-1].close,
+        c.rsi[i] < 50,
+        isUptrend(d, i, 90)
     ];
-    const okCount = checks.filter(Boolean).length;
-    if (okCount / checks.length < thresholds.minSetupQuality / 100) return null;
-
-    const price = data[i].close;
-    let stopPrice = price - 2.5 * atr[i];
-    const refStop = s200[i] - 0.5 * atr[i];
-    if (refStop < price - 1.0 * atr[i] && refStop > stopPrice) stopPrice = refStop;
-    if (stopPrice >= price) return null;
-    const risk = price - stopPrice;
-    const riskAtr = risk / atr[i];
-    if (riskAtr > thresholds.maxRiskAtr || riskAtr < thresholds.minRiskAtr) return null;
-    const t1 = price + 2.0 * atr[i];
-    const t2 = price + 3.0 * atr[i];
-    const rr = (t1 - price) / risk;
-    if (rr < thresholds.minRrT1) return null;
-    return { id: 'sma200', entry: price, stop: stopPrice, t1, t2, rrT1: rr, riskAtr, quality: Math.round(okCount/checks.length*100) };
+    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
+    if (ok / checks.length < TH.minSetupQuality / 100) return null;
+    var p = d[i].close;
+    var stop = p - 2.5 * c.atr[i];
+    var rs = c.s200[i] - 0.5 * c.atr[i];
+    if (rs < p - 1.0 * c.atr[i] && rs > stop) stop = rs;
+    if (stop >= p) return null;
+    var risk = p - stop;
+    var rAtr = risk / c.atr[i];
+    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
+    var t1 = p + 2.0 * c.atr[i];
+    var t2 = p + 3.0 * c.atr[i];
+    var rr = (t1 - p) / risk;
+    if (rr < TH.minRrT1) return null;
+    return { id: 'sma200', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
+}
+function tryGolden(d, i, c, TH) {
+    if (c.e20[i] == null || c.e50[i] == null || c.e200[i] == null || c.e20[i-1] == null || c.e50[i-1] == null) return null;
+    if (!(c.e20[i] > c.e50[i] && c.e20[i-1] <= c.e50[i-1])) return null;
+    if (!(c.e50[i] > c.e200[i]) || !(c.adx[i] != null && c.adx[i] > 20)) return null;
+    var checks = [
+        c.e20[i] > c.e50[i] && c.e20[i-1] <= c.e50[i-1],
+        c.e50[i] > c.e200[i],
+        c.adx[i] > 20,
+        d[i].volume > (c.vol20[i] || Infinity)
+    ];
+    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
+    if (ok / checks.length < TH.minSetupQuality / 100) return null;
+    var p = d[i].close;
+    var stop = p - 2.0 * c.atr[i];
+    var risk = p - stop;
+    var rAtr = risk / c.atr[i];
+    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
+    var t1 = p + 2.0 * c.atr[i];
+    var t2 = p + 3.0 * c.atr[i];
+    var rr = (t1 - p) / risk;
+    if (rr < TH.minRrT1) return null;
+    return { id: 'golden_cross', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
+}
+function tryBB(d, i, c, TH) {
+    if (c.bbUp[i] == null || c.bbMid[i] == null || c.atr[i] == null) return null;
+    if (!(d[i].close > c.bbUp[i])) return null;
+    if (!(c.adx[i] != null && c.adx[i] > 20)) return null;
+    if (!(c.rsi[i] != null && c.rsi[i] >= 55 && c.rsi[i] <= 80)) return null;
+    var checks = [
+        d[i].close > c.bbUp[i],
+        d[i].volume > (c.vol20[i] || Infinity) * 1.5,
+        c.adx[i] > 20,
+        c.rsi[i] >= 55 && c.rsi[i] <= 80,
+        isUptrend(d, i)
+    ];
+    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
+    if (ok / checks.length < TH.minSetupQuality / 100) return null;
+    var p = d[i].close;
+    var stop = c.bbMid[i] < p ? c.bbMid[i] : p - 2.0 * c.atr[i];
+    if (stop >= p) return null;
+    var risk = p - stop;
+    var rAtr = risk / c.atr[i];
+    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
+    var t1 = p + 2.0 * c.atr[i];
+    var t2 = p + 3.0 * c.atr[i];
+    var rr = (t1 - p) / risk;
+    if (rr < TH.minRrT1) return null;
+    return { id: 'bb_breakout', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
 }
 
-function trySetupGoldenCross(data, i, ctx, thresholds) {
-    const { e20, e50, e200, adx, atr } = ctx;
-    if (e20[i] == null || e50[i] == null || e200[i] == null || e20[i-1] == null || e50[i-1] == null) return null;
-    if (!(e20[i] > e50[i] && e20[i-1] <= e50[i-1])) return null;
-    if (!(e50[i] > e200[i])) return null;
-    if (!(adx[i] != null && adx[i] > 20)) return null;
-
-    const checks = [
-        e20[i] > e50[i] && e20[i-1] <= e50[i-1],
-        e50[i] > e200[i],
-        adx[i] > 20,
-        data[i].volume > (ctx.volAvg20[i] || Infinity)
-    ];
-    const okCount = checks.filter(Boolean).length;
-    if (okCount / checks.length < thresholds.minSetupQuality / 100) return null;
-
-    const price = data[i].close;
-    const stopPrice = price - 2.0 * atr[i];
-    const risk = price - stopPrice;
-    const riskAtr = risk / atr[i];
-    if (riskAtr > thresholds.maxRiskAtr || riskAtr < thresholds.minRiskAtr) return null;
-    const t1 = price + 2.0 * atr[i];
-    const t2 = price + 3.0 * atr[i];
-    const rr = (t1 - price) / risk;
-    if (rr < thresholds.minRrT1) return null;
-    return { id: 'golden_cross', entry: price, stop: stopPrice, t1, t2, rrT1: rr, riskAtr, quality: Math.round(okCount/checks.length*100) };
-}
-
-function trySetupBbBreakout(data, i, ctx, thresholds) {
-    const { bbUpper, bbMid, adx, atr, rsi: r } = ctx;
-    if (bbUpper[i] == null || bbMid[i] == null || atr[i] == null) return null;
-    if (!(data[i].close > bbUpper[i])) return null;
-    if (!(adx[i] != null && adx[i] > 20)) return null;
-    if (!(r[i] != null && r[i] >= 55 && r[i] <= 80)) return null;
-
-    const checks = [
-        data[i].close > bbUpper[i],
-        data[i].volume > (ctx.volAvg20[i] || Infinity) * 1.5,
-        adx[i] > 20,
-        r[i] >= 55 && r[i] <= 80,
-        isUptrendStructure(data, i, 60, 3)
-    ];
-    const okCount = checks.filter(Boolean).length;
-    if (okCount / checks.length < thresholds.minSetupQuality / 100) return null;
-
-    const price = data[i].close;
-    let stopPrice = bbMid[i] < price ? bbMid[i] : price - 2.0 * atr[i];
-    if (stopPrice >= price) return null;
-    const risk = price - stopPrice;
-    const riskAtr = risk / atr[i];
-    if (riskAtr > thresholds.maxRiskAtr || riskAtr < thresholds.minRiskAtr) return null;
-    const t1 = price + 2.0 * atr[i];
-    const t2 = price + 3.0 * atr[i];
-    const rr = (t1 - price) / risk;
-    if (rr < thresholds.minRrT1) return null;
-    return { id: 'bb_breakout', entry: price, stop: stopPrice, t1, t2, rrT1: rr, riskAtr, quality: Math.round(okCount/checks.length*100) };
-}
-
-/* ═══ SIMULACIÓN DE UN TRADE ═══ */
-function simulateTrade(data, entryIdx, setup, config) {
-    // Entry: fill al open de la barra siguiente (entryIdx = barra de señal, fill en entryIdx+1)
-    const fillIdx = entryIdx + 1;
-    if (fillIdx >= data.length) return null;
-    const slip = config.slippageBps / 10000;
-    const fillPrice = data[fillIdx].open * (1 + slip);
-    const stop = setup.stop;
-    const t1 = setup.t1;
-    const t2 = setup.t2;
-    const risk = fillPrice - stop;
+/* ── Simulación ── */
+function simulate(d, sigIdx, s, cfg) {
+    var fillIdx = sigIdx + 1;
+    if (fillIdx >= d.length) return null;
+    var slip = cfg.slippageBps / 10000;
+    var fill = d[fillIdx].open * (1 + slip);
+    var stop0 = s.stop;
+    var risk = fill - stop0;
     if (risk <= 0) return null;
+    var stop = stop0, t1Hit = false, remaining = 1.0, r = 0, mae = 0, mfe = 0;
 
-    let currentStop = stop;
-    let t1Hit = false;
-    let remaining = 1.0;
-    let realizedR = 0;
-    let mae = 0, mfe = 0;
-    let exitReason = null;
-
-    for (let i = fillIdx; i < data.length; i++) {
-        const bar = data[i];
-        const held = i - fillIdx;
-
-        // MAE/MFE
-        const adverse = fillPrice - bar.low;
-        const favor = bar.high - fillPrice;
+    for (var i = fillIdx; i < d.length; i++) {
+        var b = d[i];
+        var adverse = fill - b.low;
+        var favor = b.high - fill;
         if (adverse > mae) mae = adverse;
         if (favor > mfe) mfe = favor;
 
-        // Gap a través del stop al open
-        if (i > fillIdx && bar.open <= currentStop) {
-            realizedR += remaining * ((bar.open * (1 - slip) - fillPrice) / risk);
-            exitReason = 'stop_gap';
-            return finish(i, bar.datetime);
+        if (i > fillIdx && b.open <= stop) {
+            r += remaining * ((b.open * (1 - slip) - fill) / risk);
+            return done(i, b.datetime, 'stop_gap');
         }
-        // Stop intraday
-        if (bar.low <= currentStop) {
-            realizedR += remaining * ((currentStop * (1 - slip) - fillPrice) / risk);
-            exitReason = currentStop === stop ? 'stop' : 'trailing';
-            return finish(i, bar.datetime);
+        if (b.low <= stop) {
+            r += remaining * ((stop * (1 - slip) - fill) / risk);
+            return done(i, b.datetime, stop === stop0 ? 'stop' : 'trailing');
         }
-        // T1 parcial
-        if (!t1Hit && bar.high >= t1) {
-            realizedR += 0.5 * ((t1 * (1 - slip) - fillPrice) / risk);
+        if (!t1Hit && b.high >= s.t1) {
+            r += 0.5 * ((s.t1 * (1 - slip) - fill) / risk);
             remaining = 0.5;
             t1Hit = true;
-            currentStop = Math.max(currentStop, fillPrice);
+            stop = Math.max(stop, fill);
         }
-        // T2
-        if (t1Hit && remaining > 0 && bar.high >= t2) {
-            realizedR += remaining * ((t2 * (1 - slip) - fillPrice) / risk);
-            exitReason = 't2';
-            return finish(i, bar.datetime);
+        if (t1Hit && remaining > 0 && b.high >= s.t2) {
+            r += remaining * ((s.t2 * (1 - slip) - fill) / risk);
+            return done(i, b.datetime, 't2');
         }
-        // Time stop
-        if (held >= config.maxBarsHold) {
-            realizedR += remaining * ((bar.close * (1 - slip) - fillPrice) / risk);
-            exitReason = 'time_stop';
-            return finish(i, bar.datetime);
+        if (i - fillIdx >= cfg.maxBarsHold) {
+            r += remaining * ((b.close * (1 - slip) - fill) / risk);
+            return done(i, b.datetime, 'time_stop');
         }
-        // Chandelier trailing después de T1
-        if (t1Hit && config.atrArr && config.atrArr[i] != null) {
-            let maxH = -Infinity;
-            for (let j = Math.max(0, i-21); j <= i; j++) if (data[j].high > maxH) maxH = data[j].high;
-            const chand = maxH - 3 * config.atrArr[i];
-            if (chand > currentStop) currentStop = chand;
+        if (t1Hit) {
+            var mh = -Infinity;
+            for (var j = Math.max(0, i - 21); j <= i; j++) if (d[j].high > mh) mh = d[j].high;
+            var ch = mh - 3 * cfg.atr[i];
+            if (ch > stop) stop = ch;
         }
     }
-    // Fin de datos
-    const lastBar = data[data.length - 1];
-    realizedR += remaining * ((lastBar.close * (1 - slip) - fillPrice) / risk);
-    exitReason = 'end_of_data';
-    return finish(data.length - 1, lastBar.datetime);
+    var last = d[d.length - 1];
+    r += remaining * ((last.close * (1 - slip) - fill) / risk);
+    return done(d.length - 1, last.datetime, 'end_of_data');
 
-    function finish(exitIdx, exitDate) {
+    function done(exitIdx, exitDate, reason) {
         return {
-            entryDate: data[fillIdx].datetime,
-            exitDate,
-            entryPrice: fillPrice,
-            stopPrice: stop,
-            t1, t2,
-            rMult: realizedR,
-            maeR: mae / risk,
-            mfeR: mfe / risk,
+            entryDate: d[fillIdx].datetime, exitDate: exitDate,
+            entryPrice: fill, stopPrice: stop0,
+            t1: s.t1, t2: s.t2,
+            rMult: r, maeR: mae / risk, mfeR: mfe / risk,
             barsHeld: exitIdx - fillIdx,
-            exitReason,
-            setupId: setup.id,
-            quality: setup.quality
+            exitReason: reason, setupId: s.id, quality: s.quality
         };
     }
 }
 
-/* ═══ BACKTEST PRINCIPAL ═══ */
+/* ── Main ── */
 async function runBacktest() {
-    const runBtn = document.getElementById('runBtn');
-    const prog = document.getElementById('prog'), progFill = document.getElementById('progFill');
+    var btn = document.getElementById('runBtn');
+    var TH = (CFG && CFG.thresholds) || { minSetupQuality: 55, minRrT1: 1.5, maxRiskAtr: 3.0, minRiskAtr: 0.8 };
+    var enabled = (CFG && CFG.setupsEnabled) || { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true };
 
-    if (!DATASETS['SPY']) { setStatus('Falta SPY en los datos cargados'); return; }
-    const symbols = Object.keys(DATASETS).filter(s => s !== 'SPY');
+    if (!DATASETS['SPY']) { setStatus('Falta SPY'); return; }
+    var symbols = Object.keys(DATASETS).filter(function(s) { return s !== 'SPY'; });
     if (!symbols.length) { setStatus('Falta al menos un ticker además de SPY'); return; }
 
-    const cfg = loadConfig();
-    const thresholds = cfg.thresholds;
-    const enabledSetups = {};
-    document.querySelectorAll('.setup-tog input').forEach(inp => {
-        const id = inp.closest('.setup-tog').dataset.setup;
-        enabledSetups[id] = inp.checked;
-    });
-
-    const execCfg = {
+    var cfg = {
         capital: parseFloat(document.getElementById('pCapital').value) || 10000,
-        riskPct: parseFloat(document.getElementById('pRiskPct').value) || 1,
-        slippageBps: parseFloat(document.getElementById('pSlippage').value) || 5,
+        riskPct: parseFloat(document.getElementById('pRisk').value) || 1,
+        slippageBps: parseFloat(document.getElementById('pSlip').value) || 5,
         commission: parseFloat(document.getElementById('pComm').value) || 2,
-        maxBarsHold: parseInt(document.getElementById('pMaxBars').value) || 20,
-        startDate: document.getElementById('pStart').value || null,
-        endDate: document.getElementById('pEnd').value || null,
-        thresholds, enabledSetups
+        maxBarsHold: parseInt(document.getElementById('pMaxBars').value) || 20
     };
 
-    runBtn.disabled = true;
-    prog.classList.add('on');
-    progFill.style.width = '0%';
-    setStatus('Preparando régimen…');
+    btn.disabled = true;
+    setStatus('Calculando régimen…');
+    await new Promise(function(r) { setTimeout(r, 30); });
 
-    await new Promise(r => setTimeout(r, 50));
+    var spy = DATASETS['SPY'];
+    var regSeries = buildRegime(spy);
+    var regMap = Object.create(null);
+    for (var ri = 0; ri < spy.length; ri++) if (regSeries[ri]) regMap[spy[ri].datetime] = regSeries[ri];
 
-    const spyData = DATASETS['SPY'];
-    const regimeSeries = buildRegimeSeries(spyData);
-    const regimeMap = buildRegimeMap(spyData, regimeSeries);
+    var trades = [];
+    var totalBars = 0;
+    for (var ti = 0; ti < symbols.length; ti++) totalBars += DATASETS[symbols[ti]].length;
+    var done = 0;
 
-    const allTrades = [];
-    let totalBars = 0;
-    for (const sym of symbols) totalBars += DATASETS[sym].length;
-    let processedBars = 0;
+    for (var si = 0; si < symbols.length; si++) {
+        var sym = symbols[si];
+        var d = DATASETS[sym];
+        if (d.length < 250) continue;
 
-    for (const sym of symbols) {
-        const data = DATASETS[sym];
-        if (data.length < 250) continue;
+        var closes = d.map(function(x) { return x.close; });
+        var e20 = ema(closes, 20), e50 = ema(closes, 50), e200 = ema(closes, 200);
+        var s200 = sma(closes, 200);
+        var rsi = rsiC(closes, 14);
+        var atr = atrC(d, 14);
+        var adxObj = adxC(d, 14);
+        var dh20 = donHi(d, 20);
+        var bb = boll(closes, 20, 2);
+        var vol20 = sma(d.map(function(x) { return x.volume || 0; }), 20);
 
-        // Precalcular todos los indicadores una sola vez (son causales)
-        const closes = data.map(d => d.close);
-        const e20 = ema(closes, 20), e50 = ema(closes, 50), e200 = ema(closes, 200);
-        const s200 = sma(closes, 200);
-        const rsiArr = rsiCalc(closes, 14);
-        const atrArr = atrCalc(data, 14);
-        const adxObj = adxCalc(data, 14);
-        const dh20 = donchianHigh(data, 20);
-        const bb = bollinger(closes, 20, 2);
-        const volAvg20 = sma(data.map(d => d.volume || 0), 20);
-
-        const ctx = {
-            e20, e50, e200, s200, atr: atrArr,
-            rsi: rsiArr, adx: adxObj.adx, plusDI: adxObj.plusDI, minusDI: adxObj.minusDI,
-            dh20, bbUpper: bb.upper, bbMid: bb.middle, bbLower: bb.lower,
-            volAvg20
+        var c = {
+            e20: e20, e50: e50, e200: e200, s200: s200, atr: atr, rsi: rsi,
+            adx: adxObj.adx, pDI: adxObj.pDI, mDI: adxObj.mDI,
+            dh20: dh20, bbUp: bb.up, bbMid: bb.mid, bbLo: bb.lo,
+            vol20: vol20
         };
 
-        // Recorremos bar a bar
-        for (let i = 210; i < data.length - 1; i++) {
-            const date = data[i].datetime;
-            if (execCfg.startDate && date < execCfg.startDate) continue;
-            if (execCfg.endDate && date > execCfg.endDate) continue;
+        for (var i = 210; i < d.length - 1; i++) {
+            var regime = regMap[d[i].datetime] || 'NEUTRAL';
+            var isRO = regime === 'RISK_OFF' || regime === 'STRONG_RISK_OFF';
 
-            const regime = regimeMap[date] || 'NEUTRAL';
+            var cands = [];
+            if (enabled.donchian && !isRO) { var sd = tryDonchian(d, i, c, TH); if (sd) cands.push({ s: sd, p: 1 }); }
+            if (enabled.pullback) { var sp = tryPullback(d, i, c, TH); if (sp) cands.push({ s: sp, p: 2 }); }
+            if (enabled.bb_breakout && !isRO) { var sb = tryBB(d, i, c, TH); if (sb) cands.push({ s: sb, p: 3 }); }
+            if (enabled.golden_cross && !isRO) { var sg = tryGolden(d, i, c, TH); if (sg) cands.push({ s: sg, p: 4 }); }
+            if (enabled.sma200) { var s2 = trySma200(d, i, c, TH); if (s2) cands.push({ s: s2, p: 5 }); }
 
-            // Gate duro: no operar momentum en RISK_OFF
-            const isRiskOff = regime === 'RISK_OFF' || regime === 'STRONG_RISK_OFF';
+            if (!cands.length) { done++; continue; }
+            cands.sort(function(a, b) { return a.p - b.p; });
+            var chosen = cands[0].s;
 
-            // Solo un setup por barra (prioridad: donchian > pullback > bb > golden > sma200)
-            const candidates = [];
-            if (enabledSetups.donchian && !isRiskOff) {
-                const s = trySetupDonchian(data, i, ctx, thresholds);
-                if (s) candidates.push({ setup: s, prio: 1 });
+            var t = simulate(d, i, chosen, { slippageBps: cfg.slippageBps, maxBarsHold: cfg.maxBarsHold, atr: atr });
+            if (t) {
+                t.symbol = sym;
+                t.regime = regime;
+                trades.push(t);
+                i = Math.min(d.length - 2, i + t.barsHeld);
             }
-            if (enabledSetups.pullback) {
-                const s = trySetupPullback(data, i, ctx, thresholds);
-                if (s) candidates.push({ setup: s, prio: 2 });
-            }
-            if (enabledSetups.bb_breakout && !isRiskOff) {
-                const s = trySetupBbBreakout(data, i, ctx, thresholds);
-                if (s) candidates.push({ setup: s, prio: 3 });
-            }
-            if (enabledSetups.golden_cross && !isRiskOff) {
-                const s = trySetupGoldenCross(data, i, ctx, thresholds);
-                if (s) candidates.push({ setup: s, prio: 4 });
-            }
-            if (enabledSetups.sma200) {
-                const s = trySetupSma200(data, i, ctx, thresholds);
-                if (s) candidates.push({ setup: s, prio: 5 });
-            }
-            if (!candidates.length) { processedBars++; continue; }
-
-            candidates.sort((a, b) => a.prio - b.prio);
-            const chosen = candidates[0].setup;
-
-            const trade = simulateTrade(data, i, chosen, {
-                slippageBps: execCfg.slippageBps,
-                maxBarsHold: execCfg.maxBarsHold,
-                atrArr
-            });
-            if (trade) {
-                trade.symbol = sym;
-                trade.regime = regime;
-                allTrades.push(trade);
-                // Saltar barras dentro del trade para no re-entrar en el mismo movimiento
-                i = Math.min(data.length - 2, i + trade.barsHeld);
-            }
-            processedBars++;
-            if (processedBars % 50 === 0) {
-                const pct = Math.round((processedBars / totalBars) * 100);
-                progFill.style.width = pct + '%';
-                setStatus(`Simulando… ${processedBars}/${totalBars} barras`);
-                await new Promise(r => setTimeout(r, 0));
+            done++;
+            if (done % 500 === 0) {
+                setStatus('Simulando… ' + done + '/' + totalBars);
+                await new Promise(function(r) { setTimeout(r, 0); });
             }
         }
     }
 
-    progFill.style.width = '100%';
-    setStatus(`${allTrades.length} trades simulados en ${symbols.length} tickers`);
-    runBtn.disabled = false;
-    setTimeout(() => prog.classList.remove('on'), 600);
+    btn.disabled = false;
+    if (!trades.length) { setStatus('Sin trades. Baja el umbral de calidad.'); return; }
 
-    if (!allTrades.length) {
-        setStatus('Sin trades. Prueba a bajar el umbral de calidad o activar más setups.');
-        return;
-    }
+    LAST = computeMetrics(trades, cfg);
+    LAST.trades = trades;
+    renderResults(LAST, cfg);
+    setStatus(trades.length + ' trades simulados');
+}
 
-    const result = computeMetrics(allTrades, execCfg);
-    LAST_RESULT = result;
-    renderResults(result, allTrades, execCfg);
-    try {
-    localStorage.setItem(RES_KEY, JSON.stringify({
-        ...result,
-        trades: allTrades,
-        savedAt: Date.now(),
-        config: {
-            thresholds: thresholds,
-            slippageBps: execCfg.slippageBps,
-            capital: execCfg.capital,
-            riskPct: execCfg.riskPct,
-            meta: cfg.meta || {}
-        }
-    }));
-} catch(_) {}
-
-/* ═══ MÉTRICAS ═══ */
 function computeMetrics(trades, cfg) {
-    const n = trades.length;
-    const rs = trades.map(t => t.rMult);
-    const wins = trades.filter(t => t.rMult > 0);
-    const losses = trades.filter(t => t.rMult < 0);
-    const flats = trades.filter(t => t.rMult === 0);
-    const wr = wins.length / n;
-    const avgW = wins.length ? wins.reduce((a,t) => a + t.rMult, 0)/wins.length : 0;
-    const avgL = losses.length ? losses.reduce((a,t) => a + t.rMult, 0)/losses.length : 0;
-    const gp = wins.reduce((a,t) => a + t.rMult, 0);
-    const gl = Math.abs(losses.reduce((a,t) => a + t.rMult, 0));
-    const pf = gl > 0 ? gp/gl : (gp > 0 ? Infinity : 0);
-    const totalR = rs.reduce((a,b) => a + b, 0);
-    const expectancy = totalR / n;
-    const meanR = expectancy;
-    const sdR = n > 1 ? Math.sqrt(rs.reduce((a,b) => a + Math.pow(b-meanR, 2), 0)/(n-1)) : 0;
-    const sqn = sdR > 0 ? Math.sqrt(n) * meanR / sdR : 0;
+    var n = trades.length;
+    var rs = trades.map(function(t) { return t.rMult; });
+    var wins = trades.filter(function(t) { return t.rMult > 0; });
+    var losses = trades.filter(function(t) { return t.rMult < 0; });
+    var flats = trades.filter(function(t) { return t.rMult === 0; });
+    var wr = n ? wins.length / n : 0;
+    var avgW = wins.length ? wins.reduce(function(a, t) { return a + t.rMult; }, 0) / wins.length : 0;
+    var avgL = losses.length ? losses.reduce(function(a, t) { return a + t.rMult; }, 0) / losses.length : 0;
+    var gp = wins.reduce(function(a, t) { return a + t.rMult; }, 0);
+    var gl = Math.abs(losses.reduce(function(a, t) { return a + t.rMult; }, 0));
+    var pf = gl > 0 ? gp / gl : (gp > 0 ? Infinity : 0);
+    var totalR = rs.reduce(function(a, b) { return a + b; }, 0);
+    var exp = totalR / n;
+    var sd = n > 1 ? Math.sqrt(rs.reduce(function(a, b) { return a + Math.pow(b - exp, 2); }, 0) / (n - 1)) : 0;
+    var sqn = sd > 0 ? Math.sqrt(n) * exp / sd : 0;
 
-    // Equity curve (a 1% riesgo por trade, compuesto)
-    const riskPerTrade = cfg.riskPct / 100;
-    let equity = cfg.capital;
-    const curve = [{ i: 0, eq: equity, date: null }];
-    let peak = equity, maxDD = 0, maxDDPct = 0;
-    let consecLoss = 0, maxConsecLoss = 0;
-    for (let i = 0; i < trades.length; i++) {
-        const t = trades[i];
-        equity = equity * (1 + riskPerTrade * t.rMult);
-        // Coste de comisión
-        equity -= cfg.commission;
-        curve.push({ i: i+1, eq: equity, date: t.exitDate });
-        if (equity > peak) peak = equity;
-        const dd = peak - equity;
-        const ddPct = (dd / peak) * 100;
+    var rp = cfg.riskPct / 100;
+    var eq = cfg.capital;
+    var curve = [{ i: 0, eq: eq }];
+    var peak = eq, maxDD = 0, maxDDPct = 0, cl = 0, maxCL = 0;
+    for (var i = 0; i < trades.length; i++) {
+        eq = eq * (1 + rp * trades[i].rMult) - cfg.commission;
+        curve.push({ i: i + 1, eq: eq });
+        if (eq > peak) peak = eq;
+        var dd = peak - eq;
+        var ddPct = (dd / peak) * 100;
         if (dd > maxDD) maxDD = dd;
         if (ddPct > maxDDPct) maxDDPct = ddPct;
-        if (t.rMult < 0) { consecLoss++; if (consecLoss > maxConsecLoss) maxConsecLoss = consecLoss; }
-        else consecLoss = 0;
+        if (trades[i].rMult < 0) { cl++; if (cl > maxCL) maxCL = cl; } else cl = 0;
     }
-    const finalEquity = equity;
-    const totalReturn = ((finalEquity - cfg.capital) / cfg.capital) * 100;
+    var finalEq = eq;
+    var ret = ((finalEq - cfg.capital) / cfg.capital) * 100;
 
-    // Bootstrap IC95% de expectancy
-    const bootMean = [];
-    for (let b = 0; b < 1000; b++) {
-        let s = 0;
-        for (let k = 0; k < n; k++) s += rs[Math.floor(Math.random() * n)];
-        bootMean.push(s / n);
+    var boot = [];
+    for (var b = 0; b < 1000; b++) {
+        var s = 0;
+        for (var k = 0; k < n; k++) s += rs[Math.floor(Math.random() * n)];
+        boot.push(s / n);
     }
-    bootMean.sort((a,b) => a - b);
-    const ci95Low = bootMean[Math.floor(bootMean.length * 0.025)];
-    const ci95High = bootMean[Math.floor(bootMean.length * 0.975)];
+    boot.sort(function(a, b) { return a - b; });
+    var ciL = boot[Math.floor(boot.length * 0.025)];
+    var ciH = boot[Math.floor(boot.length * 0.975)];
 
-    // Por setup
-    const bySetup = {};
-    for (const t of trades) {
+    var bySetup = {};
+    for (var a = 0; a < trades.length; a++) {
+        var t = trades[a];
         if (!bySetup[t.setupId]) bySetup[t.setupId] = { n: 0, totalR: 0, wins: 0 };
         bySetup[t.setupId].n++;
         bySetup[t.setupId].totalR += t.rMult;
         if (t.rMult > 0) bySetup[t.setupId].wins++;
     }
-
-    // Por régimen
-    const byRegime = {};
-    for (const t of trades) {
-        const r = t.regime || '—';
-        if (!byRegime[r]) byRegime[r] = { n: 0, totalR: 0, wins: 0 };
-        byRegime[r].n++;
-        byRegime[r].totalR += t.rMult;
-        if (t.rMult > 0) byRegime[r].wins++;
-    }
-
-    // Por símbolo
-    const bySymbol = {};
-    for (const t of trades) {
-        if (!bySymbol[t.symbol]) bySymbol[t.symbol] = { n: 0, totalR: 0, wins: 0 };
-        bySymbol[t.symbol].n++;
-        bySymbol[t.symbol].totalR += t.rMult;
-        if (t.rMult > 0) bySymbol[t.symbol].wins++;
+    var bySymbol = {};
+    for (var c2 = 0; c2 < trades.length; c2++) {
+        var t2 = trades[c2];
+        if (!bySymbol[t2.symbol]) bySymbol[t2.symbol] = { n: 0, totalR: 0, wins: 0 };
+        bySymbol[t2.symbol].n++;
+        bySymbol[t2.symbol].totalR += t2.rMult;
+        if (t2.rMult > 0) bySymbol[t2.symbol].wins++;
     }
 
     return {
-        n, wr, avgW, avgL, pf, expectancy, sqn, totalR,
-        maxDD, maxDDPct, finalEquity, totalReturn,
-        ci95Low, ci95High, bootStd: sdR,
-        wins: wins.length, losses: losses.length, flats: flats.length,
-        maxConsecLoss,
-        curve, bySetup, byRegime, bySymbol,
-        config: cfg
+        n: n, wr: wr, avgW: avgW, avgL: avgL, pf: pf, exp: exp, sqn: sqn,
+        totalR: totalR, maxDD: maxDD, maxDDPct: maxDDPct, finalEq: finalEq, ret: ret,
+        ciL: ciL, ciH: ciH, wins: wins.length, losses: losses.length, flats: flats.length,
+        maxCL: maxCL, curve: curve, bySetup: bySetup, bySymbol: bySymbol
     };
 }
 
-/* ═══ RENDERIZADO ═══ */
-function renderResults(res, trades, cfg) {
+function renderResults(R, cfg) {
     document.getElementById('resultsCard').style.display = 'block';
     document.getElementById('tradesCard').style.display = 'block';
 
-    const expColor = res.expectancy >= 0.2 ? 'var(--green)' : res.expectancy >= 0 ? 'var(--text)' : 'var(--red)';
-    const pfColor = res.pf >= 1.5 ? 'var(--green)' : res.pf >= 1 ? 'var(--text)' : 'var(--red)';
-    const ddColor = res.maxDDPct <= 15 ? 'var(--green)' : res.maxDDPct <= 30 ? 'var(--orange)' : 'var(--red)';
+    var expC = R.exp >= 0.2 ? 'var(--green)' : R.exp >= 0 ? 'var(--text)' : 'var(--red)';
+    var pfC = R.pf >= 1.5 ? 'var(--green)' : R.pf >= 1 ? 'var(--text)' : 'var(--red)';
+    var ddC = R.maxDDPct <= 15 ? 'var(--green)' : R.maxDDPct <= 30 ? 'var(--orange)' : 'var(--red)';
+    var ciCross = R.ciL <= 0 && R.ciH >= 0;
 
-    document.getElementById('resultsSub').textContent =
-        `${res.n} trades · ${Object.keys(res.bySymbol).length} símbolos · ${cfg.thresholds.minSetupQuality}Q mín · ${cfg.slippageBps}bps slip`;
+    document.getElementById('resultsSub').innerHTML =
+        R.n + ' trades · ' + Object.keys(R.bySymbol).length + ' símbolos · ' + cfg.slippageBps + 'bps slip · $' + cfg.commission + ' comisión';
 
-    document.getElementById('metrics').innerHTML = `
-        <div class="metric"><div class="k">Trades</div><div class="v">${res.n}</div><div class="s">${res.wins}W · ${res.losses}L${res.flats ? ' · ' + res.flats + 'B' : ''}</div></div>
-        <div class="metric"><div class="k">Win rate</div><div class="v">${(res.wr*100).toFixed(1)}%</div><div class="s">${res.wins}/${res.n}</div></div>
-        <div class="metric"><div class="k">Expectancy</div><div class="v" style="color:${expColor}">${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R</div><div class="s">IC95% [${res.ci95Low.toFixed(2)}, ${res.ci95High.toFixed(2)}]</div></div>
-        <div class="metric"><div class="k">Profit factor</div><div class="v" style="color:${pfColor}">${res.pf === Infinity ? '∞' : res.pf.toFixed(2)}</div><div class="s">gross P / gross L</div></div>
-    `;
-    document.getElementById('metrics2').innerHTML = `
-        <div class="metric"><div class="k">SQN</div><div class="v">${res.n < 10 ? '—' : res.sqn.toFixed(2)}</div><div class="s">${res.n < 10 ? 'n<10' : res.sqn >= 3 ? 'bueno' : res.sqn >= 2 ? 'aceptable' : res.sqn >= 1 ? 'débil' : 'malo'}</div></div>
-        <div class="metric"><div class="k">Retorno total</div><div class="v" style="color:${res.totalReturn >= 0 ? 'var(--green)' : 'var(--red)'}">${res.totalReturn >= 0 ? '+' : ''}${res.totalReturn.toFixed(1)}%</div><div class="s">$${cfg.capital.toFixed(0)} → $${res.finalEquity.toFixed(0)}</div></div>
-        <div class="metric"><div class="k">Max DD</div><div class="v" style="color:${ddColor}">-${res.maxDDPct.toFixed(1)}%</div><div class="s">racha perdedora ${res.maxConsecLoss}</div></div>
-    `;
+    document.getElementById('metrics').innerHTML =
+        '<div class="metric"><div class="k">Trades</div><div class="v">' + R.n + '</div><div class="s">' + R.wins + 'W · ' + R.losses + 'L</div></div>' +
+        '<div class="metric"><div class="k">Win rate</div><div class="v">' + (R.wr * 100).toFixed(1) + '%</div><div class="s">' + R.wins + '/' + R.n + '</div></div>' +
+        '<div class="metric"><div class="k">Expectancy</div><div class="v" style="color:' + expC + '">' + (R.exp >= 0 ? '+' : '') + R.exp.toFixed(2) + 'R</div><div class="s">IC95% [' + R.ciL.toFixed(2) + ', ' + R.ciH.toFixed(2) + ']</div></div>' +
+        '<div class="metric"><div class="k">Profit factor</div><div class="v" style="color:' + pfC + '">' + (R.pf === Infinity ? '∞' : R.pf.toFixed(2)) + '</div><div class="s">P/L brutos</div></div>';
 
-    // Equity chart
-    if (equityChart) equityChart.destroy();
-    const eqLabels = res.curve.map((p, i) => i === 0 ? 'start' : `#${i}`);
-    equityChart = new Chart(document.getElementById('equityChart'), {
+    document.getElementById('metrics2').innerHTML =
+        '<div class="metric"><div class="k">SQN</div><div class="v">' + (R.n < 10 ? '—' : R.sqn.toFixed(2)) + '</div><div class="s">' + (R.n < 10 ? 'n<10' : R.sqn >= 3 ? 'bueno' : R.sqn >= 2 ? 'aceptable' : R.sqn >= 1 ? 'débil' : 'malo') + '</div></div>' +
+        '<div class="metric"><div class="k">Retorno</div><div class="v" style="color:' + (R.ret >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (R.ret >= 0 ? '+' : '') + R.ret.toFixed(1) + '%</div><div class="s">$' + cfg.capital.toFixed(0) + ' → $' + R.finalEq.toFixed(0) + '</div></div>' +
+        '<div class="metric"><div class="k">Max DD</div><div class="v" style="color:' + ddC + '">-' + R.maxDDPct.toFixed(1) + '%</div><div class="s">racha ' + R.maxCL + '</div></div>';
+
+    document.getElementById('resultsSub').innerHTML += ciCross
+        ? '<div style="margin-top:8px;padding:9px 11px;background:rgba(255,159,10,.10);border:1px solid rgba(255,159,10,.30);border-radius:8px;font-size:11px;color:var(--orange);"><b>⚠ IC95% cruza cero.</b> Sin edge demostrable con esta muestra.</div>'
+        : '<div style="margin-top:8px;padding:9px 11px;background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.25);border-radius:8px;font-size:11px;color:var(--green);"><b>✓ IC95% no cruza cero.</b> Expectancy significativa al 95%.</div>';
+
+    if (eqChart) eqChart.destroy();
+    eqChart = new Chart(document.getElementById('eqChart'), {
         type: 'line',
         data: {
-            labels: eqLabels,
+            labels: R.curve.map(function(_, i) { return i === 0 ? 'start' : '#' + i; }),
             datasets: [{
-                label: 'Equity ($)',
-                data: res.curve.map(p => +p.eq.toFixed(2)),
-                borderColor: '#32d4e0',
-                backgroundColor: 'rgba(50,212,224,.08)',
+                label: 'Equity',
+                data: R.curve.map(function(p) { return +p.eq.toFixed(2); }),
+                borderColor: R.ret >= 0 ? '#32d4e0' : '#ff453a',
+                backgroundColor: R.ret >= 0 ? 'rgba(50,212,224,.08)' : 'rgba(255,69,58,.08)',
                 borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1
             }]
         },
@@ -1060,342 +886,108 @@ function renderResults(res, trades, cfg) {
             plugins: { legend: { display: false } },
             scales: {
                 x: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { color: '#636366', font: { size: 9 }, maxTicksLimit: 8 } },
-                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 9 }, callback: v => '$' + v.toFixed(0) } }
+                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 9 }, callback: function(v) { return '$' + Number(v).toFixed(0); } } }
             }
         }
     });
 
-    // Distribución de R
-    const buckets = [
-        { label: '<-2R', min: -Infinity, max: -2 },
-        { label: '-2R', min: -2, max: -1 },
-        { label: '-1R', min: -1, max: -0.5 },
-        { label: '-0.5R', min: -0.5, max: 0.001 },
-        { label: '0-0.5R', min: 0.001, max: 0.5 },
-        { label: '0.5-1R', min: 0.5, max: 1 },
-        { label: '1-2R', min: 1, max: 2 },
-        { label: '2-3R', min: 2, max: 3 },
-        { label: '>3R', min: 3, max: Infinity }
-    ];
-    const counts = buckets.map(b => trades.filter(t => t.rMult >= b.min && t.rMult < b.max).length);
-    if (distChart) distChart.destroy();
-    distChart = new Chart(document.getElementById('distChart'), {
-        type: 'bar',
-        data: {
-            labels: buckets.map(b => b.label),
-            datasets: [{
-                data: counts,
-                backgroundColor: buckets.map(b => b.max <= 0.001 ? 'rgba(255,69,58,.7)' : 'rgba(48,209,88,.7)')
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
-            plugins: { legend: { display: false }, title: { display: true, text: 'Distribución de R', color: '#8e8e93', font: { size: 11 } } },
-            scales: {
-                x: { grid: { display: false }, ticks: { color: '#636366', font: { size: 8 } } },
-                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 8 } } }
-            }
-        }
-    });
+    var sEntries = Object.entries(R.bySetup).sort(function(a, b) { return b[1].n - a[1].n; });
+    document.getElementById('bySetup').innerHTML =
+        '<div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">Por setup</div>' +
+        '<table><thead><tr><th>Setup</th><th>N</th><th>WR</th><th>Exp.</th></tr></thead><tbody>' +
+        sEntries.map(function(e) {
+            var k = e[0], v = e[1];
+            var exp = v.totalR / v.n;
+            var c = exp >= 0.2 ? 'var(--green)' : exp >= 0 ? 'var(--text)' : 'var(--red)';
+            return '<tr><td>' + k + '</td><td style="text-align:right">' + v.n + '</td><td style="text-align:right;color:var(--text-2)">' + (v.wins / v.n * 100).toFixed(0) + '%</td><td style="text-align:right;color:' + c + ';font-weight:700">' + (exp >= 0 ? '+' : '') + exp.toFixed(2) + 'R</td></tr>';
+        }).join('') +
+        '</tbody></table>';
 
-    // MAE/MFE ganadores
-    const winners = trades.filter(t => t.rMult > 0);
-    const maeBuckets = [
-        { label: '0', min: 0, max: 0.001 },
-        { label: '0.25', min: 0.001, max: 0.25 },
-        { label: '0.5', min: 0.25, max: 0.5 },
-        { label: '0.75', min: 0.5, max: 0.75 },
-        { label: '1', min: 0.75, max: 1 },
-        { label: '>1', min: 1, max: Infinity }
-    ];
-    const maeCounts = maeBuckets.map(b => winners.filter(t => t.maeR >= b.min && t.maeR < b.max).length);
-    if (maeMfeChart) maeMfeChart.destroy();
-    maeMfeChart = new Chart(document.getElementById('maeMfeChart'), {
-        type: 'bar',
-        data: {
-            labels: maeBuckets.map(b => b.label + 'R'),
-            datasets: [{ data: maeCounts, backgroundColor: 'rgba(50,212,224,.7)' }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
-            plugins: { legend: { display: false }, title: { display: true, text: 'MAE · ganadores', color: '#8e8e93', font: { size: 11 } } },
-            scales: {
-                x: { grid: { display: false }, ticks: { color: '#636366', font: { size: 8 } } },
-                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 8 } } }
-            }
-        }
-    });
+    document.getElementById('tradesSub').textContent = R.n + ' trades · mostrando 200 más recientes';
+    var sorted = R.trades.slice().sort(function(a, b) { return (b.entryDate || '').localeCompare(a.entryDate || ''); }).slice(0, 200);
+    document.getElementById('tradesList').innerHTML =
+        '<table><thead><tr><th>Fecha</th><th>Sym</th><th>Setup</th><th>Ent.</th><th>Stop</th><th>Salida</th><th>R</th></tr></thead><tbody>' +
+        sorted.map(function(t) {
+            return '<tr>' +
+                '<td>' + (t.entryDate || '—') + '</td>' +
+                '<td><b>' + (t.symbol || '') + '</b></td>' +
+                '<td style="font-size:10px;color:var(--text-2)">' + (t.setupId || '') + '</td>' +
+                '<td style="text-align:right">$' + t.entryPrice.toFixed(2) + '</td>' +
+                '<td style="text-align:right">$' + t.stopPrice.toFixed(2) + '</td>' +
+                '<td style="font-size:10px;color:var(--text-3)">' + (t.exitReason || '') + '</td>' +
+                '<td style="text-align:right"><span class="tag ' + (t.rMult >= 0 ? 'win' : 'loss') + '">' + (t.rMult >= 0 ? '+' : '') + t.rMult.toFixed(2) + 'R</span></td>' +
+                '</tr>';
+        }).join('') +
+        '</tbody></table>';
 
-    // Por setup
-    const setupEntries = Object.entries(res.bySetup).sort((a,b) => b[1].n - a[1].n);
-    if (bySetupChart) bySetupChart.destroy();
-    bySetupChart = new Chart(document.getElementById('bySetupChart'), {
-        type: 'bar',
-        data: {
-            labels: setupEntries.map(([k]) => k),
-            datasets: [{
-                label: 'Expectancy (R)',
-                data: setupEntries.map(([,v]) => +(v.totalR/v.n).toFixed(2)),
-                backgroundColor: setupEntries.map(([,v]) => (v.totalR/v.n) >= 0.2 ? 'rgba(48,209,88,.7)' : (v.totalR/v.n) >= 0 ? 'rgba(142,142,147,.5)' : 'rgba(255,69,58,.7)')
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
-            plugins: { legend: { display: false }, title: { display: true, text: 'Expectancy por setup', color: '#8e8e93', font: { size: 11 } } },
-            scales: {
-                x: { grid: { display: false }, ticks: { color: '#636366', font: { size: 8 } } },
-                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 8 } } }
-            }
-        }
-    });
-
-    // Tabla detallada
-    document.getElementById('tradesSub').textContent = `${trades.length} trades simulados`;
-    const sortedTrades = [...trades].sort((a,b) => b.entryDate.localeCompare(a.entryDate)).slice(0, 300);
-    document.getElementById('tradesList').innerHTML = `
-        <table class="bt-table">
-            <thead><tr>
-                <th>Fecha</th><th>Símbolo</th><th>Setup</th><th>Q</th>
-                <th>Entrada</th><th>Stop</th><th>Salida</th>
-                <th>Motivo</th><th>R</th><th>MAE</th><th>MFE</th>
-            </tr></thead>
-            <tbody>
-            ${sortedTrades.map(t => `
-                <tr>
-                    <td>${t.entryDate}</td>
-                    <td><b>${t.symbol}</b></td>
-                    <td>${t.setupId}</td>
-                    <td>${t.quality}</td>
-                    <td>$${t.entryPrice.toFixed(2)}</td>
-                    <td>$${t.stopPrice.toFixed(2)}</td>
-                    <td>${t.exitDate}</td>
-                    <td>${t.exitReason}</td>
-                    <td><span class="tag ${t.rMult >= 0 ? 'win' : 'loss'}">${t.rMult >= 0 ? '+' : ''}${t.rMult.toFixed(2)}R</span></td>
-                    <td>-${t.maeR.toFixed(2)}R</td>
-                    <td>+${t.mfeR.toFixed(2)}R</td>
-                </tr>
-            `).join('')}
-            </tbody>
-        </table>
-        ${trades.length > 300 ? `<div style="font-size:11px;color:var(--text-3);padding:8px;text-align:center;">Mostrando 300 de ${trades.length}. Exporta el CSV para verlos todos.</div>` : ''}
-    `;
+    if (IN_IFRAME) {
+        document.getElementById('sendBtn').style.display = 'block';
+        sendResultsToParent();
+    }
 }
 
-/* ═══ EXPORT / ENVÍO ═══ */
+function sendResultsToParent() {
+    if (!LAST) return;
+    notifyParent('bt_results', {
+        result: Object.assign({}, LAST, {
+            savedAt: Date.now(),
+            config: {
+                thresholds: CFG && CFG.thresholds,
+                slippageBps: parseFloat(document.getElementById('pSlip').value),
+                capital: parseFloat(document.getElementById('pCapital').value),
+                riskPct: parseFloat(document.getElementById('pRisk').value),
+                meta: (CFG && CFG.meta) || {}
+            }
+        })
+    });
+}
+
 function exportCSV() {
-    if (!LAST_RESULT) return;
-    const raw = localStorage.getItem(RES_KEY);
-    const data = raw ? JSON.parse(raw) : null;
-    if (!data || !data.trades) return;
-    const headers = ['entryDate','exitDate','symbol','setupId','quality','entryPrice','stopPrice','t1','t2','rMult','maeR','mfeR','barsHeld','exitReason','regime'];
-    const lines = [headers.join(',')];
-    for (const t of data.trades) {
-        lines.push(headers.map(k => {
-            const v = t[k];
+    if (!LAST || !LAST.trades) return;
+    var hdr = ['entryDate', 'exitDate', 'symbol', 'setupId', 'quality', 'entryPrice', 'stopPrice', 't1', 't2', 'rMult', 'maeR', 'mfeR', 'barsHeld', 'exitReason', 'regime'];
+    var lines = [hdr.join(',')];
+    for (var i = 0; i < LAST.trades.length; i++) {
+        var t = LAST.trades[i];
+        lines.push(hdr.map(function(k) {
+            var v = t[k];
             if (v == null) return '';
-            const s = String(v);
-            return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+            var s = String(v);
+            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
         }).join(','));
     }
-    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    var blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
     a.href = url;
-    a.download = `backtest_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = 'backtest_' + new Date().toISOString().slice(0, 10) + '.csv';
     a.click();
     URL.revokeObjectURL(url);
 }
-function sendToMain() {
-    if (!LAST_RESULT) return;
-    // El resultado ya está en localStorage bajo RES_KEY — el sistema principal puede leerlo
-    try {
-        const raw = localStorage.getItem(RES_KEY);
-        if (!raw) { setStatus('No hay resultado guardado'); return; }
-        // Marcar como "listo para importar"
-        localStorage.setItem('sa_bt_ready', String(Date.now()));
-        setStatus('Resultado marcado como listo. Abre StockAnalyzer y pulsa "Importar backtest".');
-    } catch(e) {
-        setStatus('Error guardando: ' + e.message);
-    }
-}
 
-/* ═══ INIT ═══ */
 function init() {
-    const cfg = loadConfig();
-    renderConfigPreview(cfg);
-    applyConfigToInputs(cfg);
-
-    const drop = document.getElementById('drop');
-    const input = document.getElementById('fileInput');
-    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
-    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-    drop.addEventListener('drop', e => {
-        e.preventDefault(); drop.classList.remove('over');
-        handleFiles(e.dataTransfer.files);
-    });
-    input.addEventListener('change', e => handleFiles(e.target.files));
-
-    // Si venimos con datos pre-cargados en localStorage (del sistema principal)
     try {
-        const pre = localStorage.getItem('sa_bt_data');
-        if (pre) {
-            const obj = JSON.parse(pre);
-            for (const [sym, bars] of Object.entries(obj)) {
-                if (Array.isArray(bars) && bars.length >= 250) DATASETS[sym] = bars;
-            }
-            localStorage.removeItem('sa_bt_data');
-            if (Object.keys(DATASETS).length) {
-                renderChips();
-                setStatus('Datos precargados desde StockAnalyzer');
-            }
-        }
+        var raw = localStorage.getItem(CFG_KEY);
+        if (raw) { CFG = JSON.parse(raw); renderCfgSummary(CFG); }
     } catch(_) {}
 
-    renderChips();
-    setStatus('Listo para cargar datos');
-}
-/* ═══════════════════════════════════════════════════════════════
-   BRIDGE BACKTESTER ↔ STOCKANALYZER (iframe, mismo origen)
-   ═══════════════════════════════════════════════════════════════ */
-
-const _btFrame = () => document.getElementById('btFrame');
-let _btFrameReady = false;
-let _btLastResult = null;
-
-// El iframe avisa cuando está listo
-window.addEventListener('message', (ev) => {
-    const msg = ev.data;
-    if (!msg || typeof msg !== 'object') return;
-
-    if (msg.type === 'bt_ready') {
-        _btFrameReady = true;
-        console.log('[sa] backtester listo');
-        // Si ya hay config guardada, la mandamos automáticamente
-        pushConfigToBacktester();
-    }
-
-    if (msg.type === 'bt_ack') {
-        console.log('[sa] backtester confirmó config');
-        toast('Backtester cargado ✓', 'success', 2000);
-    }
-
-    if (msg.type === 'bt_results') {
-        console.log('[sa] resultados recibidos:', msg.result?.n, 'trades');
-        _btLastResult = msg.result;
-        renderBtSummaryInParent(msg.result);
-        toast(`Backtest: ${msg.result.n} trades · ${msg.result.expectancy >= 0 ? '+' : ''}${msg.result.expectancy.toFixed(2)}R`, 'success', 4000);
-    }
-
-    if (msg.type === 'bt_log') {
-        console.log('[bt]', msg.text);
-    }
-});
-
-// Enviar config + datos al iframe
-function pushConfigToBacktester() {
-    const frame = _btFrame();
-    if (!frame || !frame.contentWindow) {
-        toast('Backtester aún no cargado', 'warn');
-        return;
-    }
-
-    // Construir config
-    const cfg = {
-        version: '4.9',
-        thresholds: getThresholds(),
-        context: getContextConfig(),
-        risk: getRiskConfig(),
-        setupsEnabled: { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true },
-        meta: {
-            generatedAt: new Date().toISOString(),
-            source: 'stockanalyzer',
-            targetSymbol: currentChartSymbol || null
-        }
-    };
-
-    // Construir datos: SPY desde spyDataCache, resto desde lastFetchedData
-    const btData = {};
-    if (spyDataCache && Array.isArray(spyDataCache) && spyDataCache.length >= 250) {
-        btData['SPY'] = spyDataCache;
-    }
-    if (lastFetchedData && lastFetchedData['SPY'] && !btData['SPY']) {
-        btData['SPY'] = lastFetchedData['SPY'];
-    }
-    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol]) {
-        btData[currentChartSymbol] = lastFetchedData[currentChartSymbol];
-    }
-    for (const s of Object.keys(lastFetchedData || {})) {
-        if (Object.keys(btData).length >= 8) break;
-        if (!btData[s] && Array.isArray(lastFetchedData[s]) && lastFetchedData[s].length >= 250) {
-            btData[s] = lastFetchedData[s];
-        }
-    }
-
-    console.log('[sa] enviando al iframe:', {
-        symbols: Object.keys(btData),
-        bars: Object.fromEntries(Object.entries(btData).map(([k,v]) => [k, v.length]))
+    var drop = document.getElementById('drop');
+    var input = document.getElementById('fileInput');
+    drop.addEventListener('dragover', function(e) { e.preventDefault(); drop.style.borderColor = '#32d4e0'; });
+    drop.addEventListener('dragleave', function() { drop.style.borderColor = ''; });
+    drop.addEventListener('drop', function(e) {
+        e.preventDefault(); drop.style.borderColor = '';
+        handleFiles(e.dataTransfer.files);
     });
+    input.addEventListener('change', function(e) { handleFiles(e.target.files); });
 
-    if (!btData['SPY']) {
-        toast('Falta SPY. Analiza SPY primero (añádelo a tickers y pulsa Analizar).', 'error', 5500);
-        return;
-    }
-    if (Object.keys(btData).length < 2) {
-        toast('Falta otro ticker. Analiza algún ticker y selecciona su tarjeta.', 'error', 5500);
-        return;
-    }
-
-    try {
-        frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg, data: btData }, '*');
-    } catch(e) {
-        console.error('[sa] postMessage al iframe falló:', e);
-        toast('Error enviando datos: ' + e.message, 'error', 5000);
+    if (IN_IFRAME) {
+        setMode('Esperando datos del principal…');
+        startAnnouncing();
+    } else {
+        setMode('Modo standalone · sube CSVs');
     }
 }
-
-// Cuando el usuario entra a la pestaña Test, asegurarse de que el iframe tiene datos
-const _origShowMobileTab2 = showMobileTab;
-showMobileTab = function(name) {
-    _origShowMobileTab2(name);
-    if (name === 'backtest') {
-        // Pequeño delay para que el iframe esté listo
-        setTimeout(() => {
-            if (_btFrameReady) pushConfigToBacktester();
-        }, 200);
-    }
-};
-
-// Refresco cuando se selecciona tarjeta de resultado
-document.addEventListener('click', (e) => {
-    const card = e.target.closest('.result-card');
-    if (card && _btFrameReady) {
-        // No reenviamos al instante, solo si el usuario va a Test
-    }
-});
-
-// Al terminar un análisis, si el iframe está listo, ofrecer datos frescos
-const _origRun = run;
-run = async function() {
-    const r = await _origRun.apply(this, arguments);
-    setTimeout(() => {
-        if (_btFrameReady && _btFrame() && document.querySelector('.tab-panel.active')?.dataset.tab === 'backtest') {
-            pushConfigToBacktester();
-        }
-    }, 500);
-    return r;
-};
-
-// Render compacto de resultados en el padre (opcional, se muestra debajo del iframe)
-function renderBtSummaryInParent(res) {
-    // El iframe ya muestra todo. Aquí solo podríamos añadir un resumen rápido,
-    // pero como el iframe está visible, lo dejamos limpio.
-    console.log('[sa] backtest recibido, el iframe muestra los detalles');
-}
-document.addEventListener('DOMContentLoaded', () => {
-    init();
-    // Avisar al padre de que estamos listos
-    setTimeout(() => notifyParent('bt_ready'), 100);
-});
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
