@@ -71,7 +71,7 @@ body:not(.unlocked) .app{display:none!important}
 .scroll-area::-webkit-scrollbar{width:6px}
 .scroll-area::-webkit-scrollbar-thumb{background:#2a2a2c;border-radius:3px}
 .content{padding:14px 14px 24px;max-width:720px;margin:0 auto;width:100%}
-.tabbar{flex-shrink:0;background:rgba(28,28,30,.95);backdrop-filter:saturate(1.5) blur(20px);-webkit-backdrop-filter:saturate(1.5) blur(20px);border-top:1px solid var(--separator);padding:6px 6px calc(var(--safe-bottom) + 4px);display:grid;grid-template-columns:repeat(6,1fr);gap:2px;z-index:10}
+.tabbar{flex-shrink:0;background:rgba(28,28,30,.95);backdrop-filter:saturate(1.5) blur(20px);-webkit-backdrop-filter:saturate(1.5) blur(20px);border-top:1px solid var(--separator);padding:6px 6px calc(var(--safe-bottom) + 4px);display:grid;grid-template-columns:repeat(7,1fr);gap:2px;z-index:10}
 .tab-btn{background:transparent;border:none;color:var(--text-3);font-family:inherit;font-size:10px;font-weight:500;padding:8px 2px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;transition:color .15s,background .15s;width:100%;margin:0}
 .tab-btn:active{background:rgba(255,255,255,.05)}
 .tab-btn.active{color:#32d4e0}
@@ -278,7 +278,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .content{max-width:900px;padding:20px 24px 32px}
 .chart-canvas-wrapper{height:380px}
 .chart-subpanel{height:130px}
-.tabbar{grid-template-columns:repeat(6,170px);justify-content:center}
+.tabbar{grid-template-columns:repeat(7,170px);justify-content:center}
 }
 .loading-screen{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:1200;padding:24px;opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease}
 .loading-screen.visible{opacity:1;visibility:visible}
@@ -850,6 +850,9 @@ Si está activo, el precio fuera del Value Area penaliza el score de ejecución.
 <button onclick="resetPin()" style="font-size:13px;">Cambiar PIN</button>
 </div>
 </div>
+<div class="tab-panel" data-tab="backtest">
+<iframe id="btFrame" src="backtest.html" style="width:100%;height:calc(100vh - 170px);border:none;background:#000;display:block;border-radius:12px;"></iframe>
+</div>
 </div>
 </div>
 <nav class="tabbar">
@@ -858,6 +861,7 @@ Si está activo, el precio fuera del Value Area penaliza el score de ejecución.
 <button class="tab-btn" data-tab-btn="chart" onclick="showMobileTab('chart')"><span class="label">Gráfico</span></button>
 <button class="tab-btn" data-tab-btn="performance" onclick="showMobileTab('performance')"><span class="label">Rend.</span></button>
 <button class="tab-btn" data-tab-btn="portfolio" onclick="showMobileTab('portfolio')"><span class="label">Cartera</span></button>
+<button class="tab-btn" data-tab-btn="backtest" onclick="showMobileTab('backtest')"><span class="label">Test</span></button>
 <button class="tab-btn" data-tab-btn="setup" onclick="showMobileTab('setup')"><span class="label">Config</span></button>
 </nav>
 </div>
@@ -4542,6 +4546,7 @@ document.addEventListener("click", (e) => {
     card.classList.add("selected");
     renderPriceChart(r.symbol);
     refreshCompanyCard(r.symbol);
+    try { renderBtPreview(); } catch(_) {}
     showMobileTab("chart");
 });
 function renderPriceChart(symbol) {
@@ -6415,13 +6420,528 @@ function importClosedCSV(event) {
     reader.readAsText(file);
     event.target.value = '';
 }
+/* ═══════════════════════════════════════════════════════════════════════
+   INTEGRACIÓN BACKTESTER V1.0
+   Lanza backtest.html con la config + datos del ticker activo
+   y recibe los resultados de vuelta por localStorage
+   ═══════════════════════════════════════════════════════════════════════ */
 
+const BT_CFG_KEY     = 'sa_bt_config';
+const BT_DATA_KEY    = 'sa_bt_data';
+const BT_RESULTS_KEY = 'sa_bt_results';
+const BT_READY_KEY   = 'sa_bt_ready';
+
+let _btEquityChart = null;
+let _btPollTimer = null;
+
+/* ─── 1. Previsualización en vivo de la config ─── */
+function renderBtPreview() {
+    // Ticker objetivo
+    const symEl = document.getElementById('btTargetSymbol');
+    const infoEl = document.getElementById('btTargetInfo');
+    const sym = currentChartSymbol;
+
+    if (symEl) {
+        if (sym && lastFetchedData[sym]) {
+            const bars = lastFetchedData[sym].length;
+            symEl.textContent = sym;
+            const first = lastFetchedData[sym][0]?.datetime || '';
+            const last = lastFetchedData[sym][bars - 1]?.datetime || '';
+            if (infoEl) infoEl.innerHTML = `${bars} barras · ${first} → ${last}`;
+        } else {
+            symEl.textContent = '—';
+            if (infoEl) infoEl.textContent = 'Selecciona una tarjeta en Resultados para fijar el ticker';
+        }
+    }
+
+    // Config actual
+    const el = document.getElementById('btConfigPreview');
+    if (!el) return;
+    const TH = getThresholds();
+    const ctx = getContextConfig();
+    const risk = getRiskConfig();
+    const nSyms = Object.keys(lastFetchedData || {}).length;
+    const hasSpy = !!(lastFetchedData && lastFetchedData['SPY']);
+
+    el.innerHTML = `
+        <div>Q≥${TH.minSetupQuality} · R:R≥${TH.minRrT1} · ATR ${TH.minRiskAtr}–${TH.maxRiskAtr}</div>
+        <div>RS≥${ctx.minRs}% · Earn>${ctx.minDaysEarnings}d · DV≥$${(ctx.minDollarVolume/1e6).toFixed(1)}M</div>
+        <div>Riesgo ${risk.pct}% · MaxPos ${risk.maxPositionPct}% · Cuenta $${risk.size.toLocaleString()}</div>
+        <div style="margin-top:4px;">
+            <span style="color:${hasSpy ? 'var(--green)' : 'var(--red)'};">
+                ${hasSpy ? '✓' : '✗'} SPY ${hasSpy ? 'disponible' : 'FALTA (analiza SPY primero)'}
+            </span>
+            · ${nSyms} símbolo${nSyms === 1 ? '' : 's'} en caché
+        </div>
+    `;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BRIDGE BACKTESTER ↔ STOCKANALYZER (iframe, mismo origen)
+   ═══════════════════════════════════════════════════════════════ */
+
+const _btFrame = () => document.getElementById('btFrame');
+let _btFrameReady = false;
+let _btLastResult = null;
+
+// El iframe avisa cuando está listo
+window.addEventListener('message', (ev) => {
+    const msg = ev.data;
+    if (!msg || typeof msg !== 'object') return;
+
+    if (msg.type === 'bt_ready') {
+        _btFrameReady = true;
+        console.log('[sa] backtester listo');
+        // Si ya hay config guardada, la mandamos automáticamente
+        pushConfigToBacktester();
+    }
+
+    if (msg.type === 'bt_ack') {
+        console.log('[sa] backtester confirmó config');
+        toast('Backtester cargado ✓', 'success', 2000);
+    }
+
+    if (msg.type === 'bt_results') {
+        console.log('[sa] resultados recibidos:', msg.result?.n, 'trades');
+        _btLastResult = msg.result;
+        renderBtSummaryInParent(msg.result);
+        toast(`Backtest: ${msg.result.n} trades · ${msg.result.expectancy >= 0 ? '+' : ''}${msg.result.expectancy.toFixed(2)}R`, 'success', 4000);
+    }
+
+    if (msg.type === 'bt_log') {
+        console.log('[bt]', msg.text);
+    }
+});
+
+// Enviar config + datos al iframe
+function pushConfigToBacktester() {
+    const frame = _btFrame();
+    if (!frame || !frame.contentWindow) {
+        toast('Backtester aún no cargado', 'warn');
+        return;
+    }
+
+    // Construir config
+    const cfg = {
+        version: '4.9',
+        thresholds: getThresholds(),
+        context: getContextConfig(),
+        risk: getRiskConfig(),
+        setupsEnabled: { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true },
+        meta: {
+            generatedAt: new Date().toISOString(),
+            source: 'stockanalyzer',
+            targetSymbol: currentChartSymbol || null
+        }
+    };
+
+    // Construir datos: SPY desde spyDataCache, resto desde lastFetchedData
+    const btData = {};
+    if (spyDataCache && Array.isArray(spyDataCache) && spyDataCache.length >= 250) {
+        btData['SPY'] = spyDataCache;
+    }
+    if (lastFetchedData && lastFetchedData['SPY'] && !btData['SPY']) {
+        btData['SPY'] = lastFetchedData['SPY'];
+    }
+    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol]) {
+        btData[currentChartSymbol] = lastFetchedData[currentChartSymbol];
+    }
+    for (const s of Object.keys(lastFetchedData || {})) {
+        if (Object.keys(btData).length >= 8) break;
+        if (!btData[s] && Array.isArray(lastFetchedData[s]) && lastFetchedData[s].length >= 250) {
+            btData[s] = lastFetchedData[s];
+        }
+    }
+
+    console.log('[sa] enviando al iframe:', {
+        symbols: Object.keys(btData),
+        bars: Object.fromEntries(Object.entries(btData).map(([k,v]) => [k, v.length]))
+    });
+
+    if (!btData['SPY']) {
+        toast('Falta SPY. Analiza SPY primero (añádelo a tickers y pulsa Analizar).', 'error', 5500);
+        return;
+    }
+    if (Object.keys(btData).length < 2) {
+        toast('Falta otro ticker. Analiza algún ticker y selecciona su tarjeta.', 'error', 5500);
+        return;
+    }
+
+    try {
+        frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg, data: btData }, '*');
+    } catch(e) {
+        console.error('[sa] postMessage al iframe falló:', e);
+        toast('Error enviando datos: ' + e.message, 'error', 5000);
+    }
+}
+
+// Cuando el usuario entra a la pestaña Test, asegurarse de que el iframe tiene datos
+const _origShowMobileTab2 = showMobileTab;
+showMobileTab = function(name) {
+    _origShowMobileTab2(name);
+    if (name === 'backtest') {
+        // Pequeño delay para que el iframe esté listo
+        setTimeout(() => {
+            if (_btFrameReady) pushConfigToBacktester();
+        }, 200);
+    }
+};
+
+// Refresco cuando se selecciona tarjeta de resultado
+document.addEventListener('click', (e) => {
+    const card = e.target.closest('.result-card');
+    if (card && _btFrameReady) {
+        // No reenviamos al instante, solo si el usuario va a Test
+    }
+});
+
+// Al terminar un análisis, si el iframe está listo, ofrecer datos frescos
+const _origRun = run;
+run = async function() {
+    const r = await _origRun.apply(this, arguments);
+    setTimeout(() => {
+        if (_btFrameReady && _btFrame() && document.querySelector('.tab-panel.active')?.dataset.tab === 'backtest') {
+            pushConfigToBacktester();
+        }
+    }, 500);
+    return r;
+};
+
+// Render compacto de resultados en el padre (opcional, se muestra debajo del iframe)
+function renderBtSummaryInParent(res) {
+    // El iframe ya muestra todo. Aquí solo podríamos añadir un resumen rápido,
+    // pero como el iframe está visible, lo dejamos limpio.
+    console.log('[sa] backtest recibido, el iframe muestra los detalles');
+}
+
+/* ─── 3. Leer resultados de localStorage ─── */
+function loadBacktestResults(manual = false) {
+    let raw;
+    try { raw = localStorage.getItem(BT_RESULTS_KEY); } catch(_) { raw = null; }
+
+    const emptyCard = document.getElementById('btEmptyCard');
+    const resCard   = document.getElementById('btResultsCard');
+    const tradesCard= document.getElementById('btTradesCard');
+
+    if (!raw) {
+        if (emptyCard) emptyCard.style.display = 'block';
+        if (resCard)   resCard.style.display = 'none';
+        if (tradesCard)tradesCard.style.display = 'none';
+        if (manual) toast('No hay resultados guardados todavía', 'warn');
+        return;
+    }
+
+    let res;
+    try { res = JSON.parse(raw); }
+    catch(e) { if (manual) toast('Resultados corruptos', 'error'); return; }
+    if (!res.trades || !res.trades.length) {
+        if (manual) toast('El backtest no generó trades', 'warn');
+        return;
+    }
+
+    if (emptyCard) emptyCard.style.display = 'none';
+    if (resCard)   resCard.style.display = 'block';
+    if (tradesCard)tradesCard.style.display = 'block';
+
+    renderBacktestResultCards(res, manual);
+}
+
+function renderBacktestResultCards(res, isFresh = false) {
+    const sym = res.config?.meta?.targetSymbol
+             || (res.bySymbol && Object.keys(res.bySymbol)[0])
+             || '—';
+    const setEl = document.getElementById('btResSymbol');
+    if (setEl) setEl.textContent = sym;
+
+    const savedAt = res.savedAt ? new Date(res.savedAt) : new Date();
+    const metaEl = document.getElementById('btResMeta');
+    if (metaEl) {
+        metaEl.innerHTML = `
+            ${res.n} trades · ${Object.keys(res.bySymbol || {}).length} símbolos ·
+            Q≥${res.config?.thresholds?.minSetupQuality ?? '—'} ·
+            ${res.config?.slippageBps ?? '—'}bps slip ·
+            ${savedAt.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+        `;
+    }
+
+    // Métricas
+    const expColor = res.expectancy >= 0.2 ? 'var(--green)' : res.expectancy >= 0 ? 'var(--text)' : 'var(--red)';
+    const pfColor = res.pf >= 1.5 ? 'var(--green)' : res.pf >= 1 ? 'var(--text)' : 'var(--red)';
+    const ddColor = res.maxDDPct <= 15 ? 'var(--green)' : res.maxDDPct <= 30 ? 'var(--orange)' : 'var(--red)';
+    const ciCrossesZero = res.ci95Low <= 0 && res.ci95High >= 0;
+    const ciWarning = ciCrossesZero
+        ? `<div style="margin-top:8px;padding:10px 12px;background:rgba(255,159,10,.10);border:1px solid rgba(255,159,10,.30);border-radius:9px;font-size:11px;color:var(--orange);line-height:1.5;">
+             <b>⚠ IC95% cruza cero.</b> La expectancy observada (${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R) no es estadísticamente distinguible de cero con esta muestra (n=${res.n}). No hay edge demostrable todavía.
+           </div>`
+        : `<div style="margin-top:8px;padding:10px 12px;background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.25);border-radius:9px;font-size:11px;color:var(--green);line-height:1.5;">
+             <b>✓ IC95% no cruza cero.</b> La expectancy (${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R) es positiva con significancia estadística al 95% en esta muestra.
+           </div>`;
+
+    const metricsEl = document.getElementById('btResMetrics');
+    if (metricsEl) {
+        metricsEl.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Trades</div>
+                    <div style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;">${res.n}</div>
+                    <div style="font-size:9px;color:var(--text-3);">${res.wins}W · ${res.losses}L${res.flats?' · '+res.flats+'B':''}</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Win rate</div>
+                    <div style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;">${(res.wr*100).toFixed(1)}%</div>
+                    <div style="font-size:9px;color:var(--text-3);">${res.wins}/${res.n}</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Expectancy</div>
+                    <div style="font-size:18px;font-weight:800;color:${expColor};font-variant-numeric:tabular-nums;">${res.expectancy>=0?'+':''}${res.expectancy.toFixed(2)}R</div>
+                    <div style="font-size:9px;color:var(--text-3);">IC [${res.ci95Low.toFixed(2)}, ${res.ci95High.toFixed(2)}]</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Profit factor</div>
+                    <div style="font-size:18px;font-weight:800;color:${pfColor};font-variant-numeric:tabular-nums;">${res.pf===Infinity?'∞':res.pf.toFixed(2)}</div>
+                    <div style="font-size:9px;color:var(--text-3);">P/L brutos</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">SQN</div>
+                    <div style="font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;">${res.n<10?'—':res.sqn.toFixed(2)}</div>
+                    <div style="font-size:9px;color:var(--text-3);">${res.n<10?'n<10':res.sqn>=3?'bueno':res.sqn>=2?'aceptable':res.sqn>=1?'débil':'malo'}</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Retorno total</div>
+                    <div style="font-size:16px;font-weight:800;color:${res.totalReturn>=0?'var(--green)':'var(--red)'};font-variant-numeric:tabular-nums;">${res.totalReturn>=0?'+':''}${res.totalReturn.toFixed(1)}%</div>
+                    <div style="font-size:9px;color:var(--text-3);">$${(res.config?.capital||10000).toFixed(0)} → $${res.finalEquity.toFixed(0)}</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Max DD</div>
+                    <div style="font-size:16px;font-weight:800;color:${ddColor};font-variant-numeric:tabular-nums;">-${res.maxDDPct.toFixed(1)}%</div>
+                    <div style="font-size:9px;color:var(--text-3);">racha perdedora ${res.maxConsecLoss}</div>
+                </div>
+            </div>
+            ${res.n < 30 ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(255,159,10,.08);border-radius:8px;font-size:10px;color:var(--orange);line-height:1.4;"><b>⚠ Muestra pequeña (n=${res.n}).</b> No es estadísticamente significativa hasta ~30 trades.</div>` : ''}
+            ${ciWarning}
+        `;
+    }
+
+    // Equity curve
+    renderBtEquityChart(res.curve);
+
+    // Por setup
+    const bySetupEl = document.getElementById('btResBySetup');
+    if (bySetupEl && res.bySetup) {
+        const entries = Object.entries(res.bySetup).sort((a,b) => b[1].n - a[1].n);
+        bySetupEl.innerHTML = `
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">Por setup</div>
+            <table style="width:100%;font-size:11px;border-collapse:collapse;">
+                <thead>
+                    <tr style="color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Setup</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">N</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">WR</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Exp.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${entries.map(([k, v]) => {
+                        const exp = v.totalR / v.n;
+                        const expColor = exp >= 0.2 ? 'var(--green)' : exp >= 0 ? 'var(--text)' : 'var(--red)';
+                        const wr = (v.wins / v.n) * 100;
+                        return `<tr>
+                            <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);">${escapeHtml(k)}</td>
+                            <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;">${v.n}</td>
+                            <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;color:var(--text-2);">${wr.toFixed(0)}%</td>
+                            <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);color:${expColor};font-weight:700;font-variant-numeric:tabular-nums;">${exp>=0?'+':''}${exp.toFixed(2)}R</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    // Trades
+    const tradesMeta = document.getElementById('btTradesMeta');
+    if (tradesMeta) tradesMeta.textContent = `${res.trades.length} trades simulados · mostrando últimos 200`;
+
+    const tradesEl = document.getElementById('btTradesList');
+    if (tradesEl) {
+        const sorted = [...res.trades].sort((a,b) => (b.entryDate||'').localeCompare(a.entryDate||'')).slice(0, 200);
+        tradesEl.innerHTML = `
+            <table style="width:100%;font-size:11px;border-collapse:collapse;min-width:520px;">
+                <thead>
+                    <tr style="color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Fecha</th>
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Sym</th>
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Setup</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Ent.</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Stop</th>
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Motivo</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">R</th>
+                    </tr>
+                </thead>
+                <tbody>
+                ${sorted.map(t => {
+                    const tagColor = t.rMult >= 0 ? 'var(--green)' : 'var(--red)';
+                    const tagBg = t.rMult >= 0 ? 'rgba(48,209,88,.15)' : 'rgba(255,69,58,.15)';
+                    return `<tr>
+                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);">${t.entryDate || '—'}</td>
+                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-weight:600;">${escapeHtml(t.symbol || '')}</td>
+                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px;color:var(--text-2);">${escapeHtml(t.setupId || '')}</td>
+                        <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;">$${t.entryPrice.toFixed(2)}</td>
+                        <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;">$${t.stopPrice.toFixed(2)}</td>
+                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px;color:var(--text-3);">${escapeHtml(t.exitReason || '')}</td>
+                        <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);">
+                            <span style="background:${tagBg};color:${tagColor};padding:2px 6px;border-radius:5px;font-weight:700;font-variant-numeric:tabular-nums;font-size:10px;">${t.rMult>=0?'+':''}${t.rMult.toFixed(2)}R</span>
+                        </td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+            ${res.trades.length > 200 ? `<div style="font-size:10px;color:var(--text-3);padding:8px;text-align:center;">Mostrando 200 de ${res.trades.length}. Todos están en el CSV del backtester.</div>` : ''}
+        `;
+    }
+}
+
+function renderBtEquityChart(curve) {
+    if (!hasChartJs() || !curve || !curve.length) return;
+    const canvas = document.getElementById('btEquityChart');
+    if (!canvas) return;
+    if (_btEquityChart) { try { _btEquityChart.destroy(); } catch(_) {} }
+
+    const labels = curve.map((_, i) => `#${i}`);
+    const data = curve.map(p => +p.eq.toFixed(2));
+    const last = data[data.length - 1];
+    const first = data[0];
+    const positive = last >= first;
+
+    _btEquityChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Equity',
+                data,
+                borderColor: positive ? '#32d4e0' : '#ff453a',
+                backgroundColor: positive ? 'rgba(50,212,224,.08)' : 'rgba(255,69,58,.08)',
+                borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Curva de equity', color: '#8e8e93', font: { size: 11 } }
+            },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { color: '#636366', font: { size: 9 }, maxTicksLimit: 8 } },
+                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 9 }, callback: v => '$' + Number(v).toFixed(0) } }
+            }
+        }
+    });
+}
+
+/* ─── 4. Importar trades al historial cerrado ─── */
+function importBacktestTrades() {
+    let raw;
+    try { raw = localStorage.getItem(BT_RESULTS_KEY); } catch(_) { return; }
+    if (!raw) { toast('Sin resultados de backtest', 'warn'); return; }
+
+    let res;
+    try { res = JSON.parse(raw); } catch(_) { toast('Resultados corruptos', 'error'); return; }
+    if (!res.trades || !res.trades.length) { toast('Backtest sin trades', 'warn'); return; }
+
+    const confirmed = confirm(
+        `Importar ${res.trades.length} trades simulados al historial cerrado?\n\n` +
+        `Expectancy: ${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R\n` +
+        `Win rate: ${(res.wr * 100).toFixed(1)}%\n` +
+        `Max DD: -${res.maxDDPct.toFixed(1)}%\n\n` +
+        `Se marcarán con prefijo [BT] para distinguirlos de operaciones reales.`
+    );
+    if (!confirmed) return;
+
+    const current = loadClosedHistory();
+    let added = 0;
+    const stamp = Date.now();
+    for (const t of res.trades) {
+        const riskPerShare = t.entryPrice - t.stopPrice;
+        const exitPrice = t.entryPrice + t.rMult * riskPerShare;
+        current.push({
+            id: `bt_${stamp}_${added}_${Math.random().toString(36).slice(2,6)}`,
+            symbol: t.symbol,
+            shares: 1,
+            entry: t.entryPrice,
+            exit: exitPrice,
+            entryDate: t.entryDate,
+            closeDate: t.exitDate,
+            pnlPct: riskPerShare > 0 ? (t.rMult * riskPerShare / t.entryPrice) * 100 : 0,
+            pnlDollar: 0,
+            rMult: t.rMult,
+            setupId: t.setupId,
+            setupName: `[BT] ${t.setupId}`,
+            reason: `[backtest] ${t.exitReason}`,
+            journal: '',
+            regime: t.regime || null,
+            mae: t.maeR,
+            mfe: t.mfeR,
+            barsHeld: t.barsHeld,
+            telemetry: { source: 'backtest', quality: t.quality }
+        });
+        added++;
+    }
+    saveClosedHistory(current);
+    renderClosedHistory();
+    renderPerformance();
+    toast(`${added} trades importados al historial`, 'success', 4000);
+}
+
+/* ─── 5. Limpiar resultados ─── */
+function clearBacktestResults() {
+    if (!confirm('¿Borrar los resultados del backtest actual?')) return;
+    try {
+        localStorage.removeItem(BT_RESULTS_KEY);
+        localStorage.removeItem(BT_READY_KEY);
+    } catch(_) {}
+    loadBacktestResults();
+    toast('Resultados eliminados', 'success');
+}
+
+/* ─── 6. Auto-refresco cuando la pestaña del backtester escribe ─── */
+window.addEventListener('storage', (e) => {
+    if (e.key === BT_RESULTS_KEY && e.newValue) {
+        loadBacktestResults();
+        toast('Resultados de backtest recibidos', 'success', 2500);
+    }
+});
+
+// Refresco al volver el foco (por si storage event no dispara)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        const active = document.querySelector('.tab-panel.active');
+        if (active && active.dataset.tab === 'backtest') {
+            loadBacktestResults();
+        }
+    }
+});
+
+// Refresco también al cambiar a la pestaña backtest
+const _origShowMobileTab = showMobileTab;
+showMobileTab = function(name) {
+    _origShowMobileTab(name);
+    if (name === 'backtest') {
+        setTimeout(() => {
+            renderBtPreview();
+            loadBacktestResults();
+        }, 80);
+    }
+};
 /* INIT */
 let appInitialized = false;
 function initApp() {
     if (appInitialized) return;
     appInitialized = true;
     try { showMobileTab("analysis"); } catch(e) { console.warn(e); }
+    try { renderBtPreview(); } catch(e) { console.warn(e); }
+    try { loadBacktestResults(); } catch(e) { console.warn(e); }
     try { loadKey(); } catch(e) { console.warn(e); }
     try { loadGeminiConfig(); } catch(e) { console.warn(e); }
     try { updateApiCounterDisplay(); } catch(e) { console.warn(e); }
@@ -6453,6 +6973,69 @@ function initApp() {
     });
     console.log('%cStockAnalyzer Pro V4.9 — Sizing adaptativo + telemetría', 'color: #bf5af2; font-weight: bold;');
 }
+/* ═══ BACKTESTER IFRAME BRIDGE ═══ */
+var _btReady = false;
+var _btAnnounceCount = 0;
+
+function _btBuildPayload() {
+    var cfg = {
+        version: '4.9',
+        thresholds: getThresholds(),
+        context: getContextConfig(),
+        risk: getRiskConfig(),
+        setupsEnabled: { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true },
+        meta: { generatedAt: new Date().toISOString(), source: 'stockanalyzer', targetSymbol: currentChartSymbol || null }
+    };
+    var data = {};
+    if (Array.isArray(spyDataCache) && spyDataCache.length >= 250) data['SPY'] = spyDataCache;
+    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol] && lastFetchedData[currentChartSymbol].length >= 250) {
+        data[currentChartSymbol] = lastFetchedData[currentChartSymbol];
+    }
+    for (var s in (lastFetchedData || {})) {
+        if (!lastFetchedData.hasOwnProperty(s)) continue;
+        if (Object.keys(data).length >= 7) break;
+        if (data[s]) continue;
+        if (Array.isArray(lastFetchedData[s]) && lastFetchedData[s].length >= 250) data[s] = lastFetchedData[s];
+    }
+    return { cfg: cfg, data: data };
+}
+
+function _btPushToFrame() {
+    var frame = document.getElementById('btFrame');
+    if (!frame || !frame.contentWindow) return;
+    var payload = _btBuildPayload();
+    console.log('[sa] push al iframe:', Object.keys(payload.data), 'símbolos');
+    if (!payload.data['SPY']) { toast('Falta SPY. Añádelo a los tickers y pulsa Analizar.', 'error', 5000); return; }
+    if (Object.keys(payload.data).length < 2) { toast('Falta al menos un ticker además de SPY.', 'error', 5000); return; }
+    try { frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg: payload.cfg, data: payload.data }, '*'); }
+    catch(e) { console.error('[sa] postMessage error:', e); }
+}
+
+window.addEventListener('message', function(ev) {
+    var msg = ev.data;
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'bt_ready') {
+        _btAnnounceCount++;
+        if (_btAnnounceCount > 8) return;
+        console.log('[sa] iframe listo (anuncio ' + _btAnnounceCount + ')');
+        _btReady = true;
+        _btPushToFrame();
+    } else if (msg.type === 'bt_ack') {
+        console.log('[sa] iframe confirmó init');
+    } else if (msg.type === 'bt_results') {
+        console.log('[sa] resultados recibidos:', msg.result && msg.result.n, 'trades');
+        toast('Backtest: ' + msg.result.n + ' trades · ' + (msg.result.exp >= 0 ? '+' : '') + msg.result.exp.toFixed(2) + 'R', 'success', 4000);
+    }
+});
+
+var _origShowMobileTab_bridge = showMobileTab;
+showMobileTab = function(name) {
+    _origShowMobileTab(name);
+    if (name === 'backtest') {
+        setTimeout(function() { if (_btReady) _btPushToFrame(); }, 250);
+    }
+};
+
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
 </script>
