@@ -718,61 +718,11 @@ El historial vive en localStorage. Exporta periódicamente y guarda el CSV fuera
 </div>
 </div>
 <div class="tab-panel" data-tab="backtest">
-
-    <div class="card">
-        <div class="card-title">Backtest walk-forward</div>
-        <div class="card-sub">Ejecuta sobre el ticker activo · sin lookahead · slippage y comisiones aplicadas</div>
-
-        <div id="btTargetBox" style="background:var(--bg-elev);border-radius:10px;padding:12px;margin-bottom:12px;font-size:12px;">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
-                <span style="color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;font-size:10px;">Ticker objetivo</span>
-                <span id="btTargetSymbol" style="font-weight:800;font-size:14px;color:var(--blue);">—</span>
-            </div>
-            <div id="btTargetInfo" style="font-size:10px;color:var(--text-3);margin-top:4px;line-height:1.5;">Selecciona una tarjeta en Resultados para fijar el ticker</div>
-        </div>
-
-        <div style="margin-bottom:12px;">
-            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">Config a enviar</div>
-            <div id="btConfigPreview" style="font-size:11px;color:var(--text-2);line-height:1.6;">—</div>
-        </div>
-
-        <button class="btn-primary" id="btLaunchBtn" onclick="launchBacktest()">🧪 Ejecutar backtest</button>
-        <button onclick="loadBacktestResults(true)" style="margin-top:6px;font-size:12px;background:rgba(50,212,224,.10);color:#32d4e0;">
-            ↻ Recargar resultados
-        </button>
-        <div class="small" style="margin-top:8px;opacity:0.6;font-size:10px;line-height:1.5;">
-            Se abre en una pestaña nueva con la config, SPY y el ticker analizado. Al terminar, los resultados se cargan aquí automáticamente.
-        </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+        <iframe id="btFrame" src="backtest.html"
+                style="width:100%;height:calc(100vh - 160px);border:none;background:#000;display:block;"
+                sandbox="allow-scripts allow-same-origin"></iframe>
     </div>
-
-    <div class="card" id="btEmptyCard">
-        <div class="empty-state" style="padding:28px;">
-            <span class="icon">🧪</span>
-            Sin backtest ejecutado aún.<br>
-            <span style="font-size:11px;opacity:0.7;">Analiza un ticker primero, luego pulsa "Ejecutar backtest".</span>
-        </div>
-    </div>
-
-    <div class="card" id="btResultsCard" style="display:none;">
-        <div class="card-title">Resultados · <span id="btResSymbol" style="color:var(--blue);">—</span></div>
-        <div class="card-sub" id="btResMeta">—</div>
-        <div id="btResMetrics"></div>
-        <div style="position:relative;height:240px;background:#0d0d0f;border-radius:10px;padding:8px;margin:12px 0;">
-            <canvas id="btEquityChart"></canvas>
-        </div>
-        <div id="btResBySetup" style="margin-top:10px;"></div>
-        <div class="btn-row" style="margin-top:12px;">
-            <button onclick="importBacktestTrades()" style="background:rgba(48,209,88,.12);color:var(--green);font-weight:600;font-size:13px;">Importar al historial</button>
-            <button onclick="clearBacktestResults()" style="font-size:13px;background:rgba(255,69,58,.10);color:var(--red);">Limpiar resultados</button>
-        </div>
-    </div>
-
-    <div class="card" id="btTradesCard" style="display:none;">
-        <div class="card-title">Trades simulados</div>
-        <div class="card-sub" id="btTradesMeta">—</div>
-        <div id="btTradesList" style="max-height:440px;overflow-y:auto;"></div>
-    </div>
-
 </div>
 <div class="tab-panel" data-tab="setup">
 <div class="card">
@@ -6531,8 +6481,52 @@ function renderBtPreview() {
     `;
 }
 
-/* ─── 2. Lanzar backtest.html ─── */
-function launchBacktest() {
+/* ═══════════════════════════════════════════════════════════════
+   BRIDGE BACKTESTER ↔ STOCKANALYZER (iframe, mismo origen)
+   ═══════════════════════════════════════════════════════════════ */
+
+const _btFrame = () => document.getElementById('btFrame');
+let _btFrameReady = false;
+let _btLastResult = null;
+
+// El iframe avisa cuando está listo
+window.addEventListener('message', (ev) => {
+    const msg = ev.data;
+    if (!msg || typeof msg !== 'object') return;
+
+    if (msg.type === 'bt_ready') {
+        _btFrameReady = true;
+        console.log('[sa] backtester listo');
+        // Si ya hay config guardada, la mandamos automáticamente
+        pushConfigToBacktester();
+    }
+
+    if (msg.type === 'bt_ack') {
+        console.log('[sa] backtester confirmó config');
+        toast('Backtester cargado ✓', 'success', 2000);
+    }
+
+    if (msg.type === 'bt_results') {
+        console.log('[sa] resultados recibidos:', msg.result?.n, 'trades');
+        _btLastResult = msg.result;
+        renderBtSummaryInParent(msg.result);
+        toast(`Backtest: ${msg.result.n} trades · ${msg.result.expectancy >= 0 ? '+' : ''}${msg.result.expectancy.toFixed(2)}R`, 'success', 4000);
+    }
+
+    if (msg.type === 'bt_log') {
+        console.log('[bt]', msg.text);
+    }
+});
+
+// Enviar config + datos al iframe
+function pushConfigToBacktester() {
+    const frame = _btFrame();
+    if (!frame || !frame.contentWindow) {
+        toast('Backtester aún no cargado', 'warn');
+        return;
+    }
+
+    // Construir config
     const cfg = {
         version: '4.9',
         thresholds: getThresholds(),
@@ -6546,91 +6540,83 @@ function launchBacktest() {
         }
     };
 
-    // ── Recolectar datos: SPY desde spyDataCache, resto desde lastFetchedData ──
+    // Construir datos: SPY desde spyDataCache, resto desde lastFetchedData
     const btData = {};
-
-    // SPY: vive en spyDataCache, no en lastFetchedData
     if (spyDataCache && Array.isArray(spyDataCache) && spyDataCache.length >= 250) {
         btData['SPY'] = spyDataCache;
-    } else {
-        // Fallback: por si acaso el usuario lo metió manualmente como ticker
-        if (lastFetchedData && lastFetchedData['SPY'] && lastFetchedData['SPY'].length >= 250) {
-            btData['SPY'] = lastFetchedData['SPY'];
+    }
+    if (lastFetchedData && lastFetchedData['SPY'] && !btData['SPY']) {
+        btData['SPY'] = lastFetchedData['SPY'];
+    }
+    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol]) {
+        btData[currentChartSymbol] = lastFetchedData[currentChartSymbol];
+    }
+    for (const s of Object.keys(lastFetchedData || {})) {
+        if (Object.keys(btData).length >= 8) break;
+        if (!btData[s] && Array.isArray(lastFetchedData[s]) && lastFetchedData[s].length >= 250) {
+            btData[s] = lastFetchedData[s];
         }
     }
 
-    // Ticker activo (el que el usuario seleccionó)
-    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol]) {
-        const d = lastFetchedData[currentChartSymbol];
-        if (Array.isArray(d) && d.length >= 250) btData[currentChartSymbol] = d;
-    }
+    console.log('[sa] enviando al iframe:', {
+        symbols: Object.keys(btData),
+        bars: Object.fromEntries(Object.entries(btData).map(([k,v]) => [k, v.length]))
+    });
 
-    // Añadir hasta 4 tickers más del análisis (excluyendo SPY y el activo)
-    for (const s of Object.keys(lastFetchedData || {})) {
-        if (Object.keys(btData).length >= 6) break;
-        if (s === 'SPY') continue;
-        if (btData[s]) continue;
-        const d = lastFetchedData[s];
-        if (Array.isArray(d) && d.length >= 250) btData[s] = d;
-    }
-
-    // ── Diagnóstico claro ──
-    console.log('[launchBacktest] btData keys:', Object.keys(btData));
-    console.log('[launchBacktest] barras por símbolo:', Object.fromEntries(
-        Object.entries(btData).map(([k, v]) => [k, v.length])
-    ));
-
-    // ── Validaciones ──
     if (!btData['SPY']) {
-        toast('Falta SPY. Analiza SPY primero (añádelo a los tickers).', 'error', 5000);
-        showMobileTab('analysis');
+        toast('Falta SPY. Analiza SPY primero (añádelo a tickers y pulsa Analizar).', 'error', 5500);
         return;
     }
     if (Object.keys(btData).length < 2) {
-        toast('Falta al menos un ticker además de SPY. Analiza algún ticker y selecciona su tarjeta.', 'error', 5000);
-        showMobileTab('analysis');
+        toast('Falta otro ticker. Analiza algún ticker y selecciona su tarjeta.', 'error', 5500);
         return;
     }
 
-    // ── Guardar en localStorage ──
-    let lsOk = true;
-    let lsSize = 0;
     try {
-        const cfgStr = JSON.stringify(cfg);
-        const dataStr = JSON.stringify(btData);
-        lsSize = cfgStr.length + dataStr.length;
-        console.log(`[launchBacktest] Tamaño: config ${(cfgStr.length/1024).toFixed(1)}KB + data ${(dataStr.length/1024).toFixed(1)}KB = ${(lsSize/1024).toFixed(1)}KB`);
-        localStorage.setItem(BT_CFG_KEY, cfgStr);
-        localStorage.setItem(BT_DATA_KEY, dataStr);
+        frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg, data: btData }, '*');
     } catch(e) {
-        lsOk = false;
-        console.warn('[launchBacktest] localStorage falló:', e.name, e.message);
-        toast(`No cabe en localStorage (${(lsSize/1024/1024).toFixed(1)}MB). Reduce tickers.`, 'error', 6000);
+        console.error('[sa] postMessage al iframe falló:', e);
+        toast('Error enviando datos: ' + e.message, 'error', 5000);
     }
+}
 
-    // Limpiar resultados anteriores
-    try {
-        localStorage.removeItem(BT_RESULTS_KEY);
-        localStorage.removeItem(BT_READY_KEY);
-    } catch(_) {}
-
-    // ── Abrir backtester ──
-    const w = window.open('backtest.html', '_blank');
-    if (!w) {
-        toast('Permite las ventanas emergentes.', 'error', 5000);
-        return;
+// Cuando el usuario entra a la pestaña Test, asegurarse de que el iframe tiene datos
+const _origShowMobileTab2 = showMobileTab;
+showMobileTab = function(name) {
+    _origShowMobileTab2(name);
+    if (name === 'backtest') {
+        // Pequeño delay para que el iframe esté listo
+        setTimeout(() => {
+            if (_btFrameReady) pushConfigToBacktester();
+        }, 200);
     }
+};
 
-    // Enviar también por postMessage (redundancia)
-    let tries = 0;
-    const send = () => {
-        if (!w || w.closed) return;
-        try { w.postMessage({ type: 'sa_bt_init', cfg, data: btData }, '*'); } catch(_) {}
-        if (++tries < 20) setTimeout(send, 300);
-    };
-    setTimeout(send, 400);
+// Refresco cuando se selecciona tarjeta de resultado
+document.addEventListener('click', (e) => {
+    const card = e.target.closest('.result-card');
+    if (card && _btFrameReady) {
+        // No reenviamos al instante, solo si el usuario va a Test
+    }
+});
 
-    toast(`Backtester abierto · ${Object.keys(btData).length} símbolos${lsOk ? '' : ' (sin localStorage)'}`, 'success', 3000);
+// Al terminar un análisis, si el iframe está listo, ofrecer datos frescos
+const _origRun = run;
+run = async function() {
+    const r = await _origRun.apply(this, arguments);
+    setTimeout(() => {
+        if (_btFrameReady && _btFrame() && document.querySelector('.tab-panel.active')?.dataset.tab === 'backtest') {
+            pushConfigToBacktester();
+        }
+    }, 500);
+    return r;
+};
+
+// Render compacto de resultados en el padre (opcional, se muestra debajo del iframe)
+function renderBtSummaryInParent(res) {
+    // El iframe ya muestra todo. Aquí solo podríamos añadir un resumen rápido,
+    // pero como el iframe está visible, lo dejamos limpio.
+    console.log('[sa] backtest recibido, el iframe muestra los detalles');
 }
 
 /* ─── 3. Leer resultados de localStorage ─── */
