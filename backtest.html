@@ -1254,7 +1254,148 @@ function init() {
     renderChips();
     setStatus('Listo para cargar datos');
 }
-document.addEventListener('DOMContentLoaded', init);
+/* ═══════════════════════════════════════════════════════════════
+   BRIDGE BACKTESTER ↔ STOCKANALYZER (iframe, mismo origen)
+   ═══════════════════════════════════════════════════════════════ */
+
+const _btFrame = () => document.getElementById('btFrame');
+let _btFrameReady = false;
+let _btLastResult = null;
+
+// El iframe avisa cuando está listo
+window.addEventListener('message', (ev) => {
+    const msg = ev.data;
+    if (!msg || typeof msg !== 'object') return;
+
+    if (msg.type === 'bt_ready') {
+        _btFrameReady = true;
+        console.log('[sa] backtester listo');
+        // Si ya hay config guardada, la mandamos automáticamente
+        pushConfigToBacktester();
+    }
+
+    if (msg.type === 'bt_ack') {
+        console.log('[sa] backtester confirmó config');
+        toast('Backtester cargado ✓', 'success', 2000);
+    }
+
+    if (msg.type === 'bt_results') {
+        console.log('[sa] resultados recibidos:', msg.result?.n, 'trades');
+        _btLastResult = msg.result;
+        renderBtSummaryInParent(msg.result);
+        toast(`Backtest: ${msg.result.n} trades · ${msg.result.expectancy >= 0 ? '+' : ''}${msg.result.expectancy.toFixed(2)}R`, 'success', 4000);
+    }
+
+    if (msg.type === 'bt_log') {
+        console.log('[bt]', msg.text);
+    }
+});
+
+// Enviar config + datos al iframe
+function pushConfigToBacktester() {
+    const frame = _btFrame();
+    if (!frame || !frame.contentWindow) {
+        toast('Backtester aún no cargado', 'warn');
+        return;
+    }
+
+    // Construir config
+    const cfg = {
+        version: '4.9',
+        thresholds: getThresholds(),
+        context: getContextConfig(),
+        risk: getRiskConfig(),
+        setupsEnabled: { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true },
+        meta: {
+            generatedAt: new Date().toISOString(),
+            source: 'stockanalyzer',
+            targetSymbol: currentChartSymbol || null
+        }
+    };
+
+    // Construir datos: SPY desde spyDataCache, resto desde lastFetchedData
+    const btData = {};
+    if (spyDataCache && Array.isArray(spyDataCache) && spyDataCache.length >= 250) {
+        btData['SPY'] = spyDataCache;
+    }
+    if (lastFetchedData && lastFetchedData['SPY'] && !btData['SPY']) {
+        btData['SPY'] = lastFetchedData['SPY'];
+    }
+    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol]) {
+        btData[currentChartSymbol] = lastFetchedData[currentChartSymbol];
+    }
+    for (const s of Object.keys(lastFetchedData || {})) {
+        if (Object.keys(btData).length >= 8) break;
+        if (!btData[s] && Array.isArray(lastFetchedData[s]) && lastFetchedData[s].length >= 250) {
+            btData[s] = lastFetchedData[s];
+        }
+    }
+
+    console.log('[sa] enviando al iframe:', {
+        symbols: Object.keys(btData),
+        bars: Object.fromEntries(Object.entries(btData).map(([k,v]) => [k, v.length]))
+    });
+
+    if (!btData['SPY']) {
+        toast('Falta SPY. Analiza SPY primero (añádelo a tickers y pulsa Analizar).', 'error', 5500);
+        return;
+    }
+    if (Object.keys(btData).length < 2) {
+        toast('Falta otro ticker. Analiza algún ticker y selecciona su tarjeta.', 'error', 5500);
+        return;
+    }
+
+    try {
+        frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg, data: btData }, '*');
+    } catch(e) {
+        console.error('[sa] postMessage al iframe falló:', e);
+        toast('Error enviando datos: ' + e.message, 'error', 5000);
+    }
+}
+
+// Cuando el usuario entra a la pestaña Test, asegurarse de que el iframe tiene datos
+const _origShowMobileTab2 = showMobileTab;
+showMobileTab = function(name) {
+    _origShowMobileTab2(name);
+    if (name === 'backtest') {
+        // Pequeño delay para que el iframe esté listo
+        setTimeout(() => {
+            if (_btFrameReady) pushConfigToBacktester();
+        }, 200);
+    }
+};
+
+// Refresco cuando se selecciona tarjeta de resultado
+document.addEventListener('click', (e) => {
+    const card = e.target.closest('.result-card');
+    if (card && _btFrameReady) {
+        // No reenviamos al instante, solo si el usuario va a Test
+    }
+});
+
+// Al terminar un análisis, si el iframe está listo, ofrecer datos frescos
+const _origRun = run;
+run = async function() {
+    const r = await _origRun.apply(this, arguments);
+    setTimeout(() => {
+        if (_btFrameReady && _btFrame() && document.querySelector('.tab-panel.active')?.dataset.tab === 'backtest') {
+            pushConfigToBacktester();
+        }
+    }, 500);
+    return r;
+};
+
+// Render compacto de resultados en el padre (opcional, se muestra debajo del iframe)
+function renderBtSummaryInParent(res) {
+    // El iframe ya muestra todo. Aquí solo podríamos añadir un resumen rápido,
+    // pero como el iframe está visible, lo dejamos limpio.
+    console.log('[sa] backtest recibido, el iframe muestra los detalles');
+}
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+    // Avisar al padre de que estamos listos
+    setTimeout(() => notifyParent('bt_ready'), 100);
+});
 </script>
 </body>
 </html>
