@@ -6546,71 +6546,91 @@ function launchBacktest() {
         }
     };
 
-    // Datos: SPY siempre + ticker activo + todo lo que haya en memoria
+    // ── Recolectar datos: SPY desde spyDataCache, resto desde lastFetchedData ──
     const btData = {};
-    const include = new Set();
-    if (lastFetchedData && lastFetchedData['SPY']) include.add('SPY');
-    if (currentChartSymbol) include.add(currentChartSymbol);
-    for (const s of Object.keys(lastFetchedData || {})) include.add(s);
 
-    for (const sym of include) {
-        const d = lastFetchedData[sym];
-        if (Array.isArray(d) && d.length >= 250) {
-            btData[sym] = d;
+    // SPY: vive en spyDataCache, no en lastFetchedData
+    if (spyDataCache && Array.isArray(spyDataCache) && spyDataCache.length >= 250) {
+        btData['SPY'] = spyDataCache;
+    } else {
+        // Fallback: por si acaso el usuario lo metió manualmente como ticker
+        if (lastFetchedData && lastFetchedData['SPY'] && lastFetchedData['SPY'].length >= 250) {
+            btData['SPY'] = lastFetchedData['SPY'];
         }
     }
 
+    // Ticker activo (el que el usuario seleccionó)
+    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol]) {
+        const d = lastFetchedData[currentChartSymbol];
+        if (Array.isArray(d) && d.length >= 250) btData[currentChartSymbol] = d;
+    }
+
+    // Añadir hasta 4 tickers más del análisis (excluyendo SPY y el activo)
+    for (const s of Object.keys(lastFetchedData || {})) {
+        if (Object.keys(btData).length >= 6) break;
+        if (s === 'SPY') continue;
+        if (btData[s]) continue;
+        const d = lastFetchedData[s];
+        if (Array.isArray(d) && d.length >= 250) btData[s] = d;
+    }
+
+    // ── Diagnóstico claro ──
+    console.log('[launchBacktest] btData keys:', Object.keys(btData));
+    console.log('[launchBacktest] barras por símbolo:', Object.fromEntries(
+        Object.entries(btData).map(([k, v]) => [k, v.length])
+    ));
+
+    // ── Validaciones ──
     if (!btData['SPY']) {
-        toast('Necesitas SPY en caché. Añádelo a los tickers y analiza.', 'error', 4500);
+        toast('Falta SPY. Analiza SPY primero (añádelo a los tickers).', 'error', 5000);
         showMobileTab('analysis');
         return;
     }
     if (Object.keys(btData).length < 2) {
-        toast('Analiza al menos un ticker además de SPY.', 'error', 4500);
+        toast('Falta al menos un ticker además de SPY. Analiza algún ticker y selecciona su tarjeta.', 'error', 5000);
         showMobileTab('analysis');
         return;
     }
 
-    // Presupuesto: ~5MB límite localStorage
-    const payload = JSON.stringify(btData);
-    if (payload.length > 3.5e6) {
-        const keep = Object.keys(btData).slice(0, 12);
-        const trimmed = {};
-        for (const s of keep) trimmed[s] = btData[s];
-        toast(`Datos muy grandes (${(payload.length/1e6).toFixed(1)}MB). Reduciendo a 12 símbolos.`, 'warn', 5000);
-        try {
-            localStorage.setItem(BT_CFG_KEY, JSON.stringify(cfg));
-            localStorage.setItem(BT_DATA_KEY, JSON.stringify(trimmed));
-        } catch(e) {
-            toast('No cabe en localStorage. Analiza menos tickers o usa CSVs manuales.', 'error', 6000);
-            return;
-        }
-    } else {
-        try {
-            localStorage.setItem(BT_CFG_KEY, JSON.stringify(cfg));
-            localStorage.setItem(BT_DATA_KEY, JSON.stringify(btData));
-        } catch(e) {
-            toast('Error guardando datos: ' + e.message, 'error', 5000);
-            return;
-        }
+    // ── Guardar en localStorage ──
+    let lsOk = true;
+    let lsSize = 0;
+    try {
+        const cfgStr = JSON.stringify(cfg);
+        const dataStr = JSON.stringify(btData);
+        lsSize = cfgStr.length + dataStr.length;
+        console.log(`[launchBacktest] Tamaño: config ${(cfgStr.length/1024).toFixed(1)}KB + data ${(dataStr.length/1024).toFixed(1)}KB = ${(lsSize/1024).toFixed(1)}KB`);
+        localStorage.setItem(BT_CFG_KEY, cfgStr);
+        localStorage.setItem(BT_DATA_KEY, dataStr);
+    } catch(e) {
+        lsOk = false;
+        console.warn('[launchBacktest] localStorage falló:', e.name, e.message);
+        toast(`No cabe en localStorage (${(lsSize/1024/1024).toFixed(1)}MB). Reduce tickers.`, 'error', 6000);
     }
 
-    // Limpiar resultados anteriores para que no se confundan
+    // Limpiar resultados anteriores
     try {
         localStorage.removeItem(BT_RESULTS_KEY);
         localStorage.removeItem(BT_READY_KEY);
     } catch(_) {}
 
-    // Abrir
+    // ── Abrir backtester ──
     const w = window.open('backtest.html', '_blank');
     if (!w) {
-        toast('Permite las ventanas emergentes para abrir el backtester.', 'error', 5000);
+        toast('Permite las ventanas emergentes.', 'error', 5000);
         return;
     }
-    toast(`Backtester abierto · ${Object.keys(btData).length} símbolos`, 'success', 2500);
 
-    // Refrescar cuando vuelva el foco (por si cierra la pestaña)
-    setTimeout(() => { loadBacktestResults(); }, 1500);
+    // Enviar también por postMessage (redundancia)
+    let tries = 0;
+    const send = () => {
+        if (!w || w.closed) return;
+        try { w.postMessage({ type: 'sa_bt_init', cfg, data: btData }, '*'); } catch(_) {}
+        if (++tries < 20) setTimeout(send, 300);
+    };
+    setTimeout(send, 400);
+
+    toast(`Backtester abierto · ${Object.keys(btData).length} símbolos${lsOk ? '' : ' (sin localStorage)'}`, 'success', 3000);
 }
 
 /* ─── 3. Leer resultados de localStorage ─── */
