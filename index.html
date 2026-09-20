@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="stockanalyzer" />
 <meta name="mobile-web-app-capable" content="yes" />
-<title>StockAnalyzer Pro V4.7 · Gemini AI</title>
+<title>StockAnalyzer Pro V4.9 · Gemini AI</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" type="image/png" href="stockanalyzer.png" />
 <link rel="apple-touch-icon" href="stockanalyzer.png" />
@@ -447,7 +447,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .chart-header .symbol,.chart-header .price{font-size:17px}
 .chart-header .change{font-size:12px}
 }
-/* ═══ V4.8: búsqueda por nombre + card empresa ═══ */
 .company-search-result { transition: border-color .15s, background .15s; }
 .company-search-result:hover { border-color: rgba(50,212,224,.4); background: #333335; }
 .range-bar-wrap { margin: 14px 0 16px; }
@@ -660,11 +659,16 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <div id="perfByRegime"></div>
 </div>
 <div class="card">
-<div class="card">
     <div class="card-title">MAE / MFE</div>
     <div class="card-sub">Excursión máxima adversa y favorable · calidad de stops y targets</div>
     <div id="perfMaeMfe"></div>
 </div>
+<div class="card">
+    <div class="card-title">Contribución de capas</div>
+    <div class="card-sub">Qué filtros aportan edge real · expectancy cuando pasan vs cuando fallan</div>
+    <div id="perfContribution"></div>
+</div>
+<div class="card">
 <div class="card-title">Exportar / importar</div>
 <div class="card-sub">CSV con todo el historial cerrado</div>
 <div class="btn-row" style="margin-bottom:0;">
@@ -683,6 +687,7 @@ El historial vive en localStorage. Exporta periódicamente y guarda el CSV fuera
 <div class="card-title">Mi cartera</div>
 <div class="card-sub">Posiciones reales con motor de exit signals</div>
 <div id="portfolioHeatPanel"></div>
+<div id="portfolioSizingPanel"></div>
 <div style="display:flex; gap:8px; margin-bottom:8px; align-items:stretch;">
 <button id="refreshPricesBtn" onclick="refreshPortfolioPrices()" style="flex:1; margin:0; background:rgba(50,212,224,.12); color:#32d4e0; font-weight:600; font-size:13px; min-height:40px;">Actualizar precios</button>
 </div>
@@ -830,8 +835,8 @@ Si está activo, el precio fuera del Value Area penaliza el score de ejecución.
 </div>
 <script>
 /* ══════════════════════════════════════════════════════════════════════════
-   StockAnalyzer Pro V4.7
-   V4.6 + Dashboard de rendimiento + Microestructura (Fase 1 y Fase 2 toggle)
+   StockAnalyzer Pro V4.9
+   V4.8 + sizing adaptativo (régimen, racha, correlación, Entry Quality)
    ══════════════════════════════════════════════════════════════════════════ */
 
 const API_LIMIT_PER_MIN = 8;
@@ -901,6 +906,59 @@ const SECTOR_ETF_MAP = {
   LIN:'XLB',APD:'XLB',FCX:'XLB',NEM:'XLB',SHW:'XLB',DOW:'XLB',
   AMT:'XLRE',PLD:'XLRE',SPG:'XLRE',O:'XLRE',CCI:'XLRE',
   GOOGL:'XLC',GOOG:'XLC',META:'XLC',DIS:'XLC',NFLX:'XLC',T:'XLC',VZ:'XLC',CMCSA:'XLC',TMUS:'XLC'
+};
+/* ═══ EXPOSICIÓN MACRO — commodities y cripto ═══ */
+const MACRO_EXPOSURE_MAP = {
+    /* ORO */
+    'GLD':'GOLD','IAU':'GOLD','NEM':'GOLD','AEM':'GOLD','GOLD':'GOLD','AU':'GOLD',
+    'GFI':'GOLD','KGC':'GOLD','FNV':'GOLD','BTG':'GOLD','EGO':'GOLD','HMY':'GOLD',
+    'AGI':'GOLD','IAG':'GOLD','SSR':'GOLD','OR':'GOLD','RGLD':'GOLD','WPM':'GOLD',
+    'PAAS':'GOLD','SA':'GOLD','NGD':'GOLD','EXK':'GOLD','GATO':'GOLD',
+    /* PLATA */
+    'SLV':'SILVER','AG':'SILVER','HL':'SILVER','CDE':'SILVER','FSM':'SILVER',
+    'MAG':'SILVER','ASM':'SILVER','USAS':'SILVER','SVM':'SILVER',
+    /* PETRÓLEO */
+    'USO':'OIL','XLE':'OIL','XOP':'OIL','OIH':'OIL','XOM':'OIL','CVX':'OIL',
+    'COP':'OIL','SLB':'OIL','OXY':'OIL','EOG':'OIL','PSX':'OIL','VLO':'OIL',
+    'MPC':'OIL','HAL':'OIL','BKR':'OIL','DVN':'OIL','FANG':'OIL','PXD':'OIL',
+    'HES':'OIL','MRO':'OIL','APA':'OIL','OVV':'OIL','CTRA':'OIL','PBR':'OIL',
+    'SHEL':'OIL','BP':'OIL','TTE':'OIL','EQNR':'OIL',
+    /* GAS NATURAL */
+    'UNG':'NATGAS','CHK':'NATGAS','EQT':'NATGAS','AR':'NATGAS','RRC':'NATGAS',
+    'SWN':'NATGAS','CTRA':'NATGAS','EXE':'NATGAS',
+    /* COBRE */
+    'CPER':'COPPER','COPX':'COPPER','FCX':'COPPER','SCCO':'COPPER','TECK':'COPPER',
+    'RIO':'COPPER','BHP':'COPPER','VALE':'COPPER','HBM':'COPPER','ERO':'COPPER',
+    'IE':'COPPER','IVN':'COPPER',
+    /* URANIO */
+    'URA':'URANIUM','URNM':'URANIUM','CCJ':'URANIUM','UEC':'URANIUM',
+    'UUUU':'URANIUM','DNN':'URANIUM','NXE':'URANIUM','EU':'URANIUM','LEU':'URANIUM',
+    /* LITIO */
+    'LIT':'LITHIUM','LAC':'LITHIUM','ALB':'LITHIUM','SQM':'LITHIUM',
+    'LTHM':'LITHIUM','PLL':'LITHIUM','SLI':'LITHIUM',
+    /* TIERRAS RARAS */
+    'REMX':'RARE_EARTH','MP':'RARE_EARTH','UUUU2':'RARE_EARTH',
+    /* CRIPTO — mineras */
+    'MARA':'CRYPTO','RIOT':'CRYPTO','CLSK':'CRYPTO','HUT':'CRYPTO','BITF':'CRYPTO',
+    'HIVE':'CRYPTO','BTBT':'CRYPTO','CIFR':'CRYPTO','IREN':'CRYPTO','WULF':'CRYPTO',
+    'CORZ':'CRYPTO','APLD':'CRYPTO','SDIG':'CRYPTO','GREE':'CRYPTO', 'BMNR':'CRYPTO',
+    /* CRIPTO — proxies y ETFs */
+    'COIN':'CRYPTO','MSTR':'CRYPTO','GBTC':'CRYPTO','IBIT':'CRYPTO','BITO':'CRYPTO',
+    'ETHE':'CRYPTO','ETHA':'CRYPTO','FBTC':'CRYPTO','BITB':'CRYPTO','ARKB':'CRYPTO',
+    'BITX':'CRYPTO','CONL':'CRYPTO','MSTX':'CRYPTO','MSTU':'CRYPTO','HOOD':'CRYPTO_PARTIAL'
+};
+
+const MACRO_REFERENCE = {
+    GOLD:        { symbol: 'GLD',  label: 'oro',         name: 'Oro (GLD)' },
+    SILVER:      { symbol: 'SLV',  label: 'plata',       name: 'Plata (SLV)' },
+    OIL:         { symbol: 'USO',  label: 'petróleo',    name: 'Petróleo (USO)' },
+    NATGAS:      { symbol: 'UNG',  label: 'gas natural', name: 'Gas natural (UNG)' },
+    COPPER:      { symbol: 'CPER', label: 'cobre',       name: 'Cobre (CPER)' },
+    URANIUM:     { symbol: 'URA',  label: 'uranio',      name: 'Uranio (URA)' },
+    LITHIUM:     { symbol: 'LIT',  label: 'litio',       name: 'Litio (LIT)' },
+    RARE_EARTH:  { symbol: 'REMX', label: 'tierras raras', name: 'Tierras raras (REMX)' },
+    CRYPTO:      { symbol: 'BTC/USD', label: 'cripto',   name: 'Bitcoin (BTC/USD)' },
+    CRYPTO_PARTIAL: { symbol: 'BTC/USD', label: 'cripto (parcial)', name: 'Bitcoin (BTC/USD)' }
 };
 const EARNINGS_BLACKOUT_DAYS_DEFAULT = 5;
 const MAX_PORTFOLIO_HEAT_R_DEFAULT = 6;
@@ -1348,16 +1406,38 @@ function calculateTrendChannel(data) {
         if (hDev > maxAbove) maxAbove = hDev;
         if (lDev < maxBelow) maxBelow = lDev;
     }
-    const upper = new Array(n), lower = new Array(n);
+    const upper = new Array(n), lower = new Array(n), middle = new Array(n);
     for (let i = 0; i < n; i++) {
         const lineY = slope * i + intercept;
-        upper[i] = lineY + maxAbove; lower[i] = lineY + maxBelow;
+        upper[i] = lineY + maxAbove;
+        lower[i] = lineY + maxBelow;
+        middle[i] = lineY;
     }
     const avgPrice = sy / n;
     const slopePct = (slope * n / avgPrice) * 100;
     let tipo = 'lateral';
     if (slopePct > 5) tipo = 'alcista'; else if (slopePct < -5) tipo = 'bajista';
-    return { upper, lower, slope, intercept, tipo, slopePct };
+
+    // Extras aditivos (no afectan a upper/lower)
+    const bandwidth = Math.abs(maxAbove - maxBelow);
+    const tolerance = bandwidth * 0.15;
+    let touchesUpper = 0, touchesLower = 0;
+    for (let i = 0; i < n; i++) {
+        if (Math.abs(data[i].high - upper[i]) < tolerance) touchesUpper++;
+        if (Math.abs(data[i].low  - lower[i]) < tolerance) touchesLower++;
+    }
+    const isValid = touchesUpper >= 2 && touchesLower >= 2;
+    const lastIdx = n - 1;
+    const posInChannel = bandwidth > 0
+        ? Math.max(0, Math.min(100, ((data[lastIdx].close - lower[lastIdx]) / (upper[lastIdx] - lower[lastIdx])) * 100))
+        : 50;
+
+    return {
+        upper, lower, middle,
+        slope, intercept, tipo, slopePct,
+        touchesUpper, touchesLower,
+        isValid, bandwidth, posInChannel
+    };
 }
 function buildPointSeries(values, labels) {
     const pts = [];
@@ -1443,8 +1523,46 @@ function getSectorETF(symbol) {
     const base = String(symbol || '').toUpperCase();
     return SECTOR_ETF_MAP[base] || null;
 }
+function getMacroExposure(symbol) {
+    const base = String(symbol || '').toUpperCase();
+    return MACRO_EXPOSURE_MAP[base] || null;
+}
 
-/* ═══ FASE 1: MICROESTRUCTURA ═══ */
+function buildMacroWarning(symbol, liveData = null) {
+    const exposure = getMacroExposure(symbol);
+    if (!exposure) return '';
+    const ref = MACRO_REFERENCE[exposure];
+    if (!ref) return '';
+
+    const isPartial = exposure === 'CRYPTO_PARTIAL';
+    const typeLabel = exposure === 'CRYPTO' || isPartial ? 'cripto' : 'commodity';
+    const color = exposure === 'CRYPTO' || isPartial ? 'purple' : 'orange';
+
+    // Correlación rolling con el ETF de referencia si tenemos los datos
+    let corrTxt = '';
+    try {
+        const refData = lastFetchedData[ref.symbol];
+        const symData = lastFetchedData[symbol];
+        if (refData && symData && refData.length > 60 && symData.length > 60) {
+            const c = computeCorrelation({ symbol }, { symbol: ref.symbol });
+            if (c != null && isFinite(c)) {
+                const pct = (c * 100).toFixed(0);
+                const strength = Math.abs(c) > 0.7 ? 'alta' : Math.abs(c) > 0.4 ? 'media' : 'baja';
+                corrTxt = ` Correlación rolling 60d con ${ref.name}: <b>${pct}%</b> (${strength}).`;
+            }
+        }
+    } catch(_) {}
+
+    const reason = isPartial
+        ? `Su negocio está parcialmente expuesto a ${ref.label} pero no es su driver principal.`
+        : `Se mueve principalmente con ${ref.label}. El RS y la estructura técnica pueden reflejar la fuerza del ${typeLabel}, no alfa específica del ticker.`;
+
+    return `<div class="gate-note soft" style="margin-top:8px; border-color:rgba(${color === 'purple' ? '191,90,242' : '255,159,10'},.4); background:rgba(${color === 'purple' ? '191,90,242' : '255,159,10'},.08); color:${color === 'purple' ? '#d9a6ff' : '#ffce80'};">
+        <b>⚠ Exposición ${typeLabel} — ${ref.name}:</b> ${reason}${corrTxt}
+    </div>`;
+}
+
+/* MICROESTRUCTURA */
 function computeVWAP(data, anchorIndex = 0) {
     const slice = data.slice(anchorIndex);
     if (!slice.length) return null;
@@ -1542,8 +1660,6 @@ function analyzeMicrostructure(data) {
         inValueArea: va ? (price >= va.val && price <= va.vah) : null
     };
 }
-
-/* ═══ FASE 2: toggle microestructura ═══ */
 function getMicroFilterConfig() {
     return localStorage.getItem('sa_micro_filter_enabled') === '1';
 }
@@ -1842,7 +1958,6 @@ function getContextConfig() {
         minDollarVolume: isFinite(dv) && dv > 0 ? dv : MIN_DOLLAR_VOLUME_DEFAULT
     };
 }
-function getMinDollarVolume() { return getContextConfig().minDollarVolume; }
 function saveContextConfig() {
     const rs = parseFloat(document.getElementById('minRsPct').value);
     const days = parseFloat(document.getElementById('minDaysEarnings').value);
@@ -1917,7 +2032,7 @@ function contextChecks(ctx, isLong = true) {
     return out;
 }
 
-/* ENTRY QUALITY (con Fase 2 toggle) */
+/* ENTRY QUALITY */
 function computeEntryQuality(ctx, setupId, entry, stop, targets) {
     const atr = ctx?.atr;
     const price = ctx?.price ?? entry;
@@ -1998,14 +2113,11 @@ function computeEntryQuality(ctx, setupId, entry, stop, targets) {
     if (rr >= 2.0) score += 2;
     else if (rr < 1.7) score -= 5;
 
-    /* ═══ FASE 2 — Microestructura en Entry Quality (con toggle) ═══
-       Umbrales ajustados a swing semanal. Solo se aplica si el toggle está activo. */
     if (getMicroFilterConfig() && ctx?.micro && atr > 0) {
         const m = ctx.micro;
         const va = m.valueArea;
         const vwapM = m.avwap?.monthly;
         const microNotes = [];
-
         if (va && price > va.vah) {
             const d = (price - va.vah) / atr;
             if (d > 3.0) { score -= 15; microNotes.push(`+${d.toFixed(1)} ATR sobre VAH (persecución)`); }
@@ -2034,13 +2146,10 @@ function computeEntryQuality(ctx, setupId, entry, stop, targets) {
     let acceptableThreshold = TH.eqAcceptableBase;
     const regimeName = ctx?.regime?.regime;
     if (regimeName === 'RISK_OFF' || regimeName === 'STRONG_RISK_OFF') {
-        const deltaO = EQ_OPTIMAL_RISKOFF - EQ_OPTIMAL_BASE;
-        const deltaA = EQ_ACCEPTABLE_RISKOFF - EQ_ACCEPTABLE_BASE;
-        optimalThreshold = Math.min(99, TH.eqOptimalBase + deltaO);
-        acceptableThreshold = Math.min(95, TH.eqAcceptableBase + deltaA);
+        optimalThreshold = Math.min(99, TH.eqOptimalBase + (EQ_OPTIMAL_RISKOFF - EQ_OPTIMAL_BASE));
+        acceptableThreshold = Math.min(95, TH.eqAcceptableBase + (EQ_ACCEPTABLE_RISKOFF - EQ_ACCEPTABLE_BASE));
     } else if (regimeName === 'STRONG_RISK_ON') {
-        const deltaO = EQ_OPTIMAL_RISKON_STRONG - EQ_OPTIMAL_BASE;
-        optimalThreshold = Math.max(50, TH.eqOptimalBase + deltaO);
+        optimalThreshold = Math.max(50, TH.eqOptimalBase + (EQ_OPTIMAL_RISKON_STRONG - EQ_OPTIMAL_BASE));
     }
     if (acceptableThreshold >= optimalThreshold) acceptableThreshold = Math.max(30, optimalThreshold - 10);
 
@@ -2089,11 +2198,9 @@ function computeSetupConfirmation(ctx, setupId, primaryConfirmed) {
         const reclaimed50 = near50 && ctx.e50 != null && price > ctx.e50;
         confirmed = primaryConfirmed && green && (reclaimed20 || reclaimed50);
         forming = primaryConfirmed && (reclaimed20 || reclaimed50) && (green || strong);
-        note = confirmed
-            ? 'Reclamación de media + cierre favorable.'
-            : forming
-                ? 'La estructura existe; espera una confirmación de cierre.'
-                : 'Falta una confirmación de ejecución.';
+        note = confirmed ? 'Reclamación de media + cierre favorable.'
+             : forming ? 'La estructura existe; espera una confirmación de cierre.'
+             : 'Falta una confirmación de ejecución.';
     } else if (setupId === 'sma200') {
         const above = ctx.s200 != null && price > ctx.s200;
         confirmed = primaryConfirmed && above && green && strong;
@@ -2159,14 +2266,9 @@ function computeSetupLifecycle(ctx, setupId, primaryConfirmed, confirmation, ent
             if (near20 || near50) markEvent(i);
         }
         if (eventIndex != null) age = last - eventIndex;
-        const distance = e20 != null && e50 != null
-            ? Math.min((price - e20) / atr, (price - e50) / atr) : null;
-        if (distance != null && distance > 2.0) {
-            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El precio se ha alejado demasiado de la zona de pullback.' };
-        }
-        if (age != null && age > 5) {
-            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El toque del pullback es demasiado antiguo.' };
-        }
+        const distance = e20 != null && e50 != null ? Math.min((price - e20) / atr, (price - e50) / atr) : null;
+        if (distance != null && distance > 2.0) return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El precio se ha alejado demasiado de la zona de pullback.' };
+        if (age != null && age > 5) return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El toque del pullback es demasiado antiguo.' };
     } else if (setupId === 'sma200') {
         const s200Series = ctx.s200Series || sma(ctx.closes, 200);
         for (let i = Math.max(0, last - 10); i <= last; i++) {
@@ -2175,29 +2277,21 @@ function computeSetupLifecycle(ctx, setupId, primaryConfirmed, confirmation, ent
         }
         if (eventIndex != null) age = last - eventIndex;
         const distance = s200 != null ? (price - s200) / atr : null;
-        if (distance != null && distance > 2.0) {
-            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El precio se ha alejado demasiado de SMA200 para tratar el rebote como actual.' };
-        }
-        if (age != null && age > 7) {
-            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El test de SMA200 es demasiado antiguo.' };
-        }
+        if (distance != null && distance > 2.0) return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El precio se ha alejado demasiado de SMA200 para tratar el rebote como actual.' };
+        if (age != null && age > 7) return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El test de SMA200 es demasiado antiguo.' };
     } else if (setupId === 'donchian') {
         const trigger = ctx.dh20?.[last - 1];
         if (trigger != null) {
             for (let i = Math.max(0, last - 5); i <= last; i++) if (data[i].close > trigger) markEvent(i);
             if (eventIndex != null) age = last - eventIndex;
-            if (price < trigger && age != null && age > 3) {
-                return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El breakout perdió continuidad y quedó fuera de la ventana de confirmación.' };
-            }
+            if (price < trigger && age != null && age > 3) return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El breakout perdió continuidad y quedó fuera de la ventana de confirmación.' };
         }
     } else if (setupId === 'bb_breakout') {
         const upper = ctx.bb?.upper?.[last - 1];
         if (upper != null) {
             for (let i = Math.max(0, last - 5); i <= last; i++) if (data[i].close > upper) markEvent(i);
             if (eventIndex != null) age = last - eventIndex;
-            if (price < upper && age != null && age > 3) {
-                return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El breakout de Bollinger perdió continuidad.' };
-            }
+            if (price < upper && age != null && age > 3) return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El breakout de Bollinger perdió continuidad.' };
         }
     } else if (setupId === 'golden_cross') {
         const e20s = ctx.ema20Series;
@@ -2211,14 +2305,10 @@ function computeSetupLifecycle(ctx, setupId, primaryConfirmed, confirmation, ent
             }
         }
         if (eventIndex != null) age = last - eventIndex;
-        if (age != null && age > 10) {
-            return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El golden cross dejó de ser reciente.' };
-        }
+        if (age != null && age > 10) return { state: 'expired', label: 'EXPIRADO', age, expired: true, reason: 'El golden cross dejó de ser reciente.' };
     }
 
-    if (!primaryConfirmed) {
-        return { state: 'forming', label: 'EN FORMACIÓN', age, expired: false, reason: 'El patrón aún no cumple su condición primaria.' };
-    }
+    if (!primaryConfirmed) return { state: 'forming', label: 'EN FORMACIÓN', age, expired: false, reason: 'El patrón aún no cumple su condición primaria.' };
     if (confirmation?.state === 'confirmed') {
         state = 'confirmed'; reasons.push('La tesis del setup está confirmada.');
     } else {
@@ -2289,19 +2379,13 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
         && isFinite(entryQuality.targetZone)
         && entryQuality.targetZone > 0
         && entryQuality.targetZone < entry) {
-
         const refEntry = entryQuality.targetZone;
         const refStopObj = computeStructuralStop(data, refEntry, atr, null);
         const refTargets = computeTargets(data, refEntry, refStopObj.price, atr);
         const refRisk = refEntry - refStopObj.price;
         const refRiskAtr = refRisk / atr;
         const refRr = refTargets ? (refTargets.t1 - refEntry) / refRisk : 0;
-
-        if (refTargets
-            && refStopObj.price < refEntry
-            && refRiskAtr <= TH.maxRiskAtr
-            && refRiskAtr >= TH.minRiskAtr
-            && refRr >= TH.minRrT1) {
+        if (refTargets && refStopObj.price < refEntry && refRiskAtr <= TH.maxRiskAtr && refRiskAtr >= TH.minRiskAtr && refRr >= TH.minRrT1) {
             operationalEntry = refEntry;
             finalStop = refStopObj.price;
             finalStopSource = refStopObj.source;
@@ -2335,15 +2419,11 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
     let decisionLabel = 'ESPERAR';
     let decisionReason = '';
 
-    if (softFilters.length) {
-        decisionReason = `Contexto pendiente: ${softFilters.join(' · ')}`;
-    } else if (!primaryConfirmed || quality < TH.minSetupQuality) {
-        decisionReason = !primaryConfirmed ? 'El setup aún no cumple su condición primaria.' : `Setup Quality ${quality}/100 por debajo del umbral (${TH.minSetupQuality}).`;
-    } else if (confirmation.state !== 'confirmed') {
-        decisionReason = confirmation.note || 'Setup válido esperando confirmación.';
-    } else if (entryQuality.state === 'extended' && entryType === 'market') {
-        decisionReason = entryQuality.note || 'Setup confirmado, pero la ejecución actual está extendida.';
-    } else {
+    if (softFilters.length) decisionReason = `Contexto pendiente: ${softFilters.join(' · ')}`;
+    else if (!primaryConfirmed || quality < TH.minSetupQuality) decisionReason = !primaryConfirmed ? 'El setup aún no cumple su condición primaria.' : `Setup Quality ${quality}/100 por debajo del umbral (${TH.minSetupQuality}).`;
+    else if (confirmation.state !== 'confirmed') decisionReason = confirmation.note || 'Setup válido esperando confirmación.';
+    else if (entryQuality.state === 'extended' && entryType === 'market') decisionReason = entryQuality.note || 'Setup confirmado, pero la ejecución actual está extendida.';
+    else {
         status = 'READY';
         decisionState = entryQuality.state === 'optimal' ? 'READY_OPTIMAL' : 'READY_ACCEPTABLE';
         if (entryType === 'limit') {
@@ -2554,7 +2634,7 @@ function computeEntries(data, tech, regime) {
     return setups;
 }
 
-/* RENDER SETUPS */
+/* ═══ V4.9: SIZING ADAPTATIVO ═══ */
 function getRiskConfig() {
     const size = parseFloat(localStorage.getItem('sa_account_size'));
     const pct = parseFloat(localStorage.getItem('sa_risk_pct'));
@@ -2587,6 +2667,89 @@ function loadRiskConfig() {
     const mEl = document.getElementById('maxPositionPct'); if (mEl) mEl.value = c.maxPositionPct;
     const hEl = document.getElementById('maxHeatR'); if (hEl) hEl.value = c.maxHeatR;
 }
+
+/* Multiplicadores de sizing */
+function getRegimeSizeMultiplier() {
+    const regime = getRegimeSnapshot()?.regime || null;
+    switch (regime) {
+        case 'STRONG_RISK_ON': return { mult: 1.00, reason: 'régimen fuerte' };
+        case 'RISK_ON':        return { mult: 0.85, reason: 'régimen constructivo' };
+        case 'NEUTRAL':        return { mult: 0.60, reason: 'régimen neutral — reducir' };
+        case 'RISK_OFF':       return { mult: 0.40, reason: 'régimen defensivo' };
+        case 'STRONG_RISK_OFF':return { mult: 0.00, reason: 'régimen hostil — no operar', stop: true };
+        default:               return { mult: 0.70, reason: 'sin régimen — cauto' };
+    }
+}
+function getStreakMultiplier() {
+    const history = loadClosedHistory()
+        .filter(h => h.rMult != null && isFinite(h.rMult))
+        .sort((a, b) => new Date(b.closeDate) - new Date(a.closeDate));
+    let consecutiveLosses = 0;
+    let consecutiveWins = 0;
+    for (const h of history) {
+        if ((h.rMult || 0) < 0) {
+            if (consecutiveWins > 0) break;
+            consecutiveLosses++;
+        } else if ((h.rMult || 0) > 0) {
+            if (consecutiveLosses > 0) break;
+            consecutiveWins++;
+        } else break;
+    }
+    if (consecutiveLosses >= 4) return { mult: 0.25, reason: `${consecutiveLosses} pérdidas seguidas — parar`, stop: true };
+    if (consecutiveLosses === 3) return { mult: 0.40, reason: '3 pérdidas seguidas — reducir 60%' };
+    if (consecutiveLosses === 2) return { mult: 0.65, reason: '2 pérdidas seguidas — reducir 35%' };
+    if (consecutiveWins >= 5)   return { mult: 0.80, reason: '5+ ganadas seguidas — no euforia' };
+    return { mult: 1.00, reason: 'racha normal' };
+}
+function getCorrelationMultiplier(symbol) {
+    if (!lastFetchedData || !manualPositions.length) return { mult: 1.00, reason: 'sin posiciones abiertas' };
+    const candidate = lastFetchedData[symbol];
+    if (!candidate || candidate.length < 60) return { mult: 1.00, reason: 'sin datos suficientes' };
+    let maxCorr = 0;
+    let maxCorrSymbol = null;
+    for (const p of manualPositions) {
+        if (p.symbol === symbol) return { mult: 0.00, reason: `ya tienes ${symbol} abierta`, stop: true };
+        const other = lastFetchedData[p.symbol];
+        if (!other || other.length < 60) continue;
+        const c = computeCorrelation({ symbol }, { symbol: p.symbol });
+        if (c != null && c > maxCorr) { maxCorr = c; maxCorrSymbol = p.symbol; }
+    }
+    if (maxCorr > 0.85) return { mult: 0.30, reason: `correlación ${maxCorr.toFixed(2)} con ${maxCorrSymbol}`, corrWith: maxCorrSymbol, corr: maxCorr };
+    if (maxCorr > 0.75) return { mult: 0.50, reason: `correlación ${maxCorr.toFixed(2)} con ${maxCorrSymbol}`, corrWith: maxCorrSymbol, corr: maxCorr };
+    if (maxCorr > 0.65) return { mult: 0.75, reason: `correlación ${maxCorr.toFixed(2)} con ${maxCorrSymbol}`, corrWith: maxCorrSymbol, corr: maxCorr };
+    return { mult: 1.00, reason: 'correlación baja con cartera' };
+}
+function getEqMultiplier(entryQualityScore) {
+    const s = entryQualityScore ?? 70;
+    const mult = 0.5 + 0.5 * (s / 100);
+    return { mult, reason: `EQ ${s}/100` };
+}
+function getEffectiveRiskPct(symbol, entryQualityScore) {
+    const base = getRiskConfig().pct;
+    const regime = getRegimeSizeMultiplier();
+    const streak = getStreakMultiplier();
+    const corr = getCorrelationMultiplier(symbol);
+    const eq = getEqMultiplier(entryQualityScore);
+    const blocked = regime.stop || streak.stop || corr.stop;
+    const rawMult = regime.mult * streak.mult * corr.mult * eq.mult;
+    const clampedMult = Math.max(0.15, Math.min(1.15, rawMult));
+    const effectivePct = +(base * clampedMult).toFixed(3);
+    return {
+        basePct: base,
+        effectivePct,
+        mult: +rawMult.toFixed(3),
+        clampedMult: +clampedMult.toFixed(3),
+        blocked,
+        components: {
+            regime: { ...regime, weight: regime.mult },
+            streak: { ...streak, weight: streak.mult },
+            correlation: { ...corr, weight: corr.mult },
+            entryQuality: { ...eq, weight: eq.mult }
+        }
+    };
+}
+
+/* RENDER SETUPS */
 function sourceLabel(src) {
     switch (src) {
         case 'swing': return 'bajo swing';
@@ -2641,12 +2804,8 @@ function setupQualityBadge(quality) {
 }
 function entryQualityBadge(eq) {
     if (!eq) return '';
-    const cls = eq.state === 'optimal' ? 'eq-optimal'
-              : eq.state === 'acceptable' ? 'eq-acceptable'
-              : 'eq-extended';
-    const label = eq.state === 'optimal' ? 'ÓPTIMA'
-                : eq.state === 'acceptable' ? 'ACEPTABLE'
-                : 'EXTENDIDA';
+    const cls = eq.state === 'optimal' ? 'eq-optimal' : eq.state === 'acceptable' ? 'eq-acceptable' : 'eq-extended';
+    const label = eq.state === 'optimal' ? 'ÓPTIMA' : eq.state === 'acceptable' ? 'ACEPTABLE' : 'EXTENDIDA';
     return `<span class="entry-quality-badge ${cls}">Ejecución ${label} <b>${eq.score}</b></span>`;
 }
 function eqStateClass(state) {
@@ -2747,10 +2906,49 @@ function renderEntryQualityPanel(eq, title = 'Ejecución actual') {
         </div>
     `;
 }
-function renderRecommendation(symbol, entries, accountSize, riskPct) {
+function renderSizingBreakdown(sizing) {
+    if (!sizing) return '';
+    if (sizing.blocked) {
+        const reasons = [
+            sizing.components.regime.stop ? sizing.components.regime.reason : null,
+            sizing.components.streak.stop ? sizing.components.streak.reason : null,
+            sizing.components.correlation.stop ? sizing.components.correlation.reason : null
+        ].filter(Boolean).join(' · ');
+        return `<div style="margin-top:10px;padding:10px 12px;background:rgba(255,69,58,.10);border:1px solid rgba(255,69,58,.35);border-radius:9px;font-size:11px;color:var(--red);line-height:1.5;">
+            <b>🚫 SIZING BLOQUEADO:</b> ${escapeHtml(reasons)}
+        </div>`;
+    }
+    const row = (label, comp, showWeight) => `
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+            <span style="color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;font-weight:700;">${label}</span>
+            <span style="color:var(--text-2);font-size:10px;flex:1;margin:0 8px;text-align:right;">${escapeHtml(comp.reason)}</span>
+            ${showWeight ? `<span style="font-weight:800;font-variant-numeric:tabular-nums;color:${comp.mult >= 0.9 ? 'var(--green)' : comp.mult >= 0.6 ? 'var(--text)' : comp.mult >= 0.3 ? 'var(--orange)' : 'var(--red)'};">×${comp.mult.toFixed(2)}</span>` : ''}
+        </div>
+    `;
+    return `
+        <div style="margin-top:10px;padding:10px 12px;background:rgba(50,212,224,.05);border:1px solid rgba(50,212,224,.18);border-radius:9px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+                <span style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#32d4e0;">Sizing efectivo</span>
+                <span style="font-size:14px;font-weight:800;color:#32d4e0;font-variant-numeric:tabular-nums;">
+                    ${sizing.effectivePct}% <span style="font-size:10px;color:var(--text-3);font-weight:500;">(base ${sizing.basePct}%)</span>
+                </span>
+            </div>
+            ${row('Régimen', sizing.components.regime, true)}
+            ${row('Racha', sizing.components.streak, true)}
+            ${row('Correlación', sizing.components.correlation, true)}
+            ${row('Entry Quality', sizing.components.entryQuality, true)}
+            <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;padding-top:6px;font-weight:700;">
+                <span style="color:var(--text-2);">Multiplicador final</span>
+                <span style="color:var(--text);font-variant-numeric:tabular-nums;">×${sizing.clampedMult.toFixed(2)}</span>
+            </div>
+        </div>
+    `;
+}
+function renderRecommendation(symbol, entries, accountSize) {
     if (!entries.length) return '';
     const best = entries[0];
-    const dollarRisk = accountSize * riskPct / 100;
+    const sizing = getEffectiveRiskPct(symbol, best.entryQuality?.score);
+    const dollarRisk = accountSize * sizing.effectivePct / 100;
     const rawShares = Math.max(0, Math.floor(dollarRisk / best.risk));
     const maxShares = Math.max(0, Math.floor((accountSize * getRiskConfig().maxPositionPct / 100) / best.entry));
     const shares = Math.min(rawShares, maxShares);
@@ -2764,6 +2962,7 @@ function renderRecommendation(symbol, entries, accountSize, riskPct) {
     const badges = renderContextBadges(symbol, metaBadges);
     const softFilterHtml = (best.softFilters && best.softFilters.length)
         ? `<div class="gate-note soft" style="margin-top:8px;"><b>⚠ Filtros no óptimos (soft):</b> ${best.softFilters.map(escapeHtml).join(' · ')}</div>` : '';
+const macroWarningHtml = buildMacroWarning(symbol);
     const expiredHtml = isExpired
         ? `<div class="confirmation-strip expired"><b>⏱ EXPIRADO:</b> ${escapeHtml(best.lifecycle?.reason || 'setup fuera de su ventana operativa')}</div>` : '';
     const checksHtml = (best.checks || []).map(c => `
@@ -2789,6 +2988,7 @@ function renderRecommendation(symbol, entries, accountSize, riskPct) {
             </div>
             ${badges}
             ${softFilterHtml}
+	${macroWarningHtml}
             ${expiredHtml}
             ${!isExpired ? `<div class="confirmation-strip ${conf.state}"><b>Confirmación:</b> ${conf.icon} ${escapeHtml(conf.label)} · ${escapeHtml(conf.note)}</div>` : ''}
             ${renderEntryQualityPanel(best.entryQuality, 'Calidad de entrada actual')}
@@ -2820,14 +3020,15 @@ function renderRecommendation(symbol, entries, accountSize, riskPct) {
                 </div>
             </div>
             <div class="rec-sizing">
-                <span><b>${shares}</b> acc · <b>$${cost.toFixed(0)}</b> (${(cost / accountSize * 100).toFixed(1)}% cuenta) · riesgo <b>$${(shares * best.risk).toFixed(0)}</b> (${riskPct}% de $${accountSize.toLocaleString()})</span>
+                <span><b>${shares}</b> acc · <b>$${cost.toFixed(0)}</b> (${(cost / accountSize * 100).toFixed(1)}% cuenta) · riesgo <b>$${(shares * best.risk).toFixed(0)}</b> (${sizing.effectivePct}% de $${accountSize.toLocaleString()})</span>
             </div>
             <div class="rec-riskbar">
-                <div class="rec-riskcell"><div class="k">Riesgo/trade</div><div class="v">${riskPct.toFixed(1)}%</div></div>
+                <div class="rec-riskcell"><div class="k">Riesgo/trade</div><div class="v">${sizing.effectivePct}%</div></div>
                 <div class="rec-riskcell"><div class="k">Distancia stop</div><div class="v">${((best.entry-best.stop)/best.entry*100).toFixed(2)}%</div></div>
                 <div class="rec-riskcell"><div class="k">Riesgo ATR</div><div class="v">${best.riskInAtr.toFixed(2)}×</div></div>
                 <div class="rec-riskcell"><div class="k">R:R T1</div><div class="v">${best.rrT1.toFixed(1)}R</div></div>
             </div>
+            ${renderSizingBreakdown(sizing)}
         </div>
     `;
 }
@@ -2846,14 +3047,13 @@ function renderEntries(symbol) {
     }
     const readyCount = entries.filter(e => e.status === 'READY').length;
     const expiredCount = entries.filter(e => e.status === 'EXPIRED').length;
-    const { size: accountSize, pct: riskPct } = getRiskConfig();
+    const { size: accountSize } = getRiskConfig();
     if (sub) sub.textContent = `${entries.length} setup${entries.length > 1 ? 's' : ''} · ${readyCount} listo${readyCount !== 1 ? 's' : ''} · ${expiredCount} expirado${expiredCount !== 1 ? 's' : ''}${getMicroFilterConfig() ? ' · Fase 2 activa' : ''}`;
 
     const best = entries[0];
     const showRec = best && best.status !== 'EXPIRED';
-    const recHtml = showRec ? renderRecommendation(symbol, entries, accountSize, riskPct) : '';
+    const recHtml = showRec ? renderRecommendation(symbol, entries, accountSize) : '';
     const setupsToRender = showRec ? entries.slice(1) : entries;
-    const dollarRisk = accountSize * riskPct / 100;
 
     const setupsHtml = setupsToRender.map(e => {
         const isExpired = e.status === 'EXPIRED';
@@ -2861,6 +3061,8 @@ function renderEntries(symbol) {
         const statusText = isExpired ? 'EXPIRADO' : e.status === 'READY' ? 'LISTO' : 'FORMÁNDOSE';
         const conf = e.confirmation || {label:'SIN CONFIRMACIÓN', icon:'○', state:'none', note:''};
         const stopPct = ((e.entry - e.stop) / e.entry * 100).toFixed(2);
+        const sizing = getEffectiveRiskPct(symbol, e.entryQuality?.score);
+        const dollarRisk = accountSize * sizing.effectivePct / 100;
         const rawShares = Math.max(0, Math.floor(dollarRisk / e.risk));
         const maxShares = Math.max(0, Math.floor((accountSize * getRiskConfig().maxPositionPct / 100) / e.entry));
         const shares = Math.min(rawShares, maxShares);
@@ -2874,6 +3076,7 @@ function renderEntries(symbol) {
             </div>`).join('');
         const softFilterHtml = (e.softFilters && e.softFilters.length)
             ? `<div class="gate-note soft" style="margin-bottom:10px;"><b>⚠ Filtros no óptimos (soft):</b> ${e.softFilters.map(escapeHtml).join(' · ')}</div>` : '';
+const macroWarningHtml = buildMacroWarning(symbol);
         const lifecycleStrip = isExpired
             ? `<div class="confirmation-strip expired"><b>⏱ EXPIRADO:</b> ${escapeHtml(e.lifecycle?.reason || 'setup fuera de su ventana operativa')}</div>`
             : `<div class="confirmation-strip ${conf.state}"><b>Confirmación:</b> ${conf.icon} ${escapeHtml(conf.label)} · ${escapeHtml(conf.note)}</div>`;
@@ -2895,6 +3098,7 @@ function renderEntries(symbol) {
                     </div>
                 </div>
                 ${softFilterHtml}
+		${macroWarningHtml}
                 ${lifecycleStrip}
                 ${renderEntryQualityPanel(e.entryQuality)}
                 <div class="entry-prices">
@@ -2924,7 +3128,7 @@ function renderEntries(symbol) {
                     <b>Plan:</b> ${e.exitPlan.partials} · Trailing: ${e.exitPlan.trailing} · Time stop: ${e.exitPlan.timeStop} · Invalidación: ${e.exitPlan.invalidation}
                 </div>
                 <div class="entry-sizing">
-                    <span><b>${shares}</b> acc · <b>$${cost.toFixed(0)}</b> (${costPct}%) · riesgo <b>$${(shares * e.risk).toFixed(0)}</b> · ${e.riskInAtr.toFixed(2)} ATR</span>
+                    <span><b>${shares}</b> acc · <b>$${cost.toFixed(0)}</b> (${costPct}%) · riesgo <b>$${(shares * e.risk).toFixed(0)}</b> · ${e.riskInAtr.toFixed(2)} ATR · <span style="color:var(--text-3);">${sizing.effectivePct}%</span></span>
                 </div>
             </div>`;
     }).join('');
@@ -2959,6 +3163,106 @@ function saveClosedHistory(list) {
     }
     return ok;
 }
+
+/* Telemetría */
+function getRegimeSnapshot() {
+    try {
+        const raw = localStorage.getItem(`regime_SPY_${today()}`);
+        return raw ? JSON.parse(raw) : null;
+    } catch(_) { return null; }
+}
+function buildEntryTelemetry(symbol, topSetup, live) {
+    if (!live) return null;
+    const regime = getRegimeSnapshot();
+    const checks = (topSetup?.checks || []).map(c => ({
+        label: c.label,
+        ok: !!c.ok,
+        category: c.category || 'other',
+        detail: c.detail || null
+    }));
+    const totalChecks = checks.length;
+    const passedChecks = checks.filter(c => c.ok).length;
+    let sizingApplied = null;
+    try {
+        const s = getEffectiveRiskPct(symbol, topSetup?.entryQuality?.score);
+        sizingApplied = {
+            basePct: s.basePct,
+            effectivePct: s.effectivePct,
+            mult: s.mult,
+            regime: s.components.regime.mult,
+            streak: s.components.streak.mult,
+            correlation: s.components.correlation.mult,
+            entryQuality: s.components.entryQuality.mult
+        };
+    } catch(_) {}
+    return {
+        score: live.score ?? null,
+        scoreParts: live.scoreParts || null,
+        trend: live.trend || null,
+        price: live.price ?? null,
+        atr: live.atr ?? null,
+        atrPct: (live.atr && live.price) ? +((live.atr / live.price) * 100).toFixed(2) : null,
+        rsi: live.rsi ?? null,
+        adx: live.adx ?? null,
+        plusDI: live.plusDI ?? null,
+        minusDI: live.minusDI ?? null,
+        macdHist: live.macdHist ?? null,
+        macdBull: live.macdBull ?? null,
+        ema20: live.ema20 ?? null,
+        ema50: live.ema50 ?? null,
+        ema200: live.ema200 ?? null,
+        sma200: live.sma200 ?? null,
+        volRatio: live.volRatio ?? null,
+        rvol: live.rvol ?? null,
+        obvSlope: live.obvSlope ?? null,
+        rsRating: live.rsRating ?? null,
+        rsVsSector: live.rsVsSector ?? null,
+        sectorETF: live.sectorETF ?? null,
+        weeklyTrend: live.weeklyTrend ?? null,
+        weeklyRsi: live.weeklyRsi ?? null,
+        daysEarnings: live.daysEarnings ?? null,
+        regime: regime?.regime ?? null,
+        regimeDistPct: regime?.distPct ?? null,
+        regimeSlopePct: regime?.slopePct ?? null,
+        setupId: topSetup?.id ?? null,
+        setupName: topSetup?.name ?? null,
+        setupQuality: topSetup?.quality ?? null,
+        entryQualityScore: topSetup?.entryQuality?.score ?? null,
+        entryQualityState: topSetup?.entryQuality?.state ?? null,
+        entryType: topSetup?.entryType ?? null,
+        stopSource: topSetup?.stopSource ?? null,
+        t1Source: topSetup?.t1Source ?? null,
+        riskInAtr: topSetup?.riskInAtr ?? null,
+        rrT1: topSetup?.rrT1 ?? null,
+        rrT2: topSetup?.rrT2 ?? null,
+        checks,
+        totalChecks,
+        passedChecks,
+        passRate: totalChecks > 0 ? +(passedChecks / totalChecks).toFixed(3) : null,
+        softFilters: topSetup?.softFilters || [],
+        softFilterCount: (topSetup?.softFilters || []).length,
+        confirmationState: topSetup?.confirmation?.state ?? null,
+        lifecycleState: topSetup?.lifecycle?.state ?? null,
+        lifecycleAge: topSetup?.lifecycle?.age ?? null,
+        sizingApplied,
+macroExposure: (() => {
+    try {
+        const exp = getMacroExposure(symbol);
+        if (!exp) return null;
+        const ref = MACRO_REFERENCE[exp];
+        const corr = ref && lastFetchedData[symbol] && lastFetchedData[ref.symbol]
+            ? computeCorrelation({ symbol }, { symbol: ref.symbol }) : null;
+        return {
+            commodity: exp,
+            referenceSymbol: ref?.symbol ?? null,
+            correlation60d: corr != null ? +corr.toFixed(3) : null
+        };
+    } catch(_) { return null; }
+})(),
+        loggedAt: new Date().toISOString()
+    };
+}
+
 function addManualPosition() {
     const symbolEl = document.getElementById("posSymbol");
     const sharesEl = document.getElementById("posShares");
@@ -2970,11 +3274,27 @@ function addManualPosition() {
         toast("Rellena símbolo, acciones y precio correctamente.", "error");
         return;
     }
-    const id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    const heatCheck = computePortfolioHeat();
+    if (heatCheck.totalHeatR + 1 > heatCheck.cfg.maxHeatR) {
+        toast(`Heat actual ${heatCheck.totalHeatR.toFixed(2)}R + 1R excede máximo ${heatCheck.cfg.maxHeatR}R. Posición bloqueada.`, 'error', 6000);
+        return;
+    }
     const live = lastSymbolsData?.[symbol];
+    const sizingCheck = getEffectiveRiskPct(symbol, live?.entries?.[0]?.entryQuality?.score);
+    if (sizingCheck.blocked) {
+        const reasons = [
+            sizingCheck.components.regime.stop ? sizingCheck.components.regime.reason : null,
+            sizingCheck.components.streak.stop ? sizingCheck.components.streak.reason : null,
+            sizingCheck.components.correlation.stop ? sizingCheck.components.correlation.reason : null
+        ].filter(Boolean).join(' · ');
+        toast(`🚫 Entrada bloqueada: ${reasons}`, 'error', 7000);
+        return;
+    }
+    const id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
     const topSetup = live?.entries?.[0] || null;
     const regimeBadgeEl = document.getElementById('regimeBadge');
     const regimeText = (regimeBadgeEl && regimeBadgeEl.style.display !== 'none') ? regimeBadgeEl.textContent.replace('● ', '').trim() : null;
+    const telemetry = buildEntryTelemetry(symbol, topSetup, live);
     manualPositions.push({
         id, symbol, shares, entry,
         entryDate: new Date().toISOString(),
@@ -2989,7 +3309,8 @@ function addManualPosition() {
         regime: regimeText,
         journal: '',
         stopInitial: topSetup?.stop ?? null,
-        note: ''
+        note: '',
+        telemetry
     });
     saveManualPositions();
     symbolEl.value = ""; sharesEl.value = ""; entryEl.value = "";
@@ -3159,9 +3480,7 @@ function computeExitSignal(position, live, fullData) {
         else if (crossRecent && live.rsi != null && live.rsi < 45) addReason('MACD momentum bajista + RSI débil', 2);
     }
     const div = detectRsiDivergence(fullData);
-    if (div.bearish && div.detail) {
-        addReason(`Divergencia bajista RSI (ΔRSI ${div.detail.rsiDelta.toFixed(1)} · umbral ±${div.detail.threshold.toFixed(1)})`, 2);
-    }
+    if (div.bearish && div.detail) addReason(`Divergencia bajista RSI (ΔRSI ${div.detail.rsiDelta.toFixed(1)} · umbral ±${div.detail.threshold.toFixed(1)})`, 2);
     const climax = detectVolumeClimax(fullData);
     if (climax.exhaustion) addReason(`Climax de agotamiento (RVOL ${climax.rvol.toFixed(1)}×, rango ${climax.rangeRatio.toFixed(1)}×)`, 2);
     const hwm = computeHighWaterMark(position, fullData);
@@ -3297,12 +3616,8 @@ function renderManualPositions() {
             </div>`;
     }).join("");
 }
-/* ═══════════════════════════════════════════════════════════════════
-   MAE / MFE — Máxima excursión adversa y favorable
-   MAE = cuánto fue el precio en contra antes de cerrarse (en R)
-   MFE = cuánto fue el precio a favor antes de cerrarse (en R)
-   Ambos normalizados por el riesgo inicial (entry - stopInitial).
-   ═══════════════════════════════════════════════════════════════════ */
+
+/* MAE / MFE */
 function computeMAEMFE(position, fullData) {
     if (!position || !Array.isArray(fullData) || !fullData.length) return null;
     if (!position.entryDate || !position.stopInitial) return null;
@@ -3311,12 +3626,9 @@ function computeMAEMFE(position, fullData) {
     if (!isFinite(entry) || !isFinite(stop) || entry <= 0 || stop >= entry) return null;
     const riskPerShare = entry - stop;
     if (riskPerShare <= 0) return null;
-
     const entryDay = String(position.entryDate).slice(0, 10);
     const closeDay = position.closeDate ? String(position.closeDate).slice(0, 10) : today();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(entryDay)) return null;
-
-    // Filtrar barras entre entrada y cierre (ambas inclusive)
     const bars = [];
     for (const d of fullData) {
         if (!d || !d.datetime) continue;
@@ -3326,33 +3638,20 @@ function computeMAEMFE(position, fullData) {
         bars.push(d);
     }
     if (!bars.length) return null;
-
     let minLow = Infinity;
     let maxHigh = -Infinity;
     for (const b of bars) {
         if (b.low < minLow) minLow = b.low;
         if (b.high > maxHigh) maxHigh = b.high;
     }
-
-    // MAE: cuánto bajó por debajo de entry (0 si nunca bajó)
     const maeAbs = Math.max(0, entry - minLow);
-    const mae = maeAbs / riskPerShare;                  // en R
-    const maePct = (maeAbs / entry) * 100;              // en % del precio
-
-    // MFE: cuánto subió por encima de entry (0 si nunca subió)
+    const mae = maeAbs / riskPerShare;
+    const maePct = (maeAbs / entry) * 100;
     const mfeAbs = Math.max(0, maxHigh - entry);
     const mfe = mfeAbs / riskPerShare;
     const mfePct = (mfeAbs / entry) * 100;
-
-    // R final real
     const rFinal = position.rMult != null ? position.rMult : 0;
-
-    // Ratio de eficiencia: cuánto del MFE capturaste (0-1)
     const capture = mfe > 0 ? Math.max(0, Math.min(1, rFinal / mfe)) : null;
-
-    // Cuánto del MAE se consumió respecto al riesgo (0-1+)
-    const maeConsumed = mae;
-
     return {
         mae: +mae.toFixed(3),
         mfe: +mfe.toFixed(3),
@@ -3363,7 +3662,7 @@ function computeMAEMFE(position, fullData) {
         maxHigh: +maxHigh.toFixed(4),
         rFinal: +rFinal.toFixed(3),
         capture: capture != null ? +capture.toFixed(3) : null,
-        maeConsumed: +maeConsumed.toFixed(3)
+        maeConsumed: +mae.toFixed(3)
     };
 }
 function closePositionWithReason(id) {
@@ -3387,16 +3686,16 @@ function closePositionWithReason(id) {
         `Motivo: ${reasonText}\n\n¿Confirmar cierre?`
     );
     if (!confirmed) return;
-        const entry = {
+    const entry = {
         id: String(pos.id), symbol: pos.symbol, shares: pos.shares,
         entry: pos.entry, exit: exitPrice,
         entryDate: pos.entryDate, closeDate: new Date().toISOString(),
         pnlPct, pnlDollar, rMult,
         setupId: pos.setupId, setupName: pos.setupName,
         reason: reasonText, journal: pos.journal || '',
-        regime: pos.regime || null
+        regime: pos.regime || null,
+        telemetry: pos.telemetry || null
     };
-    // ── MAE / MFE ──
     try {
         const maeMfe = computeMAEMFE(
             { entry: pos.entry, stopInitial: pos.stopInitial, entryDate: pos.entryDate, closeDate: entry.closeDate, rMult },
@@ -3513,7 +3812,7 @@ function renderPortfolioHeat() {
     const panel = document.getElementById('portfolioHeatPanel');
     if (!panel) return;
     const { totalHeatR, totalDollarRisk, positions, cfg, oneR } = computePortfolioHeat();
-    if (!manualPositions.length) { panel.innerHTML = ''; return; }
+    if (!manualPositions.length) { panel.innerHTML = ''; renderPortfolioSizingPanel(); return; }
     const pct = Math.min(100, (totalHeatR / cfg.maxHeatR) * 100);
     let cls = '';
     if (pct >= 90) cls = 'danger'; else if (pct >= 70) cls = 'warn';
@@ -3538,6 +3837,35 @@ function renderPortfolioHeat() {
                 <div class="heat-row"><span>Posiciones abiertas</span><b>${positions.length}</b></div>
             </div>
             ${warnings.length ? `<div class="corr-warning"><b>⚠ Correlación alta detectada:</b> ${warnings.map(w => `${escapeHtml(w.a)}↔${escapeHtml(w.b)} (${w.c.toFixed(2)})`).join(' · ')} — considera reducir tamaño o tratar como una sola apuesta.</div>` : ''}
+        </div>
+    `;
+    renderPortfolioSizingPanel();
+}
+function renderPortfolioSizingPanel() {
+    const panel = document.getElementById('portfolioSizingPanel');
+    if (!panel) return;
+    const streak = getStreakMultiplier();
+    const regime = getRegimeSizeMultiplier();
+    const cfg = getRiskConfig();
+    const color = m => m >= 0.9 ? 'var(--green)' : m >= 0.6 ? 'var(--text)' : m >= 0.3 ? 'var(--orange)' : 'var(--red)';
+    const bigValue = (label, value, sub, col) => `
+        <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:10px 12px;">
+            <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">${label}</div>
+            <div style="font-size:20px;font-weight:800;color:${col};font-variant-numeric:tabular-nums;margin-top:2px;">${value}</div>
+            <div style="font-size:10px;color:var(--text-3);margin-top:2px;">${sub}</div>
+        </div>
+    `;
+    panel.innerHTML = `
+        <div style="margin-top:12px;margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:8px;">Sizing activo</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                ${bigValue('Base', `${cfg.pct}%`, 'riesgo nominal', 'var(--text)')}
+                ${bigValue('Régimen', `×${regime.mult.toFixed(2)}`, regime.reason, color(regime.mult))}
+                ${bigValue('Racha', `×${streak.mult.toFixed(2)}`, streak.reason, color(streak.mult))}
+            </div>
+            <div style="font-size:10px;color:var(--text-3);margin-top:8px;line-height:1.5;">
+                El multiplicador de régimen y racha se aplica sobre el base a cada nueva entrada. Si el resultado combinado baja de 0.3, la app bloquea la posición.
+            </div>
         </div>
     `;
 }
@@ -3761,8 +4089,13 @@ function renderPriceChart(symbol) {
                         visibleWindow === 90 ? '90 días' :
                         visibleWindow === 365 ? '1 año' : `${visibleWindow} días`;
     const live = lastSymbolsData?.[symbol];
-    document.getElementById("chartPeriod").textContent =
-        `${periodLabel} · ${data.length} sesiones · Score ${live?.score ?? '—'} · ${live?.trend ?? ''}`;
+    let channelInfo = '';
+if (seriesVisibility.channel && channel) {
+    const validTxt = channel.isValid ? '✓' : '○';
+    channelInfo = ` · <span style="color:#bf5af2;">Canal ${validTxt} ${channel.tipo} ${channel.slopePct >= 0 ? '+' : ''}${channel.slopePct.toFixed(1)}% · ${channel.touchesUpper}↑ ${channel.touchesLower}↓ · pos ${channel.posInChannel.toFixed(0)}%</span>`;
+}
+document.getElementById("chartPeriod").innerHTML =
+    `${periodLabel} · ${data.length} sesiones · Score ${live?.score ?? '—'} · ${live?.trend ?? ''}${channelInfo}`;
     const atr = atrFull[atrFull.length - 1];
     const lastEma20 = ema20[ema20.length - 1];
     const lastEma50 = ema50[ema50.length - 1];
@@ -3831,13 +4164,29 @@ function renderPriceChart(symbol) {
         pushPoint('Donchian Low 10d', dlSeries, '#1a8a99', 4, [4, 3], 1.2);
     }
     if (seriesVisibility.channel && channel) {
-        const upPts = buildPointSeries(channel.upper, dates);
-        const loPts = buildPointSeries(channel.lower, dates);
-        if (upPts.length > 1 && loPts.length > 1) {
-            datasets.push({ type: 'line', label: `Canal Inf`, data: loPts, borderColor: "#bf5af2", borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, order: 5, yAxisID: 'y', parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
-            datasets.push({ type: 'line', label: `Canal Sup`, data: upPts, borderColor: "#bf5af2", backgroundColor: 'rgba(191,90,242,0.12)', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: '-1', order: 5, yAxisID: 'y', parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
-        }
+    const upPts  = buildPointSeries(channel.upper,  dates);
+    const midPts = buildPointSeries(channel.middle, dates);
+    const loPts  = buildPointSeries(channel.lower,  dates);
+    if (upPts.length > 1 && loPts.length > 1 && midPts.length > 1) {
+        const col   = "#bf5af2";
+        const fillC = 'rgba(191,90,242,0.10)';
+        // Superior
+        datasets.push({ type: 'line', label: `Canal Sup`, data: upPts,
+            borderColor: col, borderWidth: 2, borderDash: [6, 4],
+            pointRadius: 0, fill: false, order: 5, yAxisID: 'y',
+            parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
+        // Inferior (rellena hasta superior)
+        datasets.push({ type: 'line', label: `Canal Inf`, data: loPts,
+            borderColor: col, backgroundColor: fillC, borderWidth: 2, borderDash: [6, 4],
+            pointRadius: 0, fill: '-1', order: 5, yAxisID: 'y',
+            parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
+        // Central (regresión pura)
+        datasets.push({ type: 'line', label: `Canal Medio`, data: midPts,
+            borderColor: 'rgba(191,90,242,0.75)', borderWidth: 1, borderDash: [3, 3],
+            pointRadius: 0, fill: false, order: 6, yAxisID: 'y',
+            parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
     }
+}
     let priceMin = Infinity, priceMax = -Infinity;
     for (const d of data) {
         if (d.low < priceMin) priceMin = d.low;
@@ -3953,9 +4302,7 @@ function renderMacdPanel(dates, macdLine, macdSig, macdHist) {
     else { try { macdChart = new Chart(canvas.getContext('2d'), config); } catch(e) { console.error(e); } }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   IA — EXPLICADOR DE INDICADORES (no validador)
-   ═══════════════════════════════════════════════════════════════════════ */
+/* IA */
 function getGeminiKey() { return localStorage.getItem(GEMINI_KEY_STORAGE) || ''; }
 function getGeminiModel() { return localStorage.getItem(GEMINI_MODEL_STORAGE) || GEMINI_DEFAULT_MODEL; }
 function getGeminiAuto() { return localStorage.getItem(GEMINI_AUTO_STORAGE) === '1'; }
@@ -3985,11 +4332,9 @@ function clearAICache() {
     localStorage.removeItem(GEMINI_CACHE_KEY);
     toast('Caché IA limpiada', 'success');
 }
-
 function buildAIPayload(results, regime) {
     const max = getGeminiMaxTickers();
     const SERIES_LEN = 20;
-
     const tail = (arr, n = SERIES_LEN) => {
         if (!Array.isArray(arr) || !arr.length) return [];
         return arr.slice(-n).map(v => (v == null || !isFinite(v)) ? null : +v.toFixed(2));
@@ -4002,15 +4347,12 @@ function buildAIPayload(results, regime) {
         return null;
     };
     const distPct = (price, v) => (price > 0 && v != null) ? +(((price - v) / v) * 100).toFixed(2) : null;
-
     const top = results.slice(0, max).map(r => {
         const symbol = r.symbol;
         const data = lastFetchedData[symbol] || [];
         const price = r.price;
-
         const closes = data.map(d => d.close);
         const volumes = data.map(d => d.volume || 0);
-
         const ema20S = ema(closes, 20);
         const ema50S = ema(closes, 50);
         const ema200S = ema(closes, 200);
@@ -4022,12 +4364,8 @@ function buildAIPayload(results, regime) {
         const bbO = bollinger(closes, 20, 2);
         const dh20S = donchianHighSeries(data, 20);
         const dl10S = donchianLowSeries(data, 10);
-
         const closesTail = tail(closes, 30);
-        const priceChange = (n) => closes.length > n
-            ? +(((closes[closes.length-1] / closes[closes.length-1-n]) - 1) * 100).toFixed(2)
-            : null;
-
+        const priceChange = (n) => closes.length > n ? +(((closes[closes.length-1] / closes[closes.length-1-n]) - 1) * 100).toFixed(2) : null;
         const priceAction = {
             last_5_closes: tail(closes, 5),
             last_20_closes: closesTail,
@@ -4039,105 +4377,52 @@ function buildAIPayload(results, regime) {
             change_50d_pct: r.change50 != null ? +r.change50.toFixed(2) : null,
             change_200d_pct: r.change200 != null ? +r.change200.toFixed(2) : null,
             structure_uptrend: isUptrendStructure(data, 60),
-            recent_swing_low: (() => {
-                const s = recentSwingLow(data, 3, 30);
-                return s ? +s.price.toFixed(2) : null;
-            })()
+            recent_swing_low: (() => { const s = recentSwingLow(data, 3, 30); return s ? +s.price.toFixed(2) : null; })()
         };
-
         const slopeArr = (arr, lookback = 5) => {
             const s = arr.slice(-lookback - 1).filter(v => v != null);
             if (s.length < 2) return null;
-            const first = s[0], last = s[s.length - 1];
+            const first = s[0], lastV = s[s.length - 1];
             if (!isFinite(first) || first === 0) return null;
-            return +(((last - first) / Math.abs(first)) * 100).toFixed(2);
+            return +(((lastV - first) / Math.abs(first)) * 100).toFixed(2);
         };
         const e20v = last(ema20S), e50v = last(ema50S), e200v = last(ema200S), s200v = last(sma200S);
         const stack = (price > e20v ? 1 : 0) + (e20v > e50v ? 1 : 0) + (e50v > e200v ? 1 : 0);
         const maAlignment = stack === 3 ? 'full_bullish' : stack === 0 ? 'full_bearish' : stack === 2 ? 'bullish_partial' : 'mixed';
-
         const movingAverages = {
-            ema20: {
-                value: e20v,
-                dist_from_price_pct: distPct(price, e20v),
-                slope_5d_pct: slopeArr(ema20S, 5),
-                position: price > e20v ? 'above' : 'below',
-                history: tail(ema20S)
-            },
-            ema50: {
-                value: e50v,
-                dist_from_price_pct: distPct(price, e50v),
-                slope_5d_pct: slopeArr(ema50S, 5),
-                position: price > e50v ? 'above' : 'below',
-                history: tail(ema50S)
-            },
-            ema200: {
-                value: e200v,
-                dist_from_price_pct: distPct(price, e200v),
-                slope_10d_pct: slopeArr(ema200S, 10),
-                position: price > e200v ? 'above' : 'below',
-                history: tail(ema200S, 30)
-            },
-            sma200: {
-                value: s200v,
-                dist_from_price_pct: distPct(price, s200v),
-                position: price > s200v ? 'above' : 'below'
-            },
+            ema20: { value: e20v, dist_from_price_pct: distPct(price, e20v), slope_5d_pct: slopeArr(ema20S, 5), position: price > e20v ? 'above' : 'below', history: tail(ema20S) },
+            ema50: { value: e50v, dist_from_price_pct: distPct(price, e50v), slope_5d_pct: slopeArr(ema50S, 5), position: price > e50v ? 'above' : 'below', history: tail(ema50S) },
+            ema200: { value: e200v, dist_from_price_pct: distPct(price, e200v), slope_10d_pct: slopeArr(ema200S, 10), position: price > e200v ? 'above' : 'below', history: tail(ema200S, 30) },
+            sma200: { value: s200v, dist_from_price_pct: distPct(price, s200v), position: price > s200v ? 'above' : 'below' },
             alignment: maAlignment,
             stack_score: stack
         };
-
         const rsiV = last(rsiS);
-        const rsiPrev = (() => {
-            const valid = rsiS.filter(v => v != null);
-            return valid.length >= 2 ? +valid[valid.length - 2].toFixed(2) : null;
-        })();
+        const rsiPrev = (() => { const valid = rsiS.filter(v => v != null); return valid.length >= 2 ? +valid[valid.length - 2].toFixed(2) : null; })();
         const macdV = last(macdO.macd);
         const macdSigV = last(macdO.signal);
         const macdHistV = last(macdO.hist);
-        const macdHistPrevV = (() => {
-            const valid = macdO.hist.filter(v => v != null);
-            return valid.length >= 2 ? +valid[valid.length - 2].toFixed(2) : null;
-        })();
-        const macdHistTrend = (macdHistV != null && macdHistPrevV != null)
-            ? (macdHistV > macdHistPrevV ? 'expanding' : macdHistV < macdHistPrevV ? 'contracting' : 'flat')
-            : null;
-        const macdState = (macdV != null && macdSigV != null)
-            ? (macdV > macdSigV ? 'bullish' : 'bearish') : null;
-
+        const macdHistPrevV = (() => { const valid = macdO.hist.filter(v => v != null); return valid.length >= 2 ? +valid[valid.length - 2].toFixed(2) : null; })();
+        const macdHistTrend = (macdHistV != null && macdHistPrevV != null) ? (macdHistV > macdHistPrevV ? 'expanding' : macdHistV < macdHistPrevV ? 'contracting' : 'flat') : null;
+        const macdState = (macdV != null && macdSigV != null) ? (macdV > macdSigV ? 'bullish' : 'bearish') : null;
         const adxV = last(adxO.adx);
         const plusDIv = last(adxO.plusDI);
         const minusDIv = last(adxO.minusDI);
         const diSpread = (plusDIv != null && minusDIv != null) ? +(plusDIv - minusDIv).toFixed(1) : null;
-        const trendStrength = adxV == null ? null
-            : adxV >= 40 ? 'very_strong'
-            : adxV >= 25 ? 'strong'
-            : adxV >= 20 ? 'moderate'
-            : 'weak';
-
+        const trendStrength = adxV == null ? null : adxV >= 40 ? 'very_strong' : adxV >= 25 ? 'strong' : adxV >= 20 ? 'moderate' : 'weak';
         const momentum = {
             rsi: {
-                value: rsiV,
-                prev_value: rsiPrev,
+                value: rsiV, prev_value: rsiPrev,
                 delta_1d: (rsiV != null && rsiPrev != null) ? +(rsiV - rsiPrev).toFixed(2) : null,
                 state: r.rsiStatus || classifyRsi(rsiV),
-                interpretation: rsiV == null ? null
-                    : rsiV >= 70 ? 'sobrecompra'
-                    : rsiV <= 30 ? 'sobreventa'
-                    : rsiV >= 50 ? 'zona alcista'
-                    : 'zona bajista',
+                interpretation: rsiV == null ? null : rsiV >= 70 ? 'sobrecompra' : rsiV <= 30 ? 'sobreventa' : rsiV >= 50 ? 'zona alcista' : 'zona bajista',
                 history: tail(rsiS)
             },
             macd: {
-                macd_line: macdV,
-                signal_line: macdSigV,
-                histogram: macdHistV,
-                hist_prev: macdHistPrevV,
-                hist_trend: macdHistTrend,
-                state: macdState,
+                macd_line: macdV, signal_line: macdSigV, histogram: macdHistV,
+                hist_prev: macdHistPrevV, hist_trend: macdHistTrend, state: macdState,
                 crossover_recent: (() => {
-                    const valid = macdO.macd.map((v, i) => ({ m: v, s: macdO.signal[i] }))
-                        .filter(x => x.m != null && x.s != null).slice(-5);
+                    const valid = macdO.macd.map((v, i) => ({ m: v, s: macdO.signal[i] })).filter(x => x.m != null && x.s != null).slice(-5);
                     for (let i = 1; i < valid.length; i++) {
                         const prevCross = valid[i-1].m - valid[i-1].s;
                         const curCross = valid[i].m - valid[i].s;
@@ -4151,16 +4436,12 @@ function buildAIPayload(results, regime) {
                 signal_history: tail(macdO.signal)
             },
             adx: {
-                value: adxV,
-                plus_di: plusDIv,
-                minus_di: minusDIv,
-                di_spread: diSpread,
+                value: adxV, plus_di: plusDIv, minus_di: minusDIv, di_spread: diSpread,
                 trend_strength: trendStrength,
                 dominant: diSpread == null ? null : (diSpread > 0 ? 'bulls' : 'bears'),
                 history: tail(adxO.adx)
             }
         };
-
         const atrV = last(atrS);
         const atrPct = (atrV != null && price > 0) ? +((atrV / price) * 100).toFixed(2) : null;
         const atrHistory = tail(atrS);
@@ -4169,58 +4450,31 @@ function buildAIPayload(results, regime) {
             if (!valid.length) return null;
             return +(valid.reduce((a, b) => a + b, 0) / valid.length).toFixed(2);
         })();
-        const atrRegime = (atrV != null && atrAvg20 != null)
-            ? (atrV > atrAvg20 * 1.2 ? 'expanding' : atrV < atrAvg20 * 0.8 ? 'contracting' : 'stable')
-            : null;
-
+        const atrRegime = (atrV != null && atrAvg20 != null) ? (atrV > atrAvg20 * 1.2 ? 'expanding' : atrV < atrAvg20 * 0.8 ? 'contracting' : 'stable') : null;
         const bbU = last(bbO.upper), bbM = last(bbO.middle), bbL = last(bbO.lower);
-        const bbWidth = (bbU != null && bbL != null && bbM != null && bbM > 0)
-            ? +(((bbU - bbL) / bbM) * 100).toFixed(2) : null;
-        const bbPosition = (bbU != null && bbL != null && bbU > bbL)
-            ? +(((price - bbL) / (bbU - bbL)) * 100).toFixed(1) : null;
-
+        const bbWidth = (bbU != null && bbL != null && bbM != null && bbM > 0) ? +(((bbU - bbL) / bbM) * 100).toFixed(2) : null;
+        const bbPosition = (bbU != null && bbL != null && bbU > bbL) ? +(((price - bbL) / (bbU - bbL)) * 100).toFixed(1) : null;
         const volatility = {
-            atr: {
-                value: atrV,
-                atr_pct_of_price: atrPct,
-                avg_20d: atrAvg20,
-                regime: atrRegime,
-                history: atrHistory
-            },
+            atr: { value: atrV, atr_pct_of_price: atrPct, avg_20d: atrAvg20, regime: atrRegime, history: atrHistory },
             bollinger: {
-                upper: bbU,
-                middle: bbM,
-                lower: bbL,
-                width_pct: bbWidth,
-                position_pct: bbPosition,
-                position_label: bbPosition == null ? null
-                    : bbPosition >= 95 ? 'above_upper'
-                    : bbPosition >= 80 ? 'upper_zone'
-                    : bbPosition <= 5 ? 'below_lower'
-                    : bbPosition <= 20 ? 'lower_zone'
-                    : 'middle'
+                upper: bbU, middle: bbM, lower: bbL, width_pct: bbWidth, position_pct: bbPosition,
+                position_label: bbPosition == null ? null : bbPosition >= 95 ? 'above_upper' : bbPosition >= 80 ? 'upper_zone' : bbPosition <= 5 ? 'below_lower' : bbPosition <= 20 ? 'lower_zone' : 'middle'
             }
         };
-
         const obvArr = computeOBV(data);
         const obvSlope = normalizedSlope(obvArr, 20);
         const volPct60 = volumePercentile(volumes, 60);
         const volAvg5 = volumes.slice(-5).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(5, volumes.length));
         const volAvg20 = volumes.slice(-20).reduce((a, b) => a + b, 0) / Math.max(1, Math.min(20, volumes.length));
-
         const volumeFlow = {
             rvol_daily: r.rvol != null ? +r.rvol.toFixed(2) : null,
             vol_ratio_20d: r.volRatio != null ? +r.volRatio.toFixed(2) : null,
             vol_percentile_60d: volPct60 != null ? +volPct60.toFixed(2) : null,
             avg_vol_5d_vs_20d: volAvg20 > 0 ? +(volAvg5 / volAvg20).toFixed(2) : null,
             obv_slope_20d: obvSlope != null ? +obvSlope.toFixed(2) : null,
-            obv_signal: obvSlope == null ? null
-                : obvSlope > 0.5 ? 'accumulation'
-                : obvSlope < -0.5 ? 'distribution'
-                : 'neutral',
+            obv_signal: obvSlope == null ? null : obvSlope > 0.5 ? 'accumulation' : obvSlope < -0.5 ? 'distribution' : 'neutral',
             volume_history: tail(volumes, 20).map(v => v != null ? Math.round(v) : null)
         };
-
         const context = {
             sector_etf: r.sectorETF || getSectorETF(symbol) || null,
             rs_spy_3m6m12m_weighted: r.rsRating != null ? +r.rsRating.toFixed(2) : null,
@@ -4231,53 +4485,27 @@ function buildAIPayload(results, regime) {
             earnings_date: r.earningsDate || null,
             earnings_blackout_risk: r.daysEarnings != null && r.daysEarnings <= 5
         };
-
         const scoreBreakdown = r.scoreParts ? {
-            trend: r.scoreParts.trend,
-            momentum: r.scoreParts.momentum,
-            strength: r.scoreParts.strength,
-            participation: r.scoreParts.participation,
-            structure: r.scoreParts.structure,
-            total: r.score
+            trend: r.scoreParts.trend, momentum: r.scoreParts.momentum, strength: r.scoreParts.strength,
+            participation: r.scoreParts.participation, structure: r.scoreParts.structure, total: r.score
         } : null;
-
         const setups = (r.entries || []).map(e => ({
-            id: e.id,
-            name: e.name,
-            desc: e.desc,
-            status: e.status,
-            setup_quality: e.quality,
+            id: e.id, name: e.name, desc: e.desc, status: e.status, setup_quality: e.quality,
             entry_quality: {
-                score: e.entryQuality?.score,
-                state: e.entryQuality?.state,
-                note: e.entryQuality?.note,
-                distance_atr: e.entryQuality?.distanceAtr,
-                risk_atr: e.entryQuality?.riskAtr,
-                rr: e.entryQuality?.rr,
-                target_zone: e.entryQuality?.targetZone
+                score: e.entryQuality?.score, state: e.entryQuality?.state, note: e.entryQuality?.note,
+                distance_atr: e.entryQuality?.distanceAtr, risk_atr: e.entryQuality?.riskAtr,
+                rr: e.entryQuality?.rr, target_zone: e.entryQuality?.targetZone
             },
-            confirmation: {
-                state: e.confirmation?.state,
-                label: e.confirmation?.label,
-                note: e.confirmation?.note
-            },
-            lifecycle: {
-                state: e.lifecycle?.state,
-                age_bars: e.lifecycle?.age,
-                reason: e.lifecycle?.reason
-            },
-            decision: e.decision,
-            entry_type: e.entryType,
+            confirmation: { state: e.confirmation?.state, label: e.confirmation?.label, note: e.confirmation?.note },
+            lifecycle: { state: e.lifecycle?.state, age_bars: e.lifecycle?.age, reason: e.lifecycle?.reason },
+            decision: e.decision, entry_type: e.entryType,
             prices: {
                 entry: +e.entry.toFixed(2),
                 current_price: e.currentPrice != null ? +e.currentPrice.toFixed(2) : null,
-                stop: +e.stop.toFixed(2),
-                stop_source: e.stopSource,
+                stop: +e.stop.toFixed(2), stop_source: e.stopSource,
                 stop_pct_from_entry: e.entry > 0 ? +(((e.entry - e.stop) / e.entry) * 100).toFixed(2) : null,
-                t1: +e.t1.toFixed(2),
-                t1_source: e.t1Source,
-                t2: +e.t2.toFixed(2),
-                t2_source: e.t2Source
+                t1: +e.t1.toFixed(2), t1_source: e.t1Source,
+                t2: +e.t2.toFixed(2), t2_source: e.t2Source
             },
             ratios: {
                 risk_in_atr: e.riskInAtr != null ? +e.riskInAtr.toFixed(2) : null,
@@ -4285,26 +4513,12 @@ function buildAIPayload(results, regime) {
                 rr_t2: e.rrT2 != null ? +e.rrT2.toFixed(2) : null
             },
             soft_filters: e.softFilters || [],
-            checks: (e.checks || []).map(c => ({
-                label: c.label,
-                ok: c.ok,
-                detail: c.detail || null,
-                category: c.category
-            }))
+            checks: (e.checks || []).map(c => ({ label: c.label, ok: c.ok, detail: c.detail || null, category: c.category }))
         }));
-
         const micro = analyzeMicrostructure(data);
-
         return {
-            symbol,
-            score: r.score,
-            trend: r.trend,
-            score_breakdown: scoreBreakdown,
-            price_action: priceAction,
-            moving_averages: movingAverages,
-            momentum,
-            volatility,
-            volume_flow: volumeFlow,
+            symbol, score: r.score, trend: r.trend, score_breakdown: scoreBreakdown,
+            price_action: priceAction, moving_averages: movingAverages, momentum, volatility, volume_flow: volumeFlow,
             microstructure: micro ? {
                 vwap_monthly: micro.avwap.monthly ? +micro.avwap.monthly.vwap.toFixed(2) : null,
                 dist_vwap_monthly_pct: micro.avwap.monthly ? +micro.avwap.monthly.distPct.toFixed(2) : null,
@@ -4322,15 +4536,13 @@ function buildAIPayload(results, regime) {
                 prev_day_low: micro.prevDay.low ? +micro.prevDay.low.toFixed(2) : null,
                 gap: micro.gap
             } : null,
-            context,
-            setups
+            context, setups
         };
     });
-
     return {
         meta: {
             generated_at: new Date().toISOString(),
-            app_version: '4.7.0',
+            app_version: '4.9.0',
             universe_size: results.length,
             tickers_analyzed: top.length,
             micro_filter_active: getMicroFilterConfig()
@@ -4346,7 +4558,6 @@ function buildAIPayload(results, regime) {
         tickers: top
     };
 }
-
 function buildAIPrompt(payload) {
     return `Eres un analista técnico senior con 15 años operando mercados americanos. Tu función aquí es EXPLICAR los indicadores de cada ticker y construir tu propia valoración independiente.
 
@@ -4355,57 +4566,17 @@ NO eres un validador del motor. El motor técnico ya ha procesado los datos y ca
 Ignora el score del motor si quieres. Interpreta los datos crudos.
 
 RECIBES un JSON con, por ticker:
-- price_action: cambios %, estructura, swing low reciente, rango 20d.
-- moving_averages: EMA20/50/200 con valor, distancia al precio, pendiente y alineación.
-- momentum: RSI (nivel + historial 20 barras + interpretación), MACD (línea/señal/histograma/estado/cruce reciente), ADX (valor + DI spread + dominancia).
-- volatility: ATR (valor + % del precio + régimen expanding/contracting/stable + historial), Bollinger (bandas + ancho + posición en banda).
-- volume_flow: RVOL, OBV slope, percentil, ratio vol 5d/20d.
-- microstructure: VWAP anclado (mensual, desde high 52w, desde low 52w), Value Area (POC/VAH/VAL), Previous Day High/Low, gap.
-- context: RS vs SPY, RS vs sector, MTF semanal, días a earnings.
-- setups: lista con checks detallados.
+- price_action, moving_averages, momentum, volatility, volume_flow, microstructure, context, setups.
 
 TU TAREA:
-
-**1. EXPLICACIÓN DE INDICADORES (obligatorio por ticker del top 3)**
-
-Para cada indicador, explica:
-- Qué mide (breve).
-- Qué dice el valor actual.
-- Qué implica operativamente.
-- Contradicciones con otros indicadores si las hay.
-
-Indicadores a cubrir por ticker:
-- EMAs: alineación (full_bullish / mixed / bearish), distancia del precio, pendiente.
-- RSI: nivel, zona (sobrecompra/sobreventa/alcista/bajista), evolución reciente.
-- MACD: estado línea vs señal, histograma expandiendo/contrayendo, cruces recientes.
-- ADX + DI: fuerza de tendencia, quién domina (bulls/bears).
-- ATR: régimen de volatilidad, qué implica para el stop.
-- Bollinger: posición en banda (95%+ techo, 5%- suelo), ancho (compresión/expansión).
-- Volumen/OBV: confirma o diverge del precio.
-- VWAP anclado: dónde está el precio respecto a VWAP mensual y desde extremos de 52 semanas.
-- Value Area: dónde está el valor aceptado y si el precio está dentro o fuera.
-- Estructura HH/HL: ¿sigue válida?
-
-**2. VALORACIÓN INDEPENDIENTE**
-
-Después de explicar los indicadores, da tu propia opinión:
-- Dirección (alcista/bajista/lateral/mixta).
-- Fuerza (fuerte/moderada/débil).
-- Timing (ahora / esperar pullback / esperar ruptura / evitar).
-- Niveles clave: soporte, resistencia, invalidación.
-- Riesgos específicos de este ticker.
-
-**3. CONTEXTO**
-- Régimen de mercado actual y qué setups favorece.
-- Correlaciones entre tickers si comparten sector.
-- Qué está ignorando el motor.
+1. EXPLICACIÓN DE INDICADORES (obligatorio por ticker del top 3)
+2. VALORACIÓN INDEPENDIENTE (dirección, fuerza, timing, niveles, riesgos)
+3. CONTEXTO (régimen, correlaciones, qué ignora el motor)
 
 REGLAS DE ESTILO:
 - Español, directo, sin disclaimers.
-- Dirígete a un trader semi-experto que quiere ENTENDER los indicadores.
-- NO repitas valores literales sin interpretarlos. "RSI 62" no aporta; "RSI 62 saliendo de sobreventa con MACD expandiendo" sí.
-- Si algo es ambiguo o no lo sabes, dilo. No inventes.
-- No menciones "el motor dice" ni "el score es coherente". Ignora el score.
+- NO repitas valores literales sin interpretarlos.
+- No menciones "el motor dice". Ignora el score.
 
 OUTPUT DEL MOTOR (datos crudos):
 ${JSON.stringify(payload, null, 2)}
@@ -4414,40 +4585,19 @@ Devuelve EXCLUSIVAMENTE JSON válido (sin markdown, sin backticks):
 
 {
   "verdict": "ALCISTA" | "BAJISTA" | "MIXTO",
-  "summary": "4-6 frases. Valoración global del conjunto. Qué indicadores manda, dónde hay conflicto, qué esperar.",
-  "market_read": "3-4 frases. Régimen actual + qué tipo de setups favorece HOY.",
-  "macro_context": "3-4 frases. Implicaciones para momentum vs reversión, breakout vs pullback.",
-  "correlations": [
-    { "symbols": ["AAPL","MSFT"], "sector": "XLK", "note": "riesgo de concentración" }
-  ],
-  "per_ticker": [
-    {
-      "symbol": "XXX",
-      "verdict": "ALCISTA" | "BAJISTA" | "LATERAL" | "MIXTO",
-      "conviction": "ALTA" | "MEDIA" | "BAJA",
-      "technical_read": "3-4 frases explicando medias + momentum + volatilidad + volumen de ESTE ticker, con interpretación pedagógica.",
-      "setup_read": "2-3 frases sobre los setups, qué checks están ok y cuáles fallan.",
-      "reason": "1 frase accionable."
-    }
-  ],
-  "top_pick": {
-    "symbol": "XXX",
-    "conviction": "ALTA" | "MEDIA" | "BAJA",
-    "technical_case": "3 frases.",
-    "operational_case": "2 frases: entrada, stop, objetivo."
-  } | null,
-  "alternatives": [
-    { "symbol": "XXX", "conviction": "ALTA" | "MEDIA" | "BAJA", "reason": "2 frases" }
-  ],
-  "watchlist": [
-    { "symbol": "XXX", "setup": "nombre", "trigger": "qué tiene que pasar exactamente" }
-  ],
+  "summary": "4-6 frases.",
+  "market_read": "3-4 frases.",
+  "macro_context": "3-4 frases.",
+  "correlations": [ { "symbols": ["AAPL","MSFT"], "sector": "XLK", "note": "riesgo de concentración" } ],
+  "per_ticker": [ { "symbol": "XXX", "verdict": "ALCISTA", "conviction": "ALTA", "technical_read": "3-4 frases.", "setup_read": "2-3 frases.", "reason": "1 frase accionable." } ],
+  "top_pick": { "symbol": "XXX", "conviction": "ALTA", "technical_case": "3 frases.", "operational_case": "2 frases." },
+  "alternatives": [ { "symbol": "XXX", "conviction": "ALTA", "reason": "2 frases" } ],
+  "watchlist": [ { "symbol": "XXX", "setup": "nombre", "trigger": "qué tiene que pasar exactamente" } ],
   "risks": [ "riesgo específico" ],
   "blind_spots": [ "qué ignora el motor" ],
-  "action_plan": "4-5 frases. Qué abrir hoy o no, con sizing relativo, qué vigilar en 3-5 sesiones, qué descartar."
+  "action_plan": "4-5 frases."
 }`;
 }
-
 async function callGemini(prompt) {
     const key = getGeminiKey();
     if (!key) throw new Error('Falta API Key de Gemini');
@@ -4455,11 +4605,7 @@ async function callGemini(prompt) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
     const body = {
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 8000,
-            responseMimeType: 'application/json'
-        }
+        generationConfig: { temperature: 0.4, maxOutputTokens: 8000, responseMimeType: 'application/json' }
     };
     const res = await fetch(url, {
         method: 'POST',
@@ -4482,7 +4628,6 @@ async function callGemini(prompt) {
         throw new Error('JSON inválido devuelto por Gemini');
     }
 }
-
 function aiCacheKey(payload) {
     const s = JSON.stringify(payload).slice(0, 5000);
     let h = 0;
@@ -4501,7 +4646,6 @@ function getAICache(key) {
 function setAICache(key, data) {
     trySave(GEMINI_CACHE_KEY, JSON.stringify({ key, data, ts: Date.now() }));
 }
-
 function setAILoading(active) {
     const btn = document.getElementById('aiBtn');
     if (!btn) return;
@@ -4531,15 +4675,8 @@ function resetAICard() {
     `;
 }
 async function generateAIInsight(forceRefresh = false) {
-    if (!window.currentResults || !window.currentResults.length) {
-        toast('Ejecuta primero un análisis', 'warn');
-        return;
-    }
-    if (!getGeminiKey()) {
-        toast('Configura la API Key de Gemini en Config', 'error', 3500);
-        showMobileTab('setup');
-        return;
-    }
+    if (!window.currentResults || !window.currentResults.length) { toast('Ejecuta primero un análisis', 'warn'); return; }
+    if (!getGeminiKey()) { toast('Configura la API Key de Gemini en Config', 'error', 3500); showMobileTab('setup'); return; }
     const regime = (() => {
         try { const raw = localStorage.getItem(`regime_SPY_${today()}`); return raw ? JSON.parse(raw) : null; }
         catch(_) { return null; }
@@ -4565,7 +4702,6 @@ async function generateAIInsight(forceRefresh = false) {
         setAILoading(false);
     }
 }
-
 function renderAIError(msg) {
     const body = document.getElementById('aiBody');
     if (!body) return;
@@ -4580,15 +4716,10 @@ function renderAIError(msg) {
         <button class="btn-primary" id="aiBtn" style="margin-top:10px;" onclick="generateAIInsight(true)">Reintentar</button>
     `;
 }
-
 function renderAICard(data, opts = {}) {
     const body = document.getElementById('aiBody');
     if (!body) return;
-
-    const verdictCls = (data.verdict === 'ALCISTA') ? 'ai-ok'
-                     : (data.verdict === 'BAJISTA') ? 'ai-bad'
-                     : 'ai-warn';
-
+    const verdictCls = (data.verdict === 'ALCISTA') ? 'ai-ok' : (data.verdict === 'BAJISTA') ? 'ai-bad' : 'ai-warn';
     const perTickerHtml = (data.per_ticker || []).length
         ? `<div class="ai-section">
              <div class="ai-label">Análisis detallado por ticker</div>
@@ -4610,7 +4741,6 @@ function renderAICard(data, opts = {}) {
                  }).join('')}
              </div>
            </div>` : '';
-
     const corrHtml = (data.correlations || []).length
         ? `<div class="ai-section">
              <div class="ai-label">Correlaciones y concentración</div>
@@ -4618,25 +4748,20 @@ function renderAICard(data, opts = {}) {
                  ${data.correlations.map(c => `<li><b>${(c.symbols||[]).map(escapeHtml).join(' · ')}</b>${c.sector ? ` <span style="color:var(--text-3);">(${escapeHtml(c.sector)})</span>` : ''}: ${escapeHtml(c.note)}</li>`).join('')}
              </ul>
            </div>` : '';
-
     const watchHtml = (data.watchlist || []).length
         ? `<div class="ai-section">
              <div class="ai-label">Vigilar (no operable aún)</div>
              ${data.watchlist.map(w => `<div class="ai-alt-row"><b>${escapeHtml(w.symbol)}</b><span><em>${escapeHtml(w.setup || '')}</em> — ${escapeHtml(w.trigger)}</span></div>`).join('')}
            </div>` : '';
-
     const alternativesHtml = (data.alternatives || []).length
         ? `<div class="ai-section">
              <div class="ai-label">Alternativas</div>
              ${data.alternatives.map(a => `<div class="ai-alt-row"><b>${escapeHtml(a.symbol)}</b>${a.conviction ? ` <span class="ai-conviction">${escapeHtml(a.conviction)}</span>` : ''}<span>${escapeHtml(a.reason)}</span></div>`).join('')}
            </div>` : '';
-
     const risksHtml = (data.risks || []).length
         ? `<div class="ai-section"><div class="ai-label">Riesgos</div><ul class="ai-list">${data.risks.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul></div>` : '';
-
     const blindHtml = (data.blind_spots || []).length
         ? `<div class="ai-section"><div class="ai-label">Puntos ciegos del motor</div><ul class="ai-list">${data.blind_spots.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul></div>` : '';
-
     const pickHtml = data.top_pick
         ? `<div class="ai-pick">
              <div class="ai-label">Top pick IA · convicción ${escapeHtml(data.top_pick.conviction || 'MEDIA')}</div>
@@ -4646,7 +4771,6 @@ function renderAICard(data, opts = {}) {
              ${data.top_pick.technical_case ? `<div class="ai-pick-block"><b>Caso técnico:</b> ${escapeHtml(data.top_pick.technical_case)}</div>` : ''}
              ${data.top_pick.operational_case ? `<div class="ai-pick-block"><b>Operativa:</b> ${escapeHtml(data.top_pick.operational_case)}</div>` : ''}
            </div>` : '';
-
     body.innerHTML = `
         <div class="ai-head">
             <div class="ai-title-row">
@@ -4673,26 +4797,19 @@ function renderAICard(data, opts = {}) {
     `;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   V4.8 — BÚSQUEDA POR NOMBRE + CARD DE EMPRESA
-   ═══════════════════════════════════════════════════════════════════ */
+/* BÚSQUEDA POR NOMBRE */
 const COMPANY_NAME_CACHE_PREFIX = 'sa_company_';
-
 async function searchSymbolByName(query, key) {
     const url = `https://api.twelvedata.com/symbol_search?symbol=${encodeURIComponent(query)}&apikey=${key}`;
     await apiGate();
     const d = await fetchWithRetry(url, 1);
     if (!d || !Array.isArray(d.data)) return [];
     return d.data.map(r => ({
-        symbol: r.symbol,
-        instrument_name: r.instrument_name,
-        exchange: r.exchange,
-        country: r.country,
-        instrument_type: r.instrument_type,
-        currency: r.currency
+        symbol: r.symbol, instrument_name: r.instrument_name,
+        exchange: r.exchange, country: r.country,
+        instrument_type: r.instrument_type, currency: r.currency
     }));
 }
-
 async function searchCompanyByName() {
     const key = document.getElementById('apikey')?.value || localStorage.getItem('td_key');
     if (!key) { toast('Configura tu API Key primero', 'error'); showMobileTab('setup'); return; }
@@ -4707,19 +4824,14 @@ async function searchCompanyByName() {
             out.innerHTML = '<div class="small" style="padding:8px;color:var(--orange);">Sin resultados. Prueba con otro nombre.</div>';
             return;
         }
-        // Filtrar instrumentos relevantes
-        const wanted = list.filter(r =>
-            ['Common Stock', 'American Depositary Receipt', 'ETF'].includes(r.instrument_type)
-        );
+        const wanted = list.filter(r => ['Common Stock', 'American Depositary Receipt', 'ETF'].includes(r.instrument_type));
         const pool = wanted.length ? wanted : list;
-        // Preferir US exchanges (funcionan en el plan gratuito)
         const US = ['NYSE', 'NASDAQ', 'AMEX', 'OTC', 'BATS'];
         const sorted = [...pool].sort((a, b) => {
             const aUS = US.some(x => (a.exchange || '').toUpperCase().includes(x)) ? 0 : 1;
             const bUS = US.some(x => (b.exchange || '').toUpperCase().includes(x)) ? 0 : 1;
             return aUS - bUS;
         }).slice(0, 8);
-
         out.innerHTML = sorted.map(r => {
             const isUS = US.some(x => (r.exchange || '').toUpperCase().includes(x));
             const badge = isUS
@@ -4738,7 +4850,6 @@ async function searchCompanyByName() {
         out.innerHTML = `<div class="small" style="padding:8px;color:var(--red);">Error: ${escapeHtml(e.message)}</div>`;
     }
 }
-
 function pickCompanyResult(symbol) {
     const input = document.getElementById('ticker');
     const current = (input.value || '').trim();
@@ -4749,7 +4860,6 @@ function pickCompanyResult(symbol) {
     document.getElementById('companySearchInput').value = '';
     toast(`${symbol} añadido al campo de tickers`, 'success');
 }
-
 async function fetchCompanyInfo(symbol, key) {
     const ck = COMPANY_NAME_CACHE_PREFIX + symbol;
     try {
@@ -4777,46 +4887,34 @@ async function fetchCompanyInfo(symbol, key) {
         return null;
     }
 }
-
 function computeRangeStats(symbol) {
     const data = lastFetchedData[symbol];
     if (!data || data.length < 20) return null;
     const price = data[data.length - 1].close;
-
-    // 52 semanas (252 sesiones aproximadas)
     const bars52 = data.slice(-Math.min(252, data.length));
     const high52 = Math.max(...bars52.map(d => d.high));
     const low52  = Math.min(...bars52.map(d => d.low));
-
-    // Mensual (22 sesiones)
     const barsM = data.slice(-Math.min(22, data.length));
     const highM = Math.max(...barsM.map(d => d.high));
     const lowM  = Math.min(...barsM.map(d => d.low));
-
     const pos52 = (high52 > low52) ? ((price - low52) / (high52 - low52)) * 100 : 50;
     const posM  = (highM  > lowM)  ? ((price - lowM)  / (highM  - lowM))  * 100 : 50;
-
     return {
         price,
         high52: +high52.toFixed(4), low52: +low52.toFixed(4), pos52: Math.max(0, Math.min(100, pos52)),
         highM:  +highM.toFixed(4),  lowM:  +lowM.toFixed(4),  posM:  Math.max(0, Math.min(100, posM))
     };
 }
-
 function renderCompanyCard(symbol, info) {
     const card = document.getElementById('companyCard');
     if (!card) return;
     const stats = computeRangeStats(symbol);
     if (!stats) { card.style.display = 'none'; return; }
-
     const name = info?.name || symbol;
     const ex = info?.exchange || '';
     const cur = info?.currency || '';
-
     document.getElementById('companyCardTitle').textContent = name;
-    document.getElementById('companyCardSub').textContent =
-        `${symbol}${ex ? ' · ' + ex : ''}${cur ? ' · ' + cur : ''}`;
-
+    document.getElementById('companyCardSub').textContent = `${symbol}${ex ? ' · ' + ex : ''}${cur ? ' · ' + cur : ''}`;
     const renderBar = (label, low, high, price, pos) => {
         const pc = Math.max(2, Math.min(98, pos));
         return `
@@ -4838,14 +4936,11 @@ function renderCompanyCard(symbol, info) {
             </div>
         `;
     };
-
     document.getElementById('companyCardBody').innerHTML =
         renderBar('Rango 52 semanas', stats.low52, stats.high52, stats.price, stats.pos52) +
         renderBar('Rango mensual (22 sesiones)', stats.lowM, stats.highM, stats.price, stats.posM);
-
     card.style.display = 'block';
 }
-
 async function refreshCompanyCard(symbol) {
     if (!symbol) return;
     const key = document.getElementById('apikey')?.value || localStorage.getItem('td_key');
@@ -4859,7 +4954,7 @@ async function refreshCompanyCard(symbol) {
     }
 }
 
-/* API COUNTER / CONFIG */
+/* API COUNTER */
 function getApiCalls() { const s = localStorage.getItem("api_calls"); if (s) { try { const d = JSON.parse(s); if (d.date === today()) return d.count; } catch(_) {} } return 0; }
 function incrementApiCall() { trySave("api_calls", JSON.stringify({date: today(), count: getApiCalls() + 1})); updateApiCounterDisplay(); }
 function updateApiCounterDisplay() {
@@ -5141,7 +5236,7 @@ async function run() {
                     <div class="score-component"><div class="k">Fuerza</div><div class="v">${top.scoreParts.strength}/20</div></div>
                     <div class="score-component"><div class="k">Vol</div><div class="v">${top.scoreParts.participation}/15</div></div>
                     <div class="score-component"><div class="k">Estr</div><div class="v">${top.scoreParts.structure}/15</div></div>
-                </div><div class="gate-note"><b>Lectura V4.7:</b> Motor por capas + validación IA. Pulsa "Análisis IA" para que Gemini explique los indicadores.${getMicroFilterConfig() ? ' <b>Fase 2 activa.</b>' : ''}</div>`;
+                </div><div class="gate-note"><b>Lectura V4.9:</b> Motor por capas + sizing adaptativo + telemetría. Pulsa "Análisis IA" para que Gemini explique los indicadores.${getMicroFilterConfig() ? ' <b>Fase 2 activa.</b>' : ''}</div>`;
             }
         }
         window.currentResults = results;
@@ -5186,9 +5281,7 @@ function renderErrors(errors) {
     box.classList.add("visible");
 }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   DASHBOARD DE RENDIMIENTO
-   ═══════════════════════════════════════════════════════════════════════ */
+/* DASHBOARD DE RENDIMIENTO */
 function computePerformance() {
     const history = loadClosedHistory();
     if (!history.length) return null;
@@ -5202,15 +5295,12 @@ function computePerformance() {
     const avgLoss = losses.length ? losses.reduce((a, h) => a + (h.rMult || 0), 0) / losses.length : 0;
     const grossProfit = wins.reduce((a, h) => a + Math.abs(h.rMult || 0), 0);
     const grossLoss = losses.reduce((a, h) => a + Math.abs(h.rMult || 0), 0);
-    const profitFactor = grossLoss > 0 ? grossProfit / grossLoss
-                       : (grossProfit > 0 ? Infinity : 0);
+    const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? Infinity : 0);
     const totalR = history.reduce((a, h) => a + (h.rMult || 0), 0);
     const expectancy = n > 0 ? totalR / n : 0;
     const rVals = withR.map(h => h.rMult);
     const meanR = rVals.length ? rVals.reduce((a, b) => a + b, 0) / rVals.length : 0;
-    const stdR = rVals.length > 1
-        ? Math.sqrt(rVals.reduce((a, b) => a + Math.pow(b - meanR, 2), 0) / (rVals.length - 1))
-        : 0;
+    const stdR = rVals.length > 1 ? Math.sqrt(rVals.reduce((a, b) => a + Math.pow(b - meanR, 2), 0) / (rVals.length - 1)) : 0;
     const sqn = stdR > 0 ? Math.sqrt(rVals.length) * meanR / stdR : 0;
     let peak = 0, equity = 0, maxDD = 0;
     let consecLoss = 0, maxConsecLoss = 0;
@@ -5232,11 +5322,7 @@ function computePerformance() {
         }
     }
     const avgDays = daysCount ? totalDays / daysCount : null;
-    return {
-        n, wr, avgWin, avgLoss, profitFactor, expectancy, sqn,
-        maxDD, maxConsecLoss, totalR, rVals, avgDays,
-        wins: wins.length, losses: losses.length, flat: flat.length
-    };
+    return { n, wr, avgWin, avgLoss, profitFactor, expectancy, sqn, maxDD, maxConsecLoss, totalR, rVals, avgDays, wins: wins.length, losses: losses.length, flat: flat.length };
 }
 function classifySQN(sqn) {
     if (sqn >= 5) return { text: 'EXCELENTE', color: 'var(--green)' };
@@ -5271,9 +5357,7 @@ function groupBy(history, keyFn) {
 }
 function renderGroupTable(map, emptyMsg) {
     const entries = Object.entries(map).sort((a, b) => b[1].n - a[1].n);
-    if (!entries.length) {
-        return `<div class="empty-state" style="padding:16px;font-size:12px;">${emptyMsg}</div>`;
-    }
+    if (!entries.length) return `<div class="empty-state" style="padding:16px;font-size:12px;">${emptyMsg}</div>`;
     return `<div style="overflow-x:auto;">
         <table style="width:100%;font-size:11px;border-collapse:collapse;">
             <thead>
@@ -5302,6 +5386,220 @@ function renderGroupTable(map, emptyMsg) {
         </table>
     </div>`;
 }
+function analyzeContributions() {
+    const allHistory = loadClosedHistory();
+    const history = allHistory.filter(h => h.telemetry && h.rMult != null && isFinite(h.rMult));
+    if (history.length < 10) {
+        return { insufficient: true, n: history.length, nTotal: allHistory.length,
+            message: `Necesitas al menos 10 trades cerrados con telemetría. Tienes ${history.length}.` };
+    }
+    const expectancy = arr => arr.length ? arr.reduce((a, h) => a + (h.rMult || 0), 0) / arr.length : null;
+    const winrate = arr => arr.length ? arr.filter(h => (h.rMult || 0) > 0).length / arr.length : null;
+    const CATEGORY_LABELS = {
+        regime: 'Régimen', trend: 'Tendencia', structure: 'Estructura',
+        volume: 'Volumen', momentum: 'Momentum', strength: 'Fuerza',
+        timing: 'Timing', health: 'Health', rs: 'RS', mtf: 'MTF'
+    };
+    const byCategory = [];
+    for (const cat of Object.keys(CATEGORY_LABELS)) {
+        const withCat = history.filter(h => (h.telemetry.checks || []).some(c => c.category === cat));
+        if (withCat.length < 5) continue;
+        const passGroup = withCat.filter(h => (h.telemetry.checks || []).filter(c => c.category === cat).every(c => c.ok));
+        const failGroup = withCat.filter(h => (h.telemetry.checks || []).some(c => c.category === cat && !c.ok));
+        const expPass = expectancy(passGroup);
+        const expFail = expectancy(failGroup);
+        const lift = (expPass != null && expFail != null) ? expPass - expFail : null;
+        byCategory.push({
+            category: cat, label: CATEGORY_LABELS[cat], n: withCat.length,
+            passN: passGroup.length, passExp: expPass, passWr: winrate(passGroup),
+            failN: failGroup.length, failExp: expFail, failWr: winrate(failGroup), lift
+        });
+    }
+    byCategory.sort((a, b) => {
+        if (a.lift == null && b.lift == null) return 0;
+        if (a.lift == null) return 1;
+        if (b.lift == null) return -1;
+        return b.lift - a.lift;
+    });
+    const bucketize = (keyFn, buckets) => {
+        const out = {};
+        for (const b of buckets) out[b.label] = [];
+        for (const h of history) {
+            const v = keyFn(h);
+            for (const b of buckets) {
+                if (b.match(v)) { out[b.label].push(h); break; }
+            }
+        }
+        return Object.entries(out).map(([label, arr]) => ({
+            label, n: arr.length,
+            expectancy: expectancy(arr), winrate: winrate(arr),
+            totalR: arr.reduce((a, h) => a + (h.rMult || 0), 0)
+        })).filter(b => b.n > 0);
+    };
+    const rsBuckets = bucketize(h => h.telemetry.rsRating, [
+        { label: 'Líder (RS > +2%)', match: v => v != null && v > 2 },
+        { label: 'Neutral (−2% a +2%)', match: v => v != null && v >= -2 && v <= 2 },
+        { label: 'Laggard (RS < −2%)', match: v => v != null && v < -2 }
+    ]);
+    const eqBuckets = bucketize(h => h.telemetry.entryQualityScore, [
+        { label: 'Óptima (≥80)', match: v => v != null && v >= 80 },
+        { label: 'Aceptable (60–79)', match: v => v != null && v >= 60 && v < 80 },
+        { label: 'Extendida (<60)', match: v => v != null && v < 60 }
+    ]);
+    const setupQBuckets = bucketize(h => h.telemetry.setupQuality, [
+        { label: 'Q ≥ 80', match: v => v != null && v >= 80 },
+        { label: 'Q 65–79', match: v => v != null && v >= 65 && v < 80 },
+        { label: 'Q < 65', match: v => v != null && v < 65 }
+    ]);
+    const regimeBuckets = bucketize(h => h.telemetry.regime, [
+        { label: 'RISK_ON+', match: v => v === 'STRONG_RISK_ON' },
+        { label: 'RISK_ON', match: v => v === 'RISK_ON' },
+        { label: 'NEUTRAL', match: v => v === 'NEUTRAL' },
+        { label: 'RISK_OFF', match: v => v === 'RISK_OFF' },
+        { label: 'RISK_OFF+', match: v => v === 'STRONG_RISK_OFF' }
+    ]);
+    const entryTypeBuckets = bucketize(h => h.telemetry.entryType, [
+        { label: 'Market', match: v => v === 'market' },
+        { label: 'Límite', match: v => v === 'limit' }
+    ]);
+    const weeklyTrendBuckets = bucketize(h => h.telemetry.weeklyTrend, [
+        { label: 'W ALCISTA', match: v => v === 'ALCISTA' },
+        { label: 'W LATERAL', match: v => v === 'LATERAL' },
+        { label: 'W BAJISTA', match: v => v === 'BAJISTA' }
+    ]);
+    const softFilterBuckets = bucketize(h => h.telemetry.softFilterCount, [
+        { label: 'Sin filtros soft', match: v => v === 0 },
+        { label: '1 filtro soft', match: v => v === 1 },
+        { label: '≥2 filtros soft', match: v => v != null && v >= 2 }
+    ]);
+    const passRateBuckets = bucketize(h => h.telemetry.passRate, [
+        { label: '≥90% checks OK', match: v => v != null && v >= 0.9 },
+        { label: '75–89%', match: v => v != null && v >= 0.75 && v < 0.9 },
+        { label: '60–74%', match: v => v != null && v >= 0.6 && v < 0.75 },
+        { label: '<60%', match: v => v != null && v < 0.6 }
+    ]);
+    const setupMap = {};
+    for (const h of history) {
+        const k = h.telemetry.setupName || 'Sin setup';
+        (setupMap[k] = setupMap[k] || []).push(h);
+    }
+    const bySetup = Object.entries(setupMap).map(([name, arr]) => ({
+        name, n: arr.length,
+        expectancy: expectancy(arr), winrate: winrate(arr),
+        totalR: arr.reduce((a, h) => a + (h.rMult || 0), 0)
+    })).filter(s => s.n >= 3).sort((a, b) => b.n - a.n);
+    return {
+        insufficient: false, n: history.length, nTotal: allHistory.length,
+        byCategory, rsBuckets, eqBuckets, setupQBuckets, regimeBuckets,
+        entryTypeBuckets, weeklyTrendBuckets, softFilterBuckets, passRateBuckets, bySetup
+    };
+}
+function renderContributionAnalysis() {
+    const el = document.getElementById('perfContribution');
+    if (!el) return;
+    const analysis = analyzeContributions();
+    if (!analysis || analysis.insufficient) {
+        el.innerHTML = `<div style="font-size:11px;color:var(--text-3);padding:12px;line-height:1.6;">
+            <b style="color:var(--text);">Muestra insuficiente.</b><br>
+            ${analysis ? analysis.message : 'Sin datos.'}<br>
+            <span style="opacity:0.7;">Los trades cerrados antes de activar la telemetría no se cuentan. A partir de ahora, cada posición guardará automáticamente: régimen, RS, Entry Quality, todos los checks, soft filters, sizing aplicado y estado del setup.</span>
+        </div>`;
+        return;
+    }
+    const fmtR   = v => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}R`;
+    const fmtPct = v => v == null ? '—' : `${(v * 100).toFixed(0)}%`;
+    const colorR = v => v == null ? 'var(--text-3)' : v >= 0.2 ? 'var(--green)' : v >= 0 ? 'var(--text)' : v >= -0.2 ? 'var(--orange)' : 'var(--red)';
+    const colorLift = v => v == null ? 'var(--text-3)' : v >= 0.3 ? 'var(--green)' : v >= 0.1 ? 'var(--text)' : v >= -0.1 ? 'var(--text-2)' : 'var(--red)';
+    const catRows = analysis.byCategory.map(c => `
+        <tr>
+            <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);font-weight:600;">${escapeHtml(c.label)}</td>
+            <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text-2);">${c.n}</td>
+            <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text-2);">${c.passN}</td>
+            <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:${colorR(c.passExp)};font-weight:700;font-variant-numeric:tabular-nums;">${fmtR(c.passExp)}</td>
+            <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text-3);font-variant-numeric:tabular-nums;">${c.failN ? fmtR(c.failExp) : '—'}</td>
+            <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:${colorLift(c.lift)};font-weight:700;font-variant-numeric:tabular-nums;">${c.lift == null ? '—' : (c.lift >= 0 ? '+' : '') + c.lift.toFixed(2) + 'R'}</td>
+        </tr>
+    `).join('');
+    const renderBuckets = (title, buckets) => {
+        if (!buckets || !buckets.length) return '';
+        return `
+            <div style="margin-top:12px;">
+                <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">${escapeHtml(title)}</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px;">
+                    ${buckets.map(b => `
+                        <div style="background:rgba(255,255,255,.03);border-radius:8px;padding:8px 10px;">
+                            <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">${escapeHtml(b.label)}</div>
+                            <div style="font-size:16px;font-weight:800;color:${colorR(b.expectancy)};font-variant-numeric:tabular-nums;margin-top:2px;">${fmtR(b.expectancy)}</div>
+                            <div style="font-size:9px;color:var(--text-3);margin-top:2px;">n=${b.n} · WR ${fmtPct(b.winrate)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    };
+    el.innerHTML = `
+        <div style="font-size:11px;color:var(--text-2);margin-bottom:10px;line-height:1.5;">
+            Muestra: <b style="color:var(--text);">${analysis.n}</b> trades con telemetría (de ${analysis.nTotal} cerrados).
+            <span style="color:var(--text-3);">Columnas: N total · N pass · Expectancy cuando pasa · Expectancy cuando falla · Lift (pass − fail).</span>
+        </div>
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin:10px 0 6px;">Contribución por categoría de check</div>
+        <div style="overflow-x:auto;">
+            <table style="width:100%;font-size:11px;border-collapse:collapse;min-width:520px;">
+                <thead>
+                    <tr style="color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">
+                        <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Categoría</th>
+                        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">N</th>
+                        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Pass</th>
+                        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Exp OK</th>
+                        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Exp Fail</th>
+                        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Lift</th>
+                    </tr>
+                </thead>
+                <tbody>${catRows}</tbody>
+            </table>
+        </div>
+        ${renderBuckets('Entry Quality', analysis.eqBuckets)}
+        ${renderBuckets('Setup Quality', analysis.setupQBuckets)}
+        ${renderBuckets('RS vs SPY', analysis.rsBuckets)}
+        ${renderBuckets('Régimen', analysis.regimeBuckets)}
+        ${renderBuckets('Tipo de entrada', analysis.entryTypeBuckets)}
+        ${renderBuckets('Tendencia semanal', analysis.weeklyTrendBuckets)}
+        ${renderBuckets('Filtros soft', analysis.softFilterBuckets)}
+        ${renderBuckets('Pass rate global', analysis.passRateBuckets)}
+        ${analysis.bySetup.length ? `
+            <div style="margin-top:14px;">
+                <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">Por setup (n ≥ 3)</div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;font-size:11px;border-collapse:collapse;">
+                        <thead>
+                            <tr style="color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">
+                                <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Setup</th>
+                                <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">N</th>
+                                <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">WR</th>
+                                <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Exp.</th>
+                                <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Total R</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${analysis.bySetup.map(s => `
+                                <tr>
+                                    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);">${escapeHtml(s.name)}</td>
+                                    <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);">${s.n}</td>
+                                    <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text-2);">${fmtPct(s.winrate)}</td>
+                                    <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:${colorR(s.expectancy)};font-weight:600;font-variant-numeric:tabular-nums;">${fmtR(s.expectancy)}</td>
+                                    <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:${colorR(s.totalR)};font-weight:600;font-variant-numeric:tabular-nums;">${fmtR(s.totalR)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        ` : ''}
+        <div style="margin-top:14px;padding:10px 12px;background:rgba(50,212,224,.06);border:1px solid rgba(50,212,224,.2);border-radius:9px;font-size:11px;color:var(--text-2);line-height:1.55;">
+            <b style="color:#32d4e0;">Cómo leer esto.</b> El <b>lift</b> de cada categoría dice cuánto R añade que ese check pase respecto a que falle. Un lift cercano a 0 significa que ese filtro no discrimina (decorativo). Un lift negativo significa que el filtro sobra o está al revés. Prioriza filtros con lift &gt; +0.2R y N razonable; cuestiona los que no aportan.
+        </div>
+    `;
+}
 function renderPerformance() {
     const body = document.getElementById('perfBody');
     const distEl = document.getElementById('perfDist');
@@ -5318,6 +5616,8 @@ function renderPerformance() {
         if (bySetupEl) bySetupEl.innerHTML = '';
         if (bySymbolEl) bySymbolEl.innerHTML = '';
         if (byRegimeEl) byRegimeEl.innerHTML = '';
+        if (maeMfeEl) maeMfeEl.innerHTML = '';
+        try { renderContributionAnalysis(); } catch(e) { console.warn('[contribution]', e); }
         return;
     }
     const sqnCls = classifySQN(perf.sqn);
@@ -5410,17 +5710,15 @@ function renderPerformance() {
             byRegimeEl.innerHTML = renderGroupTable(map, 'Sin datos.');
         }
     }
-    /* ═══ MAE / MFE ═══ */
     if (maeMfeEl) {
         const withMaeMfe = history.filter(h => h.mae != null && h.mfe != null && isFinite(h.mae) && isFinite(h.mfe));
         if (!withMaeMfe.length) {
             maeMfeEl.innerHTML = `<div style="font-size:11px;color:var(--text-3);padding:12px;line-height:1.5;">
-                Aún no hay trades con MAE/MFE calculado. A partir del próximo cierre (con stop inicial definido y datos OHLC en memoria) se irán poblando. Los trades antiguos no tienen este dato porque no se calculó en su momento.
+                Aún no hay trades con MAE/MFE calculado. A partir del próximo cierre (con stop inicial definido y datos OHLC en memoria) se irán poblando.
             </div>`;
         } else {
             const winners = withMaeMfe.filter(h => (h.rMult || 0) > 0);
             const losers = withMaeMfe.filter(h => (h.rMult || 0) <= 0);
-
             const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
             const median = arr => {
                 if (!arr.length) return 0;
@@ -5428,44 +5726,28 @@ function renderPerformance() {
                 const m = Math.floor(s.length / 2);
                 return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;
             };
-
             const maeWin = avg(winners.map(h => h.mae));
             const maeWinMed = median(winners.map(h => h.mae));
             const maeLoss = avg(losers.map(h => h.mae));
             const mfeWin = avg(winners.map(h => h.mfe));
-            const mfeLoss = avg(losers.map(h => h.mfe));
             const captureAvg = avg(withMaeMfe.filter(h => h.capture != null).map(h => h.capture));
-
-            // Cuántos trades GANADORES tocaron al menos -X R antes de irse a positivo
             const touchedAt = (arr, threshold) => arr.filter(h => h.mae >= threshold).length;
             const w = winners.length;
             const pct75 = w ? (touchedAt(winners, 0.75) / w * 100) : 0;
             const pct50 = w ? (touchedAt(winners, 0.50) / w * 100) : 0;
             const pct25 = w ? (touchedAt(winners, 0.25) / w * 100) : 0;
-
-            // Diagnóstico del stop
             let stopVerdict = '', stopColor = 'var(--text-2)';
             if (w >= 10) {
                 if (pct75 > 40) { stopVerdict = 'Demasiado ajustado — muchos ganadores rozaron el stop'; stopColor = 'var(--red)'; }
                 else if (pct75 < 10 && pct50 < 25) { stopVerdict = 'Margen amplio — podrías ajustar y mejorar R:R'; stopColor = 'var(--orange)'; }
                 else { stopVerdict = 'Bien calibrado — los ganadores retroceden lo esperable'; stopColor = 'var(--green)'; }
-            } else {
-                stopVerdict = 'Muestra insuficiente (necesitas ≥10 ganadores para diagnóstico)';
-                stopColor = 'var(--text-3)';
-            }
-
-            // Diagnóstico de targets
+            } else { stopVerdict = 'Muestra insuficiente (necesitas ≥10 ganadores para diagnóstico)'; stopColor = 'var(--text-3)'; }
             let targetVerdict = '', targetColor = 'var(--text-2)';
             if (w >= 10) {
                 if (captureAvg < 0.40) { targetVerdict = `Capturas el ${(captureAvg*100).toFixed(0)}% del MFE — cortas ganadores muy pronto`; targetColor = 'var(--red)'; }
                 else if (captureAvg < 0.60) { targetVerdict = `Capturas el ${(captureAvg*100).toFixed(0)}% del MFE — margen de mejora`; targetColor = 'var(--orange)'; }
                 else { targetVerdict = `Capturas el ${(captureAvg*100).toFixed(0)}% del MFE — targets bien ajustados`; targetColor = 'var(--green)'; }
-            } else {
-                targetVerdict = 'Muestra insuficiente (necesitas ≥10 ganadores)';
-                targetColor = 'var(--text-3)';
-            }
-
-            // Histograma MAE de ganadores (buckets de 0.25R)
+            } else { targetVerdict = 'Muestra insuficiente (necesitas ≥10 ganadores)'; targetColor = 'var(--text-3)'; }
             const maeBuckets = [
                 { label: '0', min: 0, max: 0.001 },
                 { label: '0-0.25', min: 0.001, max: 0.25 },
@@ -5476,7 +5758,6 @@ function renderPerformance() {
             ];
             const maeCounts = maeBuckets.map(b => winners.filter(h => h.mae >= b.min && h.mae < b.max).length);
             const maxMaeCount = Math.max(1, ...maeCounts);
-
             maeMfeEl.innerHTML = `
                 <div class="perf-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:12px;">
                     <div class="perf-cell">
@@ -5500,7 +5781,6 @@ function renderPerformance() {
                         <div class="sub">R final / MFE</div>
                     </div>
                 </div>
-
                 <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:12px;margin-bottom:12px;">
                     <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px;">Calibración del stop</div>
                     <div style="font-size:12px;color:${stopColor};font-weight:600;line-height:1.5;margin-bottom:10px;">${stopVerdict}</div>
@@ -5510,7 +5790,6 @@ function renderPerformance() {
                         Ganadores que retrocedieron ≥0.75R: <b style="color:var(--text);">${pct75.toFixed(0)}%</b>
                     </div>
                 </div>
-
                 <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:12px;margin-bottom:12px;">
                     <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px;">Histograma MAE · ganadores</div>
                     <div style="display:flex;gap:3px;align-items:flex-end;height:70px;margin-bottom:18px;position:relative;">
@@ -5526,7 +5805,6 @@ function renderPerformance() {
                         }).join('')}
                     </div>
                 </div>
-
                 <div style="background:rgba(255,255,255,.03);border-radius:10px;padding:12px;">
                     <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:8px;">Calibración de targets</div>
                     <div style="font-size:12px;color:${targetColor};font-weight:600;line-height:1.5;">${targetVerdict}</div>
@@ -5534,9 +5812,10 @@ function renderPerformance() {
             `;
         }
     }
+    try { renderContributionAnalysis(); } catch(e) { console.warn('[contribution]', e); }
 }
 
-/* CSV EXPORT / IMPORT */
+/* CSV */
 function csvEscape(v) {
     if (v == null) return '';
     const s = String(v);
@@ -5545,7 +5824,7 @@ function csvEscape(v) {
 function exportClosedCSV() {
     const history = loadClosedHistory();
     if (!history.length) { toast('Sin historial cerrado', 'warn'); return; }
-        const headers = ['id', 'symbol', 'shares', 'entry', 'exit', 'entryDate', 'closeDate',
+    const headers = ['id', 'symbol', 'shares', 'entry', 'exit', 'entryDate', 'closeDate',
                      'pnlPct', 'pnlDollar', 'rMult', 'mae', 'mfe', 'maePct', 'mfePct', 'barsHeld', 'capture',
                      'setupId', 'setupName', 'regime', 'reason', 'journal'];
     const lines = [headers.join(',')];
@@ -5589,7 +5868,7 @@ function importClosedCSV(event) {
             const lines = text.split(/\r?\n/).filter(l => l.trim().length);
             if (lines.length < 2) { toast('CSV vacío o inválido', 'error'); return; }
             const headers = parseCSVLine(lines[0]).map(h => h.trim());
-                        const numFields = ['shares', 'entry', 'exit', 'pnlPct', 'pnlDollar', 'rMult',
+            const numFields = ['shares', 'entry', 'exit', 'pnlPct', 'pnlDollar', 'rMult',
                                'mae', 'mfe', 'maePct', 'mfePct', 'barsHeld', 'capture'];
             const parsed = [];
             for (let i = 1; i < lines.length; i++) {
@@ -5617,9 +5896,7 @@ function importClosedCSV(event) {
             saveClosedHistory(current);
             renderClosedHistory();
             renderPerformance();
-            const msg = dupeCount > 0
-                ? `${newCount} importadas · ${dupeCount} duplicadas ignoradas`
-                : `${newCount} operaciones importadas`;
+            const msg = dupeCount > 0 ? `${newCount} importadas · ${dupeCount} duplicadas ignoradas` : `${newCount} operaciones importadas`;
             toast(msg, 'success');
         } catch (err) {
             console.error(err);
@@ -5664,7 +5941,7 @@ function initApp() {
             try { if (macdChart) macdChart.resize(); } catch(_) {}
         }, 150);
     });
-    console.log('%cStockAnalyzer Pro V4.7 — Dashboard + Microestructura', 'color: #bf5af2; font-weight: bold;');
+    console.log('%cStockAnalyzer Pro V4.9 — Sizing adaptativo + telemetría', 'color: #bf5af2; font-weight: bold;');
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
