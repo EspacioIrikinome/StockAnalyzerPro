@@ -71,7 +71,7 @@ body:not(.unlocked) .app{display:none!important}
 .scroll-area::-webkit-scrollbar{width:6px}
 .scroll-area::-webkit-scrollbar-thumb{background:#2a2a2c;border-radius:3px}
 .content{padding:14px 14px 24px;max-width:720px;margin:0 auto;width:100%}
-.tabbar{flex-shrink:0;background:rgba(28,28,30,.95);backdrop-filter:saturate(1.5) blur(20px);-webkit-backdrop-filter:saturate(1.5) blur(20px);border-top:1px solid var(--separator);padding:6px 6px calc(var(--safe-bottom) + 4px);display:grid;grid-template-columns:repeat(6,1fr);gap:2px;z-index:10}
+.tabbar{flex-shrink:0;background:rgba(28,28,30,.95);backdrop-filter:saturate(1.5) blur(20px);-webkit-backdrop-filter:saturate(1.5) blur(20px);border-top:1px solid var(--separator);padding:6px 6px calc(var(--safe-bottom) + 4px);display:grid;grid-template-columns:repeat(7,1fr);gap:2px;z-index:10}
 .tab-btn{background:transparent;border:none;color:var(--text-3);font-family:inherit;font-size:10px;font-weight:500;padding:8px 2px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;transition:color .15s,background .15s;width:100%;margin:0}
 .tab-btn:active{background:rgba(255,255,255,.05)}
 .tab-btn.active{color:#32d4e0}
@@ -278,7 +278,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .content{max-width:900px;padding:20px 24px 32px}
 .chart-canvas-wrapper{height:380px}
 .chart-subpanel{height:130px}
-.tabbar{grid-template-columns:repeat(6,170px);justify-content:center}
+.tabbar{grid-template-columns:repeat(7,170px);justify-content:center}
 }
 .loading-screen{position:fixed;inset:0;background:#000;display:flex;align-items:center;justify-content:center;z-index:1200;padding:24px;opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease}
 .loading-screen.visible{opacity:1;visibility:visible}
@@ -717,6 +717,63 @@ El historial vive en localStorage. Exporta periódicamente y guarda el CSV fuera
 <button onclick="exportPositions()" style="font-size:13px;">Exportar JSON</button>
 </div>
 </div>
+<div class="tab-panel" data-tab="backtest">
+
+    <div class="card">
+        <div class="card-title">Backtest walk-forward</div>
+        <div class="card-sub">Ejecuta sobre el ticker activo · sin lookahead · slippage y comisiones aplicadas</div>
+
+        <div id="btTargetBox" style="background:var(--bg-elev);border-radius:10px;padding:12px;margin-bottom:12px;font-size:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+                <span style="color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;font-size:10px;">Ticker objetivo</span>
+                <span id="btTargetSymbol" style="font-weight:800;font-size:14px;color:var(--blue);">—</span>
+            </div>
+            <div id="btTargetInfo" style="font-size:10px;color:var(--text-3);margin-top:4px;line-height:1.5;">Selecciona una tarjeta en Resultados para fijar el ticker</div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">Config a enviar</div>
+            <div id="btConfigPreview" style="font-size:11px;color:var(--text-2);line-height:1.6;">—</div>
+        </div>
+
+        <button class="btn-primary" id="btLaunchBtn" onclick="launchBacktest()">🧪 Ejecutar backtest</button>
+        <button onclick="loadBacktestResults(true)" style="margin-top:6px;font-size:12px;background:rgba(50,212,224,.10);color:#32d4e0;">
+            ↻ Recargar resultados
+        </button>
+        <div class="small" style="margin-top:8px;opacity:0.6;font-size:10px;line-height:1.5;">
+            Se abre en una pestaña nueva con la config, SPY y el ticker analizado. Al terminar, los resultados se cargan aquí automáticamente.
+        </div>
+    </div>
+
+    <div class="card" id="btEmptyCard">
+        <div class="empty-state" style="padding:28px;">
+            <span class="icon">🧪</span>
+            Sin backtest ejecutado aún.<br>
+            <span style="font-size:11px;opacity:0.7;">Analiza un ticker primero, luego pulsa "Ejecutar backtest".</span>
+        </div>
+    </div>
+
+    <div class="card" id="btResultsCard" style="display:none;">
+        <div class="card-title">Resultados · <span id="btResSymbol" style="color:var(--blue);">—</span></div>
+        <div class="card-sub" id="btResMeta">—</div>
+        <div id="btResMetrics"></div>
+        <div style="position:relative;height:240px;background:#0d0d0f;border-radius:10px;padding:8px;margin:12px 0;">
+            <canvas id="btEquityChart"></canvas>
+        </div>
+        <div id="btResBySetup" style="margin-top:10px;"></div>
+        <div class="btn-row" style="margin-top:12px;">
+            <button onclick="importBacktestTrades()" style="background:rgba(48,209,88,.12);color:var(--green);font-weight:600;font-size:13px;">Importar al historial</button>
+            <button onclick="clearBacktestResults()" style="font-size:13px;background:rgba(255,69,58,.10);color:var(--red);">Limpiar resultados</button>
+        </div>
+    </div>
+
+    <div class="card" id="btTradesCard" style="display:none;">
+        <div class="card-title">Trades simulados</div>
+        <div class="card-sub" id="btTradesMeta">—</div>
+        <div id="btTradesList" style="max-height:440px;overflow-y:auto;"></div>
+    </div>
+
+</div>
 <div class="tab-panel" data-tab="setup">
 <div class="card">
 <div class="card-title">Configuración</div>
@@ -787,6 +844,7 @@ Gratis en <b style="display:inline; color:var(--text);">aistudio.google.com</b> 
 </div>
 <div class="card">
 <div class="card-title">Umbrales del motor</div>
+
 <div class="card-sub">Calibra la sensibilidad de setups y ejecución</div>
 <label>Setup Quality mínimo (0–100)</label>
 <input id="thMinQuality" type="number" placeholder="65" step="1" min="0" max="100"/>
@@ -810,6 +868,34 @@ Si está activo, el precio fuera del Value Area penaliza el score de ejecución.
 <button onclick="saveThresholds()">Guardar umbrales</button>
 <button onclick="resetThresholds()" style="background:rgba(255,69,58,.12); color:var(--red); margin-top:6px; font-size:13px;">Restaurar defaults</button>
 </div>
+<div class="card" id="calibrationCard">
+    <div class="card-title">Calibración automática Tier2</div>
+    <div class="card-sub">Recalibra los pesos del score desde tu propia telemetría</div>
+
+    <div id="calibrationStatus" style="margin-bottom:12px;"></div>
+
+    <div id="calibrationPreview" style="display:none;margin-bottom:12px;"></div>
+
+    <div class="btn-row" style="margin-bottom:8px;">
+        <button onclick="previewCalibration()" id="calibratePreviewBtn"
+            style="background:rgba(50,212,224,.12);color:#32d4e0;font-weight:600;font-size:13px;">
+            Previsualizar calibración
+        </button>
+        <button onclick="resetTier2Weights()" id="calibrateResetBtn"
+            style="font-size:13px;">
+            Restaurar defaults
+        </button>
+    </div>
+    <button onclick="previewCalibration(true)" id="calibrateForceBtn"
+        style="font-size:12px;background:rgba(255,159,10,.12);color:var(--orange);">
+        Forzar con muestra pequeña (&lt;50 trades)
+    </button>
+
+    <div class="hint-box" style="margin-top:12px;">
+        <b>Cómo funciona</b>
+        El sistema calcula el <b>lift</b> de cada categoría Tier2 (expectancy cuando el check pasa − cuando falla) y convierte ese lift en peso. Los pesos resultantes se aplican al score de todos los setups nuevos. Puedes previsualizar antes de aplicar.
+    </div>
+</div>
 <div class="card">
 <div class="card-title">Caché</div>
 <button onclick="clearCache()" style="font-size:13px;">Limpiar caché de precios</button>
@@ -830,6 +916,7 @@ Si está activo, el precio fuera del Value Area penaliza el score de ejecución.
 <button class="tab-btn" data-tab-btn="chart" onclick="showMobileTab('chart')"><span class="label">Gráfico</span></button>
 <button class="tab-btn" data-tab-btn="performance" onclick="showMobileTab('performance')"><span class="label">Rend.</span></button>
 <button class="tab-btn" data-tab-btn="portfolio" onclick="showMobileTab('portfolio')"><span class="label">Cartera</span></button>
+<button class="tab-btn" data-tab-btn="backtest" onclick="showMobileTab('backtest')"><span class="label">Test</span></button>
 <button class="tab-btn" data-tab-btn="setup" onclick="showMobileTab('setup')"><span class="label">Config</span></button>
 </nav>
 </div>
@@ -1791,14 +1878,177 @@ function computeTargets(data, price, stop, atr) {
     if (t2 <= t1) t2 = t1 * 1.02;
     return { t1, t2, t1Source, t2Source, risk };
 }
+/* ═══ NUEVO SISTEMA DE SCORING EN 3 CAPAS ═══ */
+
+const TIER1_CATEGORIES = ['regime', 'trend', 'structure'];
+const TIER2_CATEGORIES = ['volume', 'rs', 'mtf', 'health'];
+
+/* Pesos Tier 2 — DEFAULT hasta tener 50+ trades.
+   Después se calibran automáticamente desde telemetría. */
+const TIER2_WEIGHTS_DEFAULT = {
+    volume:  0.25,
+    rs:      0.30,  // RS es el filtro con más evidencia académica
+    mtf:     0.25,
+    health:  0.20
+};
+
+function getTier2Weights() {
+    try {
+        const raw = localStorage.getItem('sa_tier2_weights');
+        if (raw) {
+            const w = JSON.parse(raw);
+            const sum = Object.values(w).reduce((a,b) => a+b, 0);
+            if (Math.abs(sum - 1) < 0.01) return w;
+        }
+    } catch(_) {}
+    return TIER2_WEIGHTS_DEFAULT;
+}
+
 function weightedQuality(checks) {
-    let total = 0, earned = 0;
+    // ── TIER 1: gates ──
+    const tier1Fails = [];
     for (const c of checks) {
-        const w = CHECK_WEIGHTS[c.category] || 5;
-        total += w;
-        if (c.ok) earned += w;
+        if (TIER1_CATEGORIES.includes(c.category) && !c.ok) {
+            tier1Fails.push(c.label);
+        }
     }
-    return total > 0 ? Math.round((earned / total) * 100) : 0;
+    if (tier1Fails.length > 0) {
+        return {
+            score: 0,
+            blocked: true,
+            gate_fails: tier1Fails,
+            tier1: 'FAIL',
+            tier2: null,
+            breakdown: {}
+        };
+    }
+
+    // ── TIER 2: score ponderado ──
+    const weights = getTier2Weights();
+    const breakdown = {};
+    let tier2Score = 0;
+    let totalWeight = 0;
+
+    for (const cat of TIER2_CATEGORIES) {
+        const catChecks = checks.filter(c => c.category === cat);
+        if (!catChecks.length) continue;
+        const passed = catChecks.filter(c => c.ok).length;
+        const ratio = passed / catChecks.length;
+        const w = weights[cat] || 0;
+        breakdown[cat] = {
+            passed, total: catChecks.length,
+            ratio: +ratio.toFixed(2),
+            weight: w,
+            contribution: +(ratio * w * 100).toFixed(1)
+        };
+        tier2Score += ratio * w;
+        totalWeight += w;
+    }
+
+    // Normalizar si no todas las categorías están presentes
+    const normalized = totalWeight > 0
+        ? Math.round((tier2Score / totalWeight) * 100)
+        : 0;
+
+    // ── Metadata de confianza ──
+    const tier2ChecksPresent = TIER2_CATEGORIES
+        .filter(c => checks.some(x => x.category === c)).length;
+    const confidence = tier2ChecksPresent / TIER2_CATEGORIES.length;
+
+    return {
+        score: normalized,
+        blocked: false,
+        gate_fails: [],
+        tier1: 'PASS',
+        tier2: normalized,
+        breakdown,
+        confidence: +confidence.toFixed(2),
+        sample_quality: tier2ChecksPresent >= 4 ? 'HIGH'
+                     : tier2ChecksPresent >= 3 ? 'MEDIUM'
+                     : 'LOW'
+    };
+}
+/* Calibra los pesos Tier 2 desde la telemetría.
+   Solo actúa con muestra suficiente. */
+function calibrateTier2Weights(force = false) {
+    const history = loadClosedHistory()
+        .filter(h => h.telemetry && h.rMult != null && isFinite(h.rMult));
+
+    if (!force && history.length < 50) {
+        return {
+            calibrated: false,
+            reason: `Muestra insuficiente (${history.length}/50)`,
+            current: getTier2Weights()
+        };
+    }
+
+    // Calcular lift por categoría: expectancy cuando pasa − cuando falla
+    const lifts = {};
+for (const cat of TIER2_CATEGORIES) {
+    const withCat = history.filter(h =>
+        (h.telemetry.checks || []).some(c => c.category === cat));
+    if (withCat.length < 15) {
+        lifts[cat] = null;   // ← null, NO 0
+        continue;
+    }
+    const pass = withCat.filter(h =>
+        (h.telemetry.checks || [])
+            .filter(c => c.category === cat)
+            .every(c => c.ok));
+    const fail = withCat.filter(h =>
+        (h.telemetry.checks || [])
+            .some(c => c.category === cat && !c.ok));
+    if (pass.length < 5 || fail.length < 5) {
+        lifts[cat] = null;   // ← null también
+        continue;
+    }
+    const expPass = pass.reduce((a,h) => a + h.rMult, 0) / pass.length;
+    const expFail = fail.reduce((a,h) => a + h.rMult, 0) / fail.length;
+    lifts[cat] = expPass - expFail;
+}
+
+    // Convertir lifts en pesos positivos normalizados
+    // Lift negativo o nulo → peso mínimo (0.05), no cero (puede ser ruido)
+    const raw = {};
+    let sum = 0;
+    for (const cat of TIER2_CATEGORIES) {
+        const l = lifts[cat];
+        const w = (l == null || l <= 0) ? 0.05 : l;
+        raw[cat] = w;
+        sum += w;
+    }
+    const weights = {};
+    for (const cat of TIER2_CATEGORIES) {
+        weights[cat] = +(raw[cat] / sum).toFixed(3);
+    }
+
+    // Ajuste fino: cap máximo 0.45 (ninguna categoría puede dominar)
+    for (const cat of TIER2_CATEGORIES) {
+        if (weights[cat] > 0.45) {
+            const excess = weights[cat] - 0.45;
+            weights[cat] = 0.45;
+            const others = TIER2_CATEGORIES.filter(c => c !== cat);
+            const otherSum = others.reduce((a,c) => a + weights[c], 0);
+            for (const c of others) {
+                weights[c] = +(weights[c] + (excess * weights[c] / otherSum)).toFixed(3);
+            }
+        }
+    }
+
+    trySave('sa_tier2_weights', JSON.stringify(weights));
+    trySave('sa_tier2_weights_meta', JSON.stringify({
+        calibratedAt: new Date().toISOString(),
+        sampleSize: history.length,
+        lifts: lifts
+    }));
+
+    return {
+        calibrated: true,
+        weights,
+        lifts,
+        sampleSize: history.length,
+        previous: getTier2Weights()
+    };
 }
 function makeExitPlan(risk) {
     return {
@@ -2003,6 +2253,183 @@ function resetThresholds() {
     loadThresholds();
     toast('Umbrales restaurados a defaults', 'success');
     if (currentChartSymbol) renderEntries(currentChartSymbol);
+}
+/* ═══ BLOQUE 6: UI DE CALIBRACIÓN TIER2 ═══ */
+
+function resetTier2Weights() {
+    localStorage.removeItem('sa_tier2_weights');
+    localStorage.removeItem('sa_tier2_weights_meta');
+    toast('Pesos Tier2 restaurados a defaults', 'success');
+    renderCalibrationStatus();
+    document.getElementById('calibrationPreview').style.display = 'none';
+}
+
+function renderCalibrationStatus() {
+    const el = document.getElementById('calibrationStatus');
+    if (!el) return;
+
+    const current = getTier2Weights();
+    let meta = null;
+    try {
+        const raw = localStorage.getItem('sa_tier2_weights_meta');
+        if (raw) meta = JSON.parse(raw);
+    } catch(_) {}
+
+    const history = loadClosedHistory().filter(h => h.telemetry && h.rMult != null);
+    const n = history.length;
+    const ready = n >= 50;
+
+    const rows = Object.entries(current).map(([cat, w]) => `
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;padding:3px 0;">
+            <span style="color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">${cat}</span>
+            <span style="font-weight:800;font-variant-numeric:tabular-nums;color:${w >= 0.30 ? 'var(--green)' : w >= 0.15 ? 'var(--text)' : 'var(--text-3)'};">
+                ${(w * 100).toFixed(0)}%
+            </span>
+        </div>
+    `).join('');
+
+    const metaLine = meta
+        ? `<div style="font-size:10px;color:var(--text-3);margin-top:8px;line-height:1.5;">
+               Última calibración: ${new Date(meta.calibratedAt).toLocaleString('es-ES')}<br>
+               Basada en ${meta.sampleSize} trades
+           </div>`
+        : `<div style="font-size:10px;color:var(--text-3);margin-top:8px;">
+               Pesos por defecto. Nunca se ha calibrado.
+           </div>`;
+
+    const readyMsg = ready
+        ? `<div style="font-size:11px;color:var(--green);font-weight:600;">✓ Listo para calibrar (${n} trades con telemetría)</div>`
+        : `<div style="font-size:11px;color:var(--orange);font-weight:600;">Muestra: ${n}/50 trades con telemetría</div>`;
+
+    el.innerHTML = `
+        <div style="padding:10px 12px;background:rgba(255,255,255,.03);border-radius:10px;">
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">
+                Pesos actuales
+            </div>
+            ${rows}
+            ${metaLine}
+        </div>
+        <div style="margin-top:8px;">${readyMsg}</div>
+    `;
+}
+
+function previewCalibration(force = false) {
+    const previewEl = document.getElementById('calibrationPreview');
+    if (!previewEl) return;
+
+    const result = calibrateTier2Weights(force);
+
+    if (!result.calibrated) {
+        previewEl.style.display = 'block';
+        previewEl.innerHTML = `
+            <div style="padding:10px 12px;background:rgba(255,159,10,.10);border:1px solid rgba(255,159,10,.30);border-radius:10px;font-size:11px;color:var(--orange);line-height:1.5;">
+                <b>⚠ No se puede calibrar todavía.</b><br>
+                ${escapeHtml(result.reason)}.<br>
+                <span style="opacity:0.85;">Usa el botón naranja de abajo para forzar, o espera a tener 50 trades.</span>
+            </div>
+        `;
+        return;
+    }
+
+    const lifts = result.lifts || {};
+    const prev = result.previous || {};
+    const next = result.weights || {};
+
+    const formatLift = (l) => {
+        if (l == null) return { text: '—', color: 'var(--text-3)' };
+        const txt = `${l >= 0 ? '+' : ''}${l.toFixed(2)}R`;
+        const color = l >= 0.30 ? 'var(--green)' : l >= 0.10 ? 'var(--text)' : l >= -0.10 ? 'var(--text-2)' : 'var(--red)';
+        return { text: txt, color };
+    };
+
+    const formatWeight = (w) => `${(w * 100).toFixed(0)}%`;
+
+    const formatDelta = (before, after) => {
+        const d = (after - before) * 100;
+        if (Math.abs(d) < 1) return { text: '≈', color: 'var(--text-3)' };
+        const txt = `${d >= 0 ? '+' : ''}${d.toFixed(0)}pp`;
+        const color = d > 5 ? 'var(--green)' : d < -5 ? 'var(--red)' : 'var(--text-2)';
+        return { text: txt, color };
+    };
+
+    const rows = Object.keys(next).map(cat => {
+        const liftInfo = formatLift(lifts[cat]);
+        const before = prev[cat] ?? 0;
+        const after = next[cat];
+        const delta = formatDelta(before, after);
+        return `
+            <tr>
+                <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);text-transform:uppercase;font-size:10px;font-weight:700;color:var(--text-2);letter-spacing:.04em;">${cat}</td>
+                <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:${liftInfo.color};font-weight:600;font-variant-numeric:tabular-nums;">${liftInfo.text}</td>
+                <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text-3);font-variant-numeric:tabular-nums;">${formatWeight(before)}</td>
+                <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;">${formatWeight(after)}</td>
+                <td style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:${delta.color};font-weight:700;font-variant-numeric:tabular-nums;">${delta.text}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const catsWithSignal = Object.keys(lifts).filter(k => lifts[k] != null && lifts[k] > 0.15);
+    const catsWithoutSignal = Object.keys(lifts).filter(k => lifts[k] != null && lifts[k] <= 0.05);
+
+    let verdict = '';
+    if (catsWithoutSignal.length) {
+        verdict = `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,159,10,.08);border:1px solid rgba(255,159,10,.25);border-radius:8px;font-size:11px;color:var(--orange);line-height:1.5;">
+            <b>⚠ Sin edge demostrado:</b> ${catsWithoutSignal.join(', ')}. Estas categorías no están discriminando en tus datos. Considera eliminarlas del sistema o revisar por qué se activan.
+        </div>`;
+    } else if (catsWithSignal.length >= 3) {
+        verdict = `<div style="margin-top:10px;padding:8px 10px;background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.25);border-radius:8px;font-size:11px;color:var(--green);line-height:1.5;">
+            <b>✓ Edge distribuido:</b> ${catsWithSignal.length} categorías muestran lift positivo. Sistema equilibrado.
+        </div>`;
+    }
+
+    previewEl.style.display = 'block';
+    previewEl.innerHTML = `
+        <div style="padding:10px 12px;background:rgba(50,212,224,.06);border:1px solid rgba(50,212,224,.25);border-radius:10px;">
+            <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#32d4e0;margin-bottom:8px;">
+                Preview · muestra de ${result.sampleSize} trades
+            </div>
+            <table style="width:100%;font-size:11px;border-collapse:collapse;">
+                <thead>
+                    <tr style="color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">
+                        <th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Categoría</th>
+                        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Lift</th>
+                        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Antes</th>
+                        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Después</th>
+                        <th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--separator);font-weight:600;">Δ</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            ${verdict}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+                <button onclick="applyCalibration(${JSON.stringify(next).replace(/"/g, '&quot;')})"
+                    style="background:rgba(48,209,88,.15);color:var(--green);font-weight:700;font-size:12px;margin:0;min-height:38px;">
+                    ✓ Aplicar pesos
+                </button>
+                <button onclick="document.getElementById('calibrationPreview').style.display='none';"
+                    style="font-size:12px;margin:0;min-height:38px;">
+                    Descartar
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function applyCalibration(weights) {
+    trySave('sa_tier2_weights', JSON.stringify(weights));
+    toast('Pesos Tier2 actualizados. Los próximos análisis usarán los nuevos pesos.', 'success', 4000);
+    document.getElementById('calibrationPreview').style.display = 'none';
+    renderCalibrationStatus();
+    if (currentChartSymbol && lastSymbolsData?.[currentChartSymbol]) {
+        // Re-renderizar los setups con los pesos nuevos
+        const live = lastSymbolsData[currentChartSymbol];
+        const data = lastFetchedData[currentChartSymbol];
+        if (data) {
+            const regime = getRegimeSnapshot();
+            live.entries = computeEntries(data, live, regime);
+            renderEntries(currentChartSymbol);
+        }
+    }
 }
 function loadThresholds() {
     const TH = getThresholds();
@@ -2324,19 +2751,29 @@ function computeSetupLifecycle(ctx, setupId, primaryConfirmed, confirmation, ent
 /* FINALIZE SETUP */
 function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, stopSource, atr, data, regime, momentumSetup, ctx }) {
     const TH = getThresholds();
+
+    /* ═══ VALIDACIONES DE RIESGO BASE ═══ */
     const risk = entry - stop;
     if (!isFinite(risk) || risk <= 0) return null;
     const riskInAtr = risk / atr;
     if (riskInAtr > TH.maxRiskAtr) return null;
     if (riskInAtr < TH.minRiskAtr) return null;
+
+    // Los setups de momentum no se muestran en régimen hostil (gate duro previo)
     if (momentumSetup && (regime?.regime === 'RISK_OFF' || regime?.regime === 'STRONG_RISK_OFF')) return null;
 
+    /* ═══ FILTROS DE CONTEXTO (SOFT) ═══ */
     const ccfg = getContextConfig();
     const softFilters = [];
     if (ctx) {
-        if (ctx.rs != null && ctx.rs < ccfg.minRs) softFilters.push(`RS ${ctx.rs.toFixed(1)}% < ${ccfg.minRs}%`);
-        if (ctx.weeklyTrend === 'BAJISTA') softFilters.push('MTF semanal BAJISTA');
+        if (ctx.rs != null && ctx.rs < ccfg.minRs) {
+            softFilters.push(`RS ${ctx.rs.toFixed(1)}% < ${ccfg.minRs}%`);
+        }
+        if (ctx.weeklyTrend === 'BAJISTA') {
+            softFilters.push('MTF semanal BAJISTA');
+        }
         if (ctx.daysEarnings != null && ctx.daysEarnings <= ccfg.minDaysEarnings) {
+            // Blackout duro: earnings mañana o pasado
             if (ctx.daysEarnings <= 1) return null;
             softFilters.push(`Earnings en ${ctx.daysEarnings}d`);
         }
@@ -2344,14 +2781,18 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
     if (data?.length) {
         const lastBar = data[data.length - 1];
         const dollarVol = lastBar.close * (lastBar.volume || 0);
-        if (dollarVol < ccfg.minDollarVolume) softFilters.push(`Liquidez $${(dollarVol/1e6).toFixed(1)}M < $${(ccfg.minDollarVolume/1e6).toFixed(1)}M`);
+        if (dollarVol < ccfg.minDollarVolume) {
+            softFilters.push(`Liquidez $${(dollarVol / 1e6).toFixed(1)}M < $${(ccfg.minDollarVolume / 1e6).toFixed(1)}M`);
+        }
     }
 
+    /* ═══ TARGETS BASE ═══ */
     const targets = computeTargets(data, entry, stop, atr);
     if (!targets) return null;
     const rrT1 = (targets.t1 - entry) / risk;
     if (rrT1 < TH.minRrT1) return null;
 
+    // Measured move para breakouts: proyecta el rango del rango de 20 sesiones
     if (id === 'donchian' || id === 'bb_breakout') {
         const slice20 = data.slice(-20);
         const rHigh = slice20.reduce((m, d) => Math.max(m, d.high), -Infinity);
@@ -2363,11 +2804,14 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
         }
     }
 
-    const entryQuality = computeEntryQuality(ctx, id, entry, stop, targets);
+    /* ═══ QUALITY 3-TIER ═══ */
+    // quality es ahora un OBJETO: { score, blocked, gate_fails, tier1, tier2, breakdown, confidence, sample_quality }
     const quality = weightedQuality(checks);
+    const entryQuality = computeEntryQuality(ctx, id, entry, stop, targets);
     const confirmation = computeSetupConfirmation(ctx, id, primaryConfirmed);
     const lifecycle = computeSetupLifecycle(ctx, id, primaryConfirmed, confirmation, entryQuality);
 
+    /* ═══ CONVERSIÓN A ORDEN LÍMITE SI LA ENTRADA ESTÁ EXTENDIDA ═══ */
     let operationalEntry = entry;
     let entryType = 'market';
     let finalStop = stop;
@@ -2379,13 +2823,19 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
         && isFinite(entryQuality.targetZone)
         && entryQuality.targetZone > 0
         && entryQuality.targetZone < entry) {
+
         const refEntry = entryQuality.targetZone;
         const refStopObj = computeStructuralStop(data, refEntry, atr, null);
         const refTargets = computeTargets(data, refEntry, refStopObj.price, atr);
         const refRisk = refEntry - refStopObj.price;
         const refRiskAtr = refRisk / atr;
         const refRr = refTargets ? (refTargets.t1 - refEntry) / refRisk : 0;
-        if (refTargets && refStopObj.price < refEntry && refRiskAtr <= TH.maxRiskAtr && refRiskAtr >= TH.minRiskAtr && refRr >= TH.minRrT1) {
+
+        if (refTargets
+            && refStopObj.price < refEntry
+            && refRiskAtr <= TH.maxRiskAtr
+            && refRiskAtr >= TH.minRiskAtr
+            && refRr >= TH.minRrT1) {
             operationalEntry = refEntry;
             finalStop = refStopObj.price;
             finalStopSource = refStopObj.source;
@@ -2399,33 +2849,59 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
     const finalRrT1 = (finalTargets.t1 - operationalEntry) / finalRisk;
     const finalRrT2 = (finalTargets.t2 - operationalEntry) / finalRisk;
 
+    /* ═══ CICLO EXPIRADO ═══ */
     if (lifecycle.expired) {
         return {
-            id, name, desc, status: 'EXPIRED', quality, entryQuality,
-            entry: operationalEntry, entryType: 'market',
+            id, name, desc,
+            status: 'EXPIRED',
+            quality, entryQuality,
+            entry: operationalEntry,
+            entryType: 'market',
             currentPrice: ctx?.price ?? operationalEntry,
             stop: finalStop, stopSource: finalStopSource,
             t1: finalTargets.t1, t1Source: finalTargets.t1Source,
             t2: finalTargets.t2, t2Source: finalTargets.t2Source,
-            risk: finalRisk, riskInAtr: finalRiskInAtr, rrT1: finalRrT1, rrT2: finalRrT2,
+            risk: finalRisk, riskInAtr: finalRiskInAtr,
+            rrT1: finalRrT1, rrT2: finalRrT2,
             checks, softFilters, confirmation, lifecycle,
             decision: { state: 'EXPIRED', label: 'EXPIRADO', reason: lifecycle.reason },
             exitPlan: makeExitPlan(finalRisk)
         };
     }
 
+    /* ═══ DECISIÓN ═══ */
     let status = 'WAITING';
     let decisionState = 'WAITING';
     let decisionLabel = 'ESPERAR';
     let decisionReason = '';
 
-    if (softFilters.length) decisionReason = `Contexto pendiente: ${softFilters.join(' · ')}`;
-    else if (!primaryConfirmed || quality < TH.minSetupQuality) decisionReason = !primaryConfirmed ? 'El setup aún no cumple su condición primaria.' : `Setup Quality ${quality}/100 por debajo del umbral (${TH.minSetupQuality}).`;
-    else if (confirmation.state !== 'confirmed') decisionReason = confirmation.note || 'Setup válido esperando confirmación.';
-    else if (entryQuality.state === 'extended' && entryType === 'market') decisionReason = entryQuality.note || 'Setup confirmado, pero la ejecución actual está extendida.';
+    if (quality.blocked) {
+        // Tier1 falla: no se opera, da igual el resto
+        decisionReason = `⛔ Gates Tier1 fallidos: ${quality.gate_fails.join(' · ')}`;
+    }
+    else if (softFilters.length) {
+        decisionReason = `Contexto pendiente: ${softFilters.join(' · ')}`;
+    }
+    else if (!primaryConfirmed) {
+        decisionReason = 'El setup aún no cumple su condición primaria.';
+    }
+    else if (quality.score < TH.minSetupQuality) {
+        decisionReason = `Score Tier2 ${quality.score}/100 por debajo del umbral (${TH.minSetupQuality}).`;
+    }
+    else if (quality.confidence < 0.75) {
+        // Score alto pero faltan categorías: no te fíes del número
+        decisionReason = `Score ${quality.score}/100, pero confianza ${(quality.confidence * 100).toFixed(0)}% — faltan datos de calidad.`;
+    }
+    else if (confirmation.state !== 'confirmed') {
+        decisionReason = confirmation.note || 'Setup válido esperando confirmación.';
+    }
+    else if (entryQuality.state === 'extended' && entryType === 'market') {
+        decisionReason = entryQuality.note || 'Setup confirmado, pero la ejecución actual está extendida.';
+    }
     else {
         status = 'READY';
         decisionState = entryQuality.state === 'optimal' ? 'READY_OPTIMAL' : 'READY_ACCEPTABLE';
+
         if (entryType === 'limit') {
             decisionLabel = entryQuality.state === 'optimal' ? 'ORDEN LÍMITE ÓPTIMA' : 'ORDEN LÍMITE ACEPTABLE';
             decisionReason = `Setup confirmado. Entrada límite en $${operationalEntry.toFixed(2)} (esperar retroceso desde $${(ctx?.price ?? entry).toFixed(2)}).`;
@@ -2436,13 +2912,15 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
     }
 
     return {
-        id, name, desc, status, quality, entryQuality,
+        id, name, desc,
+        status, quality, entryQuality,
         entry: operationalEntry, entryType,
         currentPrice: ctx?.price ?? operationalEntry,
         stop: finalStop, stopSource: finalStopSource,
         t1: finalTargets.t1, t1Source: finalTargets.t1Source,
         t2: finalTargets.t2, t2Source: finalTargets.t2Source,
-        risk: finalRisk, riskInAtr: finalRiskInAtr, rrT1: finalRrT1, rrT2: finalRrT2,
+        risk: finalRisk, riskInAtr: finalRiskInAtr,
+        rrT1: finalRrT1, rrT2: finalRrT2,
         checks, softFilters, confirmation, lifecycle,
         decision: { state: decisionState, label: decisionLabel, reason: decisionReason },
         exitPlan: makeExitPlan(finalRisk)
@@ -2796,11 +3274,99 @@ function renderContextBadges(symbol, prependBadges = '') {
     if (!badges.length && !prependBadges) return '';
     return `<div class="ctx-badges">${prependBadges}${badges.join('')}</div>`;
 }
+/* ═══ BLOQUE 5: RENDER DEL BREAKDOWN TIER2 ═══ */
+function renderQualityBreakdown(quality) {
+    // Si no es un objeto (score antiguo tipo número), no mostramos nada
+    if (!quality || typeof quality !== 'object') return '';
+
+    // Si los gates Tier1 fallaron, mostramos por qué en vez del breakdown
+    if (quality.blocked) {
+        return `
+            <div style="margin:10px 0;padding:10px 12px;background:rgba(255,69,58,.08);border:1px solid rgba(255,69,58,.3);border-radius:10px;">
+                <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--red);margin-bottom:6px;">
+                    ⛔ Gates Tier1 fallidos — setup bloqueado
+                </div>
+                <ul style="margin:0;padding-left:16px;font-size:11px;color:var(--red);line-height:1.5;">
+                    ${quality.gate_fails.map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    const cats = Object.entries(quality.breakdown || {});
+    if (!cats.length) return '';
+
+    // Color de la barra de confianza
+    const confPct = (quality.confidence * 100).toFixed(0);
+    const confColor = quality.confidence >= 0.99 ? 'var(--green)'
+                    : quality.confidence >= 0.75 ? 'var(--orange)'
+                    : 'var(--red)';
+    const confLabel = quality.sample_quality === 'HIGH' ? 'alta'
+                    : quality.sample_quality === 'MEDIUM' ? 'media'
+                    : 'baja';
+
+    return `
+        <div style="margin:10px 0;padding:10px 12px;background:rgba(50,212,224,.05);border:1px solid rgba(50,212,224,.2);border-radius:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+                <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#32d4e0;">
+                    Score Tier2 · ${quality.score}/100
+                </span>
+                <span style="font-size:9px;color:${confColor};font-weight:700;">
+                    confianza ${confPct}% (${confLabel})
+                </span>
+            </div>
+            ${cats.map(([cat, b]) => {
+                const ratioColor = b.ratio >= 0.75 ? 'var(--green)'
+                                : b.ratio >= 0.50 ? 'var(--orange)'
+                                : 'var(--red)';
+                return `
+                    <div style="display:grid;grid-template-columns:70px 1fr 60px;gap:8px;align-items:center;padding:3px 0;font-size:10px;">
+                        <span style="color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;font-weight:700;">
+                            ${escapeHtml(cat)}
+                        </span>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <div style="flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;">
+                                <div style="height:100%;width:${b.ratio * 100}%;background:${ratioColor};border-radius:2px;"></div>
+                            </div>
+                            <span style="font-size:9px;color:var(--text-3);font-variant-numeric:tabular-nums;min-width:32px;text-align:right;">
+                                ${b.passed}/${b.total}
+                            </span>
+                        </div>
+                        <span style="font-weight:800;font-variant-numeric:tabular-nums;color:${ratioColor};text-align:right;">
+                            +${b.contribution}
+                        </span>
+                    </div>
+                `;
+            }).join('')}
+            <div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);font-size:9px;color:var(--text-3);line-height:1.4;">
+                Los valores a la derecha son el aporte real de cada categoría al score (peso × ratio).
+            </div>
+        </div>
+    `;
+}
 function setupQualityBadge(quality) {
-    const q = Number(quality);
-    if (!isFinite(q)) return '';
-    const cls = q >= 75 ? 'sq-high' : q >= 55 ? 'sq-mid' : 'sq-low';
-    return `<span class="setup-quality-badge ${cls}">Setup Q <b>${q}</b></span>`;
+    // Compatibilidad: si quality es número antiguo, mostrarlo como antes
+    if (typeof quality === 'number') {
+        const q = quality;
+        const cls = q >= 75 ? 'sq-high' : q >= 55 ? 'sq-mid' : 'sq-low';
+        return `<span class="setup-quality-badge ${cls}">Setup Q <b>${q}</b></span>`;
+    }
+
+    // Nuevo formato: objeto con tier1/tier2/confidence
+    if (!quality || typeof quality !== 'object') return '';
+
+    if (quality.blocked) {
+        const first = quality.gate_fails[0] || 'gate';
+        return `<span class="setup-quality-badge sq-low" title="${escapeHtml(quality.gate_fails.join(' · '))}">⛔ GATE FAIL <b>${escapeHtml(first)}</b></span>`;
+    }
+
+    const s = quality.score;
+    const cls = s >= 75 ? 'sq-high' : s >= 55 ? 'sq-mid' : 'sq-low';
+    const conf = quality.confidence >= 0.99 ? ''
+               : quality.confidence >= 0.75 ? ' ~'
+               : ' ⚠';
+
+    return `<span class="setup-quality-badge ${cls}" title="Tier2 confidence: ${quality.confidence}">Setup Q <b>${s}</b>${conf}</span>`;
 }
 function entryQualityBadge(eq) {
     if (!eq) return '';
@@ -2992,6 +3558,7 @@ const macroWarningHtml = buildMacroWarning(symbol);
             ${expiredHtml}
             ${!isExpired ? `<div class="confirmation-strip ${conf.state}"><b>Confirmación:</b> ${conf.icon} ${escapeHtml(conf.label)} · ${escapeHtml(conf.note)}</div>` : ''}
             ${renderEntryQualityPanel(best.entryQuality, 'Calidad de entrada actual')}
+	    ${renderQualityBreakdown(best.quality)} 
             ${checksHtml ? `<div class="rec-checks-section">
                 <div class="rec-checks-label">Condiciones del setup</div>
                 <div class="entry-checks">${checksHtml}</div>
@@ -3101,6 +3668,7 @@ const macroWarningHtml = buildMacroWarning(symbol);
 		${macroWarningHtml}
                 ${lifecycleStrip}
                 ${renderEntryQualityPanel(e.entryQuality)}
+ 		${renderQualityBreakdown(e.quality)} 
                 <div class="entry-prices">
                     <div class="entry-price-item">
                         <div class="ep-label">${entryLabel}</div>
@@ -4033,6 +4601,7 @@ document.addEventListener("click", (e) => {
     card.classList.add("selected");
     renderPriceChart(r.symbol);
     refreshCompanyCard(r.symbol);
+    try { renderBtPreview(); } catch(_) {}
     showMobileTab("chart");
 });
 function renderPriceChart(symbol) {
@@ -5906,13 +6475,472 @@ function importClosedCSV(event) {
     reader.readAsText(file);
     event.target.value = '';
 }
+/* ═══════════════════════════════════════════════════════════════════════
+   INTEGRACIÓN BACKTESTER V1.0
+   Lanza backtest.html con la config + datos del ticker activo
+   y recibe los resultados de vuelta por localStorage
+   ═══════════════════════════════════════════════════════════════════════ */
 
+const BT_CFG_KEY     = 'sa_bt_config';
+const BT_DATA_KEY    = 'sa_bt_data';
+const BT_RESULTS_KEY = 'sa_bt_results';
+const BT_READY_KEY   = 'sa_bt_ready';
+
+let _btEquityChart = null;
+let _btPollTimer = null;
+
+/* ─── 1. Previsualización en vivo de la config ─── */
+function renderBtPreview() {
+    // Ticker objetivo
+    const symEl = document.getElementById('btTargetSymbol');
+    const infoEl = document.getElementById('btTargetInfo');
+    const sym = currentChartSymbol;
+
+    if (symEl) {
+        if (sym && lastFetchedData[sym]) {
+            const bars = lastFetchedData[sym].length;
+            symEl.textContent = sym;
+            const first = lastFetchedData[sym][0]?.datetime || '';
+            const last = lastFetchedData[sym][bars - 1]?.datetime || '';
+            if (infoEl) infoEl.innerHTML = `${bars} barras · ${first} → ${last}`;
+        } else {
+            symEl.textContent = '—';
+            if (infoEl) infoEl.textContent = 'Selecciona una tarjeta en Resultados para fijar el ticker';
+        }
+    }
+
+    // Config actual
+    const el = document.getElementById('btConfigPreview');
+    if (!el) return;
+    const TH = getThresholds();
+    const ctx = getContextConfig();
+    const risk = getRiskConfig();
+    const nSyms = Object.keys(lastFetchedData || {}).length;
+    const hasSpy = !!(lastFetchedData && lastFetchedData['SPY']);
+
+    el.innerHTML = `
+        <div>Q≥${TH.minSetupQuality} · R:R≥${TH.minRrT1} · ATR ${TH.minRiskAtr}–${TH.maxRiskAtr}</div>
+        <div>RS≥${ctx.minRs}% · Earn>${ctx.minDaysEarnings}d · DV≥$${(ctx.minDollarVolume/1e6).toFixed(1)}M</div>
+        <div>Riesgo ${risk.pct}% · MaxPos ${risk.maxPositionPct}% · Cuenta $${risk.size.toLocaleString()}</div>
+        <div style="margin-top:4px;">
+            <span style="color:${hasSpy ? 'var(--green)' : 'var(--red)'};">
+                ${hasSpy ? '✓' : '✗'} SPY ${hasSpy ? 'disponible' : 'FALTA (analiza SPY primero)'}
+            </span>
+            · ${nSyms} símbolo${nSyms === 1 ? '' : 's'} en caché
+        </div>
+    `;
+}
+
+/* ─── 2. Lanzar backtest.html ─── */
+function launchBacktest() {
+    const cfg = {
+        version: '4.9',
+        thresholds: getThresholds(),
+        context: getContextConfig(),
+        risk: getRiskConfig(),
+        setupsEnabled: { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true },
+        meta: {
+            generatedAt: new Date().toISOString(),
+            source: 'stockanalyzer',
+            targetSymbol: currentChartSymbol || null
+        }
+    };
+
+    // Datos: SPY siempre + ticker activo + todo lo que haya en memoria
+    const btData = {};
+    const include = new Set();
+    if (lastFetchedData && lastFetchedData['SPY']) include.add('SPY');
+    if (currentChartSymbol) include.add(currentChartSymbol);
+    for (const s of Object.keys(lastFetchedData || {})) include.add(s);
+
+    for (const sym of include) {
+        const d = lastFetchedData[sym];
+        if (Array.isArray(d) && d.length >= 250) {
+            btData[sym] = d;
+        }
+    }
+
+    if (!btData['SPY']) {
+        toast('Necesitas SPY en caché. Añádelo a los tickers y analiza.', 'error', 4500);
+        showMobileTab('analysis');
+        return;
+    }
+    if (Object.keys(btData).length < 2) {
+        toast('Analiza al menos un ticker además de SPY.', 'error', 4500);
+        showMobileTab('analysis');
+        return;
+    }
+
+    // Presupuesto: ~5MB límite localStorage
+    const payload = JSON.stringify(btData);
+    if (payload.length > 3.5e6) {
+        const keep = Object.keys(btData).slice(0, 12);
+        const trimmed = {};
+        for (const s of keep) trimmed[s] = btData[s];
+        toast(`Datos muy grandes (${(payload.length/1e6).toFixed(1)}MB). Reduciendo a 12 símbolos.`, 'warn', 5000);
+        try {
+            localStorage.setItem(BT_CFG_KEY, JSON.stringify(cfg));
+            localStorage.setItem(BT_DATA_KEY, JSON.stringify(trimmed));
+        } catch(e) {
+            toast('No cabe en localStorage. Analiza menos tickers o usa CSVs manuales.', 'error', 6000);
+            return;
+        }
+    } else {
+        try {
+            localStorage.setItem(BT_CFG_KEY, JSON.stringify(cfg));
+            localStorage.setItem(BT_DATA_KEY, JSON.stringify(btData));
+        } catch(e) {
+            toast('Error guardando datos: ' + e.message, 'error', 5000);
+            return;
+        }
+    }
+
+    // Limpiar resultados anteriores para que no se confundan
+    try {
+        localStorage.removeItem(BT_RESULTS_KEY);
+        localStorage.removeItem(BT_READY_KEY);
+    } catch(_) {}
+
+    // Abrir
+    const w = window.open('backtest.html', '_blank');
+    if (!w) {
+        toast('Permite las ventanas emergentes para abrir el backtester.', 'error', 5000);
+        return;
+    }
+    toast(`Backtester abierto · ${Object.keys(btData).length} símbolos`, 'success', 2500);
+
+    // Refrescar cuando vuelva el foco (por si cierra la pestaña)
+    setTimeout(() => { loadBacktestResults(); }, 1500);
+}
+
+/* ─── 3. Leer resultados de localStorage ─── */
+function loadBacktestResults(manual = false) {
+    let raw;
+    try { raw = localStorage.getItem(BT_RESULTS_KEY); } catch(_) { raw = null; }
+
+    const emptyCard = document.getElementById('btEmptyCard');
+    const resCard   = document.getElementById('btResultsCard');
+    const tradesCard= document.getElementById('btTradesCard');
+
+    if (!raw) {
+        if (emptyCard) emptyCard.style.display = 'block';
+        if (resCard)   resCard.style.display = 'none';
+        if (tradesCard)tradesCard.style.display = 'none';
+        if (manual) toast('No hay resultados guardados todavía', 'warn');
+        return;
+    }
+
+    let res;
+    try { res = JSON.parse(raw); }
+    catch(e) { if (manual) toast('Resultados corruptos', 'error'); return; }
+    if (!res.trades || !res.trades.length) {
+        if (manual) toast('El backtest no generó trades', 'warn');
+        return;
+    }
+
+    if (emptyCard) emptyCard.style.display = 'none';
+    if (resCard)   resCard.style.display = 'block';
+    if (tradesCard)tradesCard.style.display = 'block';
+
+    renderBacktestResultCards(res, manual);
+}
+
+function renderBacktestResultCards(res, isFresh = false) {
+    const sym = res.config?.meta?.targetSymbol
+             || (res.bySymbol && Object.keys(res.bySymbol)[0])
+             || '—';
+    const setEl = document.getElementById('btResSymbol');
+    if (setEl) setEl.textContent = sym;
+
+    const savedAt = res.savedAt ? new Date(res.savedAt) : new Date();
+    const metaEl = document.getElementById('btResMeta');
+    if (metaEl) {
+        metaEl.innerHTML = `
+            ${res.n} trades · ${Object.keys(res.bySymbol || {}).length} símbolos ·
+            Q≥${res.config?.thresholds?.minSetupQuality ?? '—'} ·
+            ${res.config?.slippageBps ?? '—'}bps slip ·
+            ${savedAt.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+        `;
+    }
+
+    // Métricas
+    const expColor = res.expectancy >= 0.2 ? 'var(--green)' : res.expectancy >= 0 ? 'var(--text)' : 'var(--red)';
+    const pfColor = res.pf >= 1.5 ? 'var(--green)' : res.pf >= 1 ? 'var(--text)' : 'var(--red)';
+    const ddColor = res.maxDDPct <= 15 ? 'var(--green)' : res.maxDDPct <= 30 ? 'var(--orange)' : 'var(--red)';
+    const ciCrossesZero = res.ci95Low <= 0 && res.ci95High >= 0;
+    const ciWarning = ciCrossesZero
+        ? `<div style="margin-top:8px;padding:10px 12px;background:rgba(255,159,10,.10);border:1px solid rgba(255,159,10,.30);border-radius:9px;font-size:11px;color:var(--orange);line-height:1.5;">
+             <b>⚠ IC95% cruza cero.</b> La expectancy observada (${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R) no es estadísticamente distinguible de cero con esta muestra (n=${res.n}). No hay edge demostrable todavía.
+           </div>`
+        : `<div style="margin-top:8px;padding:10px 12px;background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.25);border-radius:9px;font-size:11px;color:var(--green);line-height:1.5;">
+             <b>✓ IC95% no cruza cero.</b> La expectancy (${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R) es positiva con significancia estadística al 95% en esta muestra.
+           </div>`;
+
+    const metricsEl = document.getElementById('btResMetrics');
+    if (metricsEl) {
+        metricsEl.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Trades</div>
+                    <div style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;">${res.n}</div>
+                    <div style="font-size:9px;color:var(--text-3);">${res.wins}W · ${res.losses}L${res.flats?' · '+res.flats+'B':''}</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Win rate</div>
+                    <div style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;">${(res.wr*100).toFixed(1)}%</div>
+                    <div style="font-size:9px;color:var(--text-3);">${res.wins}/${res.n}</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Expectancy</div>
+                    <div style="font-size:18px;font-weight:800;color:${expColor};font-variant-numeric:tabular-nums;">${res.expectancy>=0?'+':''}${res.expectancy.toFixed(2)}R</div>
+                    <div style="font-size:9px;color:var(--text-3);">IC [${res.ci95Low.toFixed(2)}, ${res.ci95High.toFixed(2)}]</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Profit factor</div>
+                    <div style="font-size:18px;font-weight:800;color:${pfColor};font-variant-numeric:tabular-nums;">${res.pf===Infinity?'∞':res.pf.toFixed(2)}</div>
+                    <div style="font-size:9px;color:var(--text-3);">P/L brutos</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">SQN</div>
+                    <div style="font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;">${res.n<10?'—':res.sqn.toFixed(2)}</div>
+                    <div style="font-size:9px;color:var(--text-3);">${res.n<10?'n<10':res.sqn>=3?'bueno':res.sqn>=2?'aceptable':res.sqn>=1?'débil':'malo'}</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Retorno total</div>
+                    <div style="font-size:16px;font-weight:800;color:${res.totalReturn>=0?'var(--green)':'var(--red)'};font-variant-numeric:tabular-nums;">${res.totalReturn>=0?'+':''}${res.totalReturn.toFixed(1)}%</div>
+                    <div style="font-size:9px;color:var(--text-3);">$${(res.config?.capital||10000).toFixed(0)} → $${res.finalEquity.toFixed(0)}</div>
+                </div>
+                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
+                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Max DD</div>
+                    <div style="font-size:16px;font-weight:800;color:${ddColor};font-variant-numeric:tabular-nums;">-${res.maxDDPct.toFixed(1)}%</div>
+                    <div style="font-size:9px;color:var(--text-3);">racha perdedora ${res.maxConsecLoss}</div>
+                </div>
+            </div>
+            ${res.n < 30 ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(255,159,10,.08);border-radius:8px;font-size:10px;color:var(--orange);line-height:1.4;"><b>⚠ Muestra pequeña (n=${res.n}).</b> No es estadísticamente significativa hasta ~30 trades.</div>` : ''}
+            ${ciWarning}
+        `;
+    }
+
+    // Equity curve
+    renderBtEquityChart(res.curve);
+
+    // Por setup
+    const bySetupEl = document.getElementById('btResBySetup');
+    if (bySetupEl && res.bySetup) {
+        const entries = Object.entries(res.bySetup).sort((a,b) => b[1].n - a[1].n);
+        bySetupEl.innerHTML = `
+            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">Por setup</div>
+            <table style="width:100%;font-size:11px;border-collapse:collapse;">
+                <thead>
+                    <tr style="color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Setup</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">N</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">WR</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Exp.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${entries.map(([k, v]) => {
+                        const exp = v.totalR / v.n;
+                        const expColor = exp >= 0.2 ? 'var(--green)' : exp >= 0 ? 'var(--text)' : 'var(--red)';
+                        const wr = (v.wins / v.n) * 100;
+                        return `<tr>
+                            <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);">${escapeHtml(k)}</td>
+                            <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;">${v.n}</td>
+                            <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;color:var(--text-2);">${wr.toFixed(0)}%</td>
+                            <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);color:${expColor};font-weight:700;font-variant-numeric:tabular-nums;">${exp>=0?'+':''}${exp.toFixed(2)}R</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    // Trades
+    const tradesMeta = document.getElementById('btTradesMeta');
+    if (tradesMeta) tradesMeta.textContent = `${res.trades.length} trades simulados · mostrando últimos 200`;
+
+    const tradesEl = document.getElementById('btTradesList');
+    if (tradesEl) {
+        const sorted = [...res.trades].sort((a,b) => (b.entryDate||'').localeCompare(a.entryDate||'')).slice(0, 200);
+        tradesEl.innerHTML = `
+            <table style="width:100%;font-size:11px;border-collapse:collapse;min-width:520px;">
+                <thead>
+                    <tr style="color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Fecha</th>
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Sym</th>
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Setup</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Ent.</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Stop</th>
+                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Motivo</th>
+                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">R</th>
+                    </tr>
+                </thead>
+                <tbody>
+                ${sorted.map(t => {
+                    const tagColor = t.rMult >= 0 ? 'var(--green)' : 'var(--red)';
+                    const tagBg = t.rMult >= 0 ? 'rgba(48,209,88,.15)' : 'rgba(255,69,58,.15)';
+                    return `<tr>
+                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);">${t.entryDate || '—'}</td>
+                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-weight:600;">${escapeHtml(t.symbol || '')}</td>
+                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px;color:var(--text-2);">${escapeHtml(t.setupId || '')}</td>
+                        <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;">$${t.entryPrice.toFixed(2)}</td>
+                        <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;">$${t.stopPrice.toFixed(2)}</td>
+                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px;color:var(--text-3);">${escapeHtml(t.exitReason || '')}</td>
+                        <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);">
+                            <span style="background:${tagBg};color:${tagColor};padding:2px 6px;border-radius:5px;font-weight:700;font-variant-numeric:tabular-nums;font-size:10px;">${t.rMult>=0?'+':''}${t.rMult.toFixed(2)}R</span>
+                        </td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
+            ${res.trades.length > 200 ? `<div style="font-size:10px;color:var(--text-3);padding:8px;text-align:center;">Mostrando 200 de ${res.trades.length}. Todos están en el CSV del backtester.</div>` : ''}
+        `;
+    }
+}
+
+function renderBtEquityChart(curve) {
+    if (!hasChartJs() || !curve || !curve.length) return;
+    const canvas = document.getElementById('btEquityChart');
+    if (!canvas) return;
+    if (_btEquityChart) { try { _btEquityChart.destroy(); } catch(_) {} }
+
+    const labels = curve.map((_, i) => `#${i}`);
+    const data = curve.map(p => +p.eq.toFixed(2));
+    const last = data[data.length - 1];
+    const first = data[0];
+    const positive = last >= first;
+
+    _btEquityChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Equity',
+                data,
+                borderColor: positive ? '#32d4e0' : '#ff453a',
+                backgroundColor: positive ? 'rgba(50,212,224,.08)' : 'rgba(255,69,58,.08)',
+                borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Curva de equity', color: '#8e8e93', font: { size: 11 } }
+            },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { color: '#636366', font: { size: 9 }, maxTicksLimit: 8 } },
+                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 9 }, callback: v => '$' + Number(v).toFixed(0) } }
+            }
+        }
+    });
+}
+
+/* ─── 4. Importar trades al historial cerrado ─── */
+function importBacktestTrades() {
+    let raw;
+    try { raw = localStorage.getItem(BT_RESULTS_KEY); } catch(_) { return; }
+    if (!raw) { toast('Sin resultados de backtest', 'warn'); return; }
+
+    let res;
+    try { res = JSON.parse(raw); } catch(_) { toast('Resultados corruptos', 'error'); return; }
+    if (!res.trades || !res.trades.length) { toast('Backtest sin trades', 'warn'); return; }
+
+    const confirmed = confirm(
+        `Importar ${res.trades.length} trades simulados al historial cerrado?\n\n` +
+        `Expectancy: ${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R\n` +
+        `Win rate: ${(res.wr * 100).toFixed(1)}%\n` +
+        `Max DD: -${res.maxDDPct.toFixed(1)}%\n\n` +
+        `Se marcarán con prefijo [BT] para distinguirlos de operaciones reales.`
+    );
+    if (!confirmed) return;
+
+    const current = loadClosedHistory();
+    let added = 0;
+    const stamp = Date.now();
+    for (const t of res.trades) {
+        const riskPerShare = t.entryPrice - t.stopPrice;
+        const exitPrice = t.entryPrice + t.rMult * riskPerShare;
+        current.push({
+            id: `bt_${stamp}_${added}_${Math.random().toString(36).slice(2,6)}`,
+            symbol: t.symbol,
+            shares: 1,
+            entry: t.entryPrice,
+            exit: exitPrice,
+            entryDate: t.entryDate,
+            closeDate: t.exitDate,
+            pnlPct: riskPerShare > 0 ? (t.rMult * riskPerShare / t.entryPrice) * 100 : 0,
+            pnlDollar: 0,
+            rMult: t.rMult,
+            setupId: t.setupId,
+            setupName: `[BT] ${t.setupId}`,
+            reason: `[backtest] ${t.exitReason}`,
+            journal: '',
+            regime: t.regime || null,
+            mae: t.maeR,
+            mfe: t.mfeR,
+            barsHeld: t.barsHeld,
+            telemetry: { source: 'backtest', quality: t.quality }
+        });
+        added++;
+    }
+    saveClosedHistory(current);
+    renderClosedHistory();
+    renderPerformance();
+    toast(`${added} trades importados al historial`, 'success', 4000);
+}
+
+/* ─── 5. Limpiar resultados ─── */
+function clearBacktestResults() {
+    if (!confirm('¿Borrar los resultados del backtest actual?')) return;
+    try {
+        localStorage.removeItem(BT_RESULTS_KEY);
+        localStorage.removeItem(BT_READY_KEY);
+    } catch(_) {}
+    loadBacktestResults();
+    toast('Resultados eliminados', 'success');
+}
+
+/* ─── 6. Auto-refresco cuando la pestaña del backtester escribe ─── */
+window.addEventListener('storage', (e) => {
+    if (e.key === BT_RESULTS_KEY && e.newValue) {
+        loadBacktestResults();
+        toast('Resultados de backtest recibidos', 'success', 2500);
+    }
+});
+
+// Refresco al volver el foco (por si storage event no dispara)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        const active = document.querySelector('.tab-panel.active');
+        if (active && active.dataset.tab === 'backtest') {
+            loadBacktestResults();
+        }
+    }
+});
+
+// Refresco también al cambiar a la pestaña backtest
+const _origShowMobileTab = showMobileTab;
+showMobileTab = function(name) {
+    _origShowMobileTab(name);
+    if (name === 'backtest') {
+        setTimeout(() => {
+            renderBtPreview();
+            loadBacktestResults();
+        }, 80);
+    }
+};
 /* INIT */
 let appInitialized = false;
 function initApp() {
     if (appInitialized) return;
     appInitialized = true;
     try { showMobileTab("analysis"); } catch(e) { console.warn(e); }
+    try { renderBtPreview(); } catch(e) { console.warn(e); }
+    try { loadBacktestResults(); } catch(e) { console.warn(e); }
     try { loadKey(); } catch(e) { console.warn(e); }
     try { loadGeminiConfig(); } catch(e) { console.warn(e); }
     try { updateApiCounterDisplay(); } catch(e) { console.warn(e); }
@@ -5927,6 +6955,7 @@ function initApp() {
     try { loadContextConfig(); } catch(e) { console.warn(e); }
     try { loadThresholds(); } catch(e) { console.warn(e); }
     try { loadMicroFilterConfig(); } catch(e) { console.warn(e); }
+    try { renderCalibrationStatus(); } catch(e) { console.warn(e); } 
     try { updateLastPriceUpdate(); } catch(e) { console.warn(e); }
     document.querySelectorAll('[data-series]').forEach(b => {
         const s = b.dataset.series;
