@@ -686,6 +686,7 @@ El historial vive en localStorage. Exporta periódicamente y guarda el CSV fuera
 <div class="card">
 <div class="card-title">Mi cartera</div>
 <div class="card-sub">Posiciones reales con motor de exit signals</div>
+<div id="portfolioBalancePanel"></div>  
 <div id="portfolioHeatPanel"></div>
 <div id="portfolioSizingPanel"></div>
 <div style="display:flex; gap:8px; margin-bottom:8px; align-items:stretch;">
@@ -742,12 +743,7 @@ El historial vive en localStorage. Exporta periódicamente y guarda el CSV fuera
 <div class="card-sub">Para el análisis crítico del output del motor</div>
 <label>Gemini API Key</label>
 <input id="geminiKey" type="password" placeholder="AIza..."/>
-<label>Modelo</label>
-<select id="geminiModel">
-<option value="gemini-2.0-flash">gemini-2.0-flash (recomendado)</option>
-<option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (económico)</option>
-<option value="gemini-1.5-pro">gemini-1.5-pro (potente)</option>
-</select>
+
 <label>Tickers máximos a enviar</label>
 <input id="geminiMaxTickers" type="number" placeholder="8" min="1" max="20" step="1"/>
 <label style="display:flex; align-items:center; gap:8px; margin-top:4px; cursor:pointer; user-select:none;">
@@ -4321,9 +4317,98 @@ function computeCorrelation(posA, posB) {
     if (da <= 0 || db <= 0) return null;
     return num / Math.sqrt(da * db);
 }
+/* ═══ BALANCE DE CARTERA ═══ */
+function computePortfolioBalance() {
+    let openCost = 0, openValue = 0, openPnl = 0;
+    let positionsWithPrice = 0;
+    for (const p of manualPositions) {
+        const live = lastSymbolsData?.[p.symbol];
+        const price = live?.price ?? p.entry;
+        const cost = p.entry * p.shares;
+        const value = price * p.shares;
+        openCost += cost;
+        openValue += value;
+        openPnl += (price - p.entry) * p.shares;
+        if (live?.price != null) positionsWithPrice++;
+    }
+    const closed = loadClosedHistory();
+    const realizedPnl = closed.reduce((a, h) => a + (h.pnlDollar || 0), 0);
+    const realizedR = closed.reduce((a, h) => a + (h.rMult || 0), 0);
+    const totalPnl = openPnl + realizedPnl;
+    return {
+        openCost, openValue, openPnl,
+        openPnlPct: openCost > 0 ? (openPnl / openCost) * 100 : 0,
+        realizedPnl, realizedR, totalPnl,
+        totalPnlPct: openCost > 0 ? (totalPnl / openCost) * 100 : 0,
+        positionsCount: manualPositions.length,
+        positionsWithPrice,
+        closedCount: closed.length
+    };
+}
+
+function renderPortfolioBalance() {
+    const panel = document.getElementById('portfolioBalancePanel');
+    if (!panel) return;
+    const bal = computePortfolioBalance();
+
+    if (bal.positionsCount === 0 && bal.closedCount === 0) {
+        panel.innerHTML = '';
+        return;
+    }
+
+    const sign = v => v >= 0 ? '+' : '−';
+    const fmtD = v => `${sign(v)}$${Math.abs(v).toFixed(2)}`;
+    const fmtP = v => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)}%`;
+
+    const totalColor = bal.totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const openColor  = bal.openPnl  >= 0 ? 'var(--green)' : 'var(--red)';
+    const realColor  = bal.realizedPnl >= 0 ? 'var(--green)' : 'var(--red)';
+    const totalCls   = bal.totalPnl >= 0 ? '' : 'danger';
+    const totalBg = bal.totalPnl >= 0
+        ? 'linear-gradient(135deg,rgba(48,209,88,.10),rgba(48,209,88,.02))'
+        : 'linear-gradient(135deg,rgba(255,69,58,.10),rgba(255,69,58,.02))';
+    const totalBorder = bal.totalPnl >= 0
+        ? 'rgba(48,209,88,.28)' : 'rgba(255,69,58,.32)';
+
+    panel.innerHTML = `
+        <div class="heat-card ${totalCls}" style="background:${totalBg};border-color:${totalBorder};">
+            <div class="heat-head">
+                <div class="heat-title">Balance total</div>
+                <div class="heat-value" style="color:${totalColor};">
+                    ${fmtD(bal.totalPnl)}
+                    <small style="color:${totalColor};">${fmtP(bal.totalPnlPct)}</small>
+                </div>
+            </div>
+            <div class="heat-rows" style="margin-top:10px;">
+                <div class="heat-row">
+                    <span>No realizado · ${bal.positionsCount} pos${bal.positionsWithPrice < bal.positionsCount ? ` <span style="color:var(--text-3);">(${bal.positionsWithPrice} con precio)</span>` : ''}</span>
+                    <b style="color:${openColor};">${fmtD(bal.openPnl)}</b>
+                </div>
+                <div class="heat-row">
+                    <span>Realizado · ${bal.closedCount} op${bal.closedCount === 1 ? '' : 's'}</span>
+                    <b style="color:${realColor};">${fmtD(bal.realizedPnl)}</b>
+                </div>
+                <div class="heat-row" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);">
+                    <span>Coste en posiciones</span>
+                    <b>$${bal.openCost.toFixed(2)}</b>
+                </div>
+                <div class="heat-row">
+                    <span>Valor actual</span>
+                    <b>$${bal.openValue.toFixed(2)}</b>
+                </div>
+                ${bal.closedCount > 0 ? `
+                <div class="heat-row">
+                    <span>R acumulado (realizado)</span>
+                    <b style="color:${bal.realizedR >= 0 ? 'var(--green)' : 'var(--red)'};">${bal.realizedR >= 0 ? '+' : '−'}${Math.abs(bal.realizedR).toFixed(2)}R</b>
+                </div>` : ''}
+            </div>
+        </div>
+    `;
+}
 function renderPortfolioHeat() {
     const panel = document.getElementById('portfolioHeatPanel');
     if (!panel) return;
+    renderPortfolioBalance();
     const { totalHeatR, totalDollarRisk, positions, cfg, oneR } = computePortfolioHeat();
     if (!manualPositions.length) { panel.innerHTML = ''; renderPortfolioSizingPanel(); return; }
     const pct = Math.min(100, (totalHeatR / cfg.maxHeatR) * 100);
@@ -4824,24 +4909,7 @@ function getGeminiMaxTickers() {
     const v = parseInt(localStorage.getItem(GEMINI_MAX_TICKERS_STORAGE));
     return isFinite(v) && v > 0 && v <= 20 ? v : GEMINI_DEFAULT_MAX;
 }
-function saveGeminiConfig() {
-    const key = document.getElementById('geminiKey')?.value?.trim();
-    const model = document.getElementById('geminiModel')?.value || GEMINI_DEFAULT_MODEL;
-    const auto = document.getElementById('geminiAuto')?.checked;
-    const max = parseInt(document.getElementById('geminiMaxTickers')?.value);
-    if (key) trySave(GEMINI_KEY_STORAGE, key);
-    trySave(GEMINI_MODEL_STORAGE, model);
-    trySave(GEMINI_AUTO_STORAGE, auto ? '1' : '0');
-    if (isFinite(max) && max > 0 && max <= 20) trySave(GEMINI_MAX_TICKERS_STORAGE, String(max));
-    toast('Configuración Gemini guardada', 'success');
-    loadGeminiConfig();
-}
-function loadGeminiConfig() {
-    const kEl = document.getElementById('geminiKey'); if (kEl) kEl.value = getGeminiKey();
-    const mEl = document.getElementById('geminiModel'); if (mEl) mEl.value = getGeminiModel();
-    const aEl = document.getElementById('geminiAuto'); if (aEl) aEl.checked = getGeminiAuto();
-    const nEl = document.getElementById('geminiMaxTickers'); if (nEl) nEl.value = getGeminiMaxTickers();
-}
+
 function clearAICache() {
     localStorage.removeItem(GEMINI_CACHE_KEY);
     toast('Caché IA limpiada', 'success');
@@ -6558,14 +6626,7 @@ function pushConfigToBacktester() {
         bars: Object.fromEntries(Object.entries(btData).map(([k,v]) => [k, v.length]))
     });
 
-    if (!btData['SPY']) {
-        toast('Falta SPY. Analiza SPY primero (añádelo a tickers y pulsa Analizar).', 'error', 5500);
-        return;
-    }
-    if (Object.keys(btData).length < 2) {
-        toast('Falta otro ticker. Analiza algún ticker y selecciona su tarjeta.', 'error', 5500);
-        return;
-    }
+    
 
     try {
         frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg, data: btData }, '*');
@@ -7005,10 +7066,16 @@ function _btPushToFrame() {
     if (!frame || !frame.contentWindow) return;
     var payload = _btBuildPayload();
     console.log('[sa] push al iframe:', Object.keys(payload.data), 'símbolos');
-    if (!payload.data['SPY']) { toast('Falta SPY. Añádelo a los tickers y pulsa Analizar.', 'error', 5000); return; }
-    if (Object.keys(payload.data).length < 2) { toast('Falta al menos un ticker además de SPY.', 'error', 5000); return; }
-    try { frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg: payload.cfg, data: payload.data }, '*'); }
-    catch(e) { console.error('[sa] postMessage error:', e); }
+
+    // Sin avisos: si faltan datos, simplemente no se envía nada al iframe.
+    if (!payload.data['SPY']) return;
+    if (Object.keys(payload.data).length < 2) return;
+
+    try {
+        frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg: payload.cfg, data: payload.data }, '*');
+    } catch(e) {
+        console.error('[sa] postMessage error:', e);
+    }
 }
 
 window.addEventListener('message', function(ev) {
