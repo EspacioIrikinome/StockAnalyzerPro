@@ -67,6 +67,8 @@ body:not(.unlocked) .app{display:none!important}
 .regime-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:5px 10px;border-radius:20px;letter-spacing:.04em;white-space:nowrap}
 .regime-badge.risk-on{background:rgba(48,209,88,.15);color:var(--green)}
 .regime-badge.risk-off{background:rgba(255,69,58,.15);color:var(--red)}
+.regime-badge.neutral{background:rgba(255,159,10,.15);color:var(--orange)}
+.regime-detail{font-size:10px;color:var(--text-3);margin-top:4px}
 .scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative}
 .scroll-area::-webkit-scrollbar{width:6px}
 .scroll-area::-webkit-scrollbar-thumb{background:#2a2a2c;border-radius:3px}
@@ -294,8 +296,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .btn-primary.loading:active{transform:none;opacity:.9}
 .btn-primary .spinner.btn-spinner{width:16px;height:16px;border-color:rgba(0,20,23,.25);border-top-color:#001417}
 .status-badge.running::before{background:transparent;border:2px solid rgba(48,209,88,.25);border-top-color:var(--green);width:10px;height:10px;box-sizing:border-box;box-shadow:none;animation:spin .8s linear infinite}
-.regime-badge.neutral{background:rgba(255,159,10,.15);color:var(--orange)}
-.regime-detail{font-size:10px;color:var(--text-3);margin-top:4px}
 .rec-riskbar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
 .rec-riskcell{background:rgba(255,255,255,.035);border-radius:8px;padding:7px 8px}
 .rec-riskcell .k{font-size:8px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
@@ -465,6 +465,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .perf-bar{background:var(--text-3);border-radius:3px 3px 0 0;min-height:2px}
 .perf-bar.neg{background:var(--red)}
 .perf-bar-label{font-size:8.5px;color:var(--text-3);font-weight:600}
+
 @media (max-width:520px){.perf-grid{grid-template-columns:repeat(2,1fr)}.perf-cell .v{font-size:16px}}
 </style>
 </head>
@@ -863,8 +864,9 @@ Si está activo, el precio fuera del Value Area penaliza el score de ejecución.
 </div>
 <script>
 /* ══════════════════════════════════════════════════════════════════════════
-   StockAnalyzer Pro V4.9
-   V4.8 + sizing adaptativo (régimen, racha, correlación, Entry Quality)
+   StockAnalyzer Pro V4.9.1
+   V4.9 + fixes: tiebreak computeEntries, telemetría setupQuality numérica,
+   filtro isRealTrade para separar backtest de operaciones reales.
    ══════════════════════════════════════════════════════════════════════════ */
 
 const API_LIMIT_PER_MIN = 8;
@@ -935,42 +937,31 @@ const SECTOR_ETF_MAP = {
   AMT:'XLRE',PLD:'XLRE',SPG:'XLRE',O:'XLRE',CCI:'XLRE',
   GOOGL:'XLC',GOOG:'XLC',META:'XLC',DIS:'XLC',NFLX:'XLC',T:'XLC',VZ:'XLC',CMCSA:'XLC',TMUS:'XLC'
 };
-/* ═══ EXPOSICIÓN MACRO — commodities y cripto ═══ */
 const MACRO_EXPOSURE_MAP = {
-    /* ORO */
     'GLD':'GOLD','IAU':'GOLD','NEM':'GOLD','AEM':'GOLD','GOLD':'GOLD','AU':'GOLD',
     'GFI':'GOLD','KGC':'GOLD','FNV':'GOLD','BTG':'GOLD','EGO':'GOLD','HMY':'GOLD',
     'AGI':'GOLD','IAG':'GOLD','SSR':'GOLD','OR':'GOLD','RGLD':'GOLD','WPM':'GOLD',
     'PAAS':'GOLD','SA':'GOLD','NGD':'GOLD','EXK':'GOLD','GATO':'GOLD',
-    /* PLATA */
     'SLV':'SILVER','AG':'SILVER','HL':'SILVER','CDE':'SILVER','FSM':'SILVER',
     'MAG':'SILVER','ASM':'SILVER','USAS':'SILVER','SVM':'SILVER',
-    /* PETRÓLEO */
     'USO':'OIL','XLE':'OIL','XOP':'OIL','OIH':'OIL','XOM':'OIL','CVX':'OIL',
     'COP':'OIL','SLB':'OIL','OXY':'OIL','EOG':'OIL','PSX':'OIL','VLO':'OIL',
     'MPC':'OIL','HAL':'OIL','BKR':'OIL','DVN':'OIL','FANG':'OIL','PXD':'OIL',
     'HES':'OIL','MRO':'OIL','APA':'OIL','OVV':'OIL','CTRA':'OIL','PBR':'OIL',
     'SHEL':'OIL','BP':'OIL','TTE':'OIL','EQNR':'OIL',
-    /* GAS NATURAL */
     'UNG':'NATGAS','CHK':'NATGAS','EQT':'NATGAS','AR':'NATGAS','RRC':'NATGAS',
     'SWN':'NATGAS','CTRA':'NATGAS','EXE':'NATGAS',
-    /* COBRE */
     'CPER':'COPPER','COPX':'COPPER','FCX':'COPPER','SCCO':'COPPER','TECK':'COPPER',
     'RIO':'COPPER','BHP':'COPPER','VALE':'COPPER','HBM':'COPPER','ERO':'COPPER',
     'IE':'COPPER','IVN':'COPPER',
-    /* URANIO */
     'URA':'URANIUM','URNM':'URANIUM','CCJ':'URANIUM','UEC':'URANIUM',
     'UUUU':'URANIUM','DNN':'URANIUM','NXE':'URANIUM','EU':'URANIUM','LEU':'URANIUM',
-    /* LITIO */
     'LIT':'LITHIUM','LAC':'LITHIUM','ALB':'LITHIUM','SQM':'LITHIUM',
     'LTHM':'LITHIUM','PLL':'LITHIUM','SLI':'LITHIUM',
-    /* TIERRAS RARAS */
     'REMX':'RARE_EARTH','MP':'RARE_EARTH','UUUU2':'RARE_EARTH',
-    /* CRIPTO — mineras */
     'MARA':'CRYPTO','RIOT':'CRYPTO','CLSK':'CRYPTO','HUT':'CRYPTO','BITF':'CRYPTO',
     'HIVE':'CRYPTO','BTBT':'CRYPTO','CIFR':'CRYPTO','IREN':'CRYPTO','WULF':'CRYPTO',
     'CORZ':'CRYPTO','APLD':'CRYPTO','SDIG':'CRYPTO','GREE':'CRYPTO', 'BMNR':'CRYPTO',
-    /* CRIPTO — proxies y ETFs */
     'COIN':'CRYPTO','MSTR':'CRYPTO','GBTC':'CRYPTO','IBIT':'CRYPTO','BITO':'CRYPTO',
     'ETHE':'CRYPTO','ETHA':'CRYPTO','FBTC':'CRYPTO','BITB':'CRYPTO','ARKB':'CRYPTO',
     'BITX':'CRYPTO','CONL':'CRYPTO','MSTX':'CRYPTO','MSTU':'CRYPTO','HOOD':'CRYPTO_PARTIAL'
@@ -997,7 +988,11 @@ const GEMINI_MODEL_STORAGE = 'sa_gemini_model';
 const GEMINI_AUTO_STORAGE = 'sa_gemini_auto';
 const GEMINI_MAX_TICKERS_STORAGE = 'sa_gemini_max_tickers';
 const GEMINI_CACHE_KEY = 'sa_ai_insight_v1';
-const GEMINI_DEFAULT_MODEL = 'gemini-2.0-flash';
+const GEMINI_DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+// Forzar migración: si el modelo guardado es el obsoleto, borrarlo
+if (localStorage.getItem('sa_gemini_model') === 'gemini-2.0-flash') {
+    localStorage.removeItem('sa_gemini_model');
+}
 const GEMINI_DEFAULT_MAX = 8;
 
 const CLOSED_HISTORY_KEY = 'sa_closed_positions';
@@ -1081,6 +1076,17 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW failed:', err));
     });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   isRealTrade — separa operaciones reales de trades de backtest
+   ══════════════════════════════════════════════════════════════════════════ */
+function isRealTrade(h) {
+    if (!h) return false;
+    if (h.telemetry && h.telemetry.source === 'backtest') return false;
+    if (typeof h.reason === 'string' && h.reason.indexOf('[backtest]') === 0) return false;
+    if (typeof h.id === 'string' && h.id.indexOf('bt_') === 0) return false;
+    return true;
 }
 
 /* WATCHLIST */
@@ -1446,7 +1452,6 @@ function calculateTrendChannel(data) {
     let tipo = 'lateral';
     if (slopePct > 5) tipo = 'alcista'; else if (slopePct < -5) tipo = 'bajista';
 
-    // Extras aditivos (no afectan a upper/lower)
     const bandwidth = Math.abs(maxAbove - maxBelow);
     const tolerance = bandwidth * 0.15;
     let touchesUpper = 0, touchesLower = 0;
@@ -1566,7 +1571,6 @@ function buildMacroWarning(symbol, liveData = null) {
     const typeLabel = exposure === 'CRYPTO' || isPartial ? 'cripto' : 'commodity';
     const color = exposure === 'CRYPTO' || isPartial ? 'purple' : 'orange';
 
-    // Correlación rolling con el ETF de referencia si tenemos los datos
     let corrTxt = '';
     try {
         const refData = lastFetchedData[ref.symbol];
@@ -1819,16 +1823,13 @@ function computeTargets(data, price, stop, atr) {
     if (t2 <= t1) t2 = t1 * 1.02;
     return { t1, t2, t1Source, t2Source, risk };
 }
-/* ═══ NUEVO SISTEMA DE SCORING EN 3 CAPAS ═══ */
 
 const TIER1_CATEGORIES = ['regime', 'trend', 'structure'];
 const TIER2_CATEGORIES = ['volume', 'rs', 'mtf', 'health'];
 
-/* Pesos Tier 2 — DEFAULT hasta tener 50+ trades.
-   Después se calibran automáticamente desde telemetría. */
 const TIER2_WEIGHTS_DEFAULT = {
     volume:  0.25,
-    rs:      0.30,  // RS es el filtro con más evidencia académica
+    rs:      0.30,
     mtf:     0.25,
     health:  0.20
 };
@@ -1846,7 +1847,6 @@ function getTier2Weights() {
 }
 
 function weightedQuality(checks) {
-    // ── TIER 1: gates ──
     const tier1Fails = [];
     for (const c of checks) {
         if (TIER1_CATEGORIES.includes(c.category) && !c.ok) {
@@ -1864,7 +1864,6 @@ function weightedQuality(checks) {
         };
     }
 
-    // ── TIER 2: score ponderado ──
     const weights = getTier2Weights();
     const breakdown = {};
     let tier2Score = 0;
@@ -1886,12 +1885,10 @@ function weightedQuality(checks) {
         totalWeight += w;
     }
 
-    // Normalizar si no todas las categorías están presentes
     const normalized = totalWeight > 0
         ? Math.round((tier2Score / totalWeight) * 100)
         : 0;
 
-    // ── Metadata de confianza ──
     const tier2ChecksPresent = TIER2_CATEGORIES
         .filter(c => checks.some(x => x.category === c)).length;
     const confidence = tier2ChecksPresent / TIER2_CATEGORIES.length;
@@ -1909,10 +1906,9 @@ function weightedQuality(checks) {
                      : 'LOW'
     };
 }
-/* Calibra los pesos Tier 2 desde la telemetría.
-   Solo actúa con muestra suficiente. */
 function calibrateTier2Weights(force = false) {
     const history = loadClosedHistory()
+        .filter(isRealTrade)
         .filter(h => h.telemetry && h.rMult != null && isFinite(h.rMult));
 
     if (!force && history.length < 50) {
@@ -1923,33 +1919,30 @@ function calibrateTier2Weights(force = false) {
         };
     }
 
-    // Calcular lift por categoría: expectancy cuando pasa − cuando falla
     const lifts = {};
-for (const cat of TIER2_CATEGORIES) {
-    const withCat = history.filter(h =>
-        (h.telemetry.checks || []).some(c => c.category === cat));
-    if (withCat.length < 15) {
-        lifts[cat] = null;   // ← null, NO 0
-        continue;
+    for (const cat of TIER2_CATEGORIES) {
+        const withCat = history.filter(h =>
+            (h.telemetry.checks || []).some(c => c.category === cat));
+        if (withCat.length < 15) {
+            lifts[cat] = null;
+            continue;
+        }
+        const pass = withCat.filter(h =>
+            (h.telemetry.checks || [])
+                .filter(c => c.category === cat)
+                .every(c => c.ok));
+        const fail = withCat.filter(h =>
+            (h.telemetry.checks || [])
+                .some(c => c.category === cat && !c.ok));
+        if (pass.length < 5 || fail.length < 5) {
+            lifts[cat] = null;
+            continue;
+        }
+        const expPass = pass.reduce((a,h) => a + h.rMult, 0) / pass.length;
+        const expFail = fail.reduce((a,h) => a + h.rMult, 0) / fail.length;
+        lifts[cat] = expPass - expFail;
     }
-    const pass = withCat.filter(h =>
-        (h.telemetry.checks || [])
-            .filter(c => c.category === cat)
-            .every(c => c.ok));
-    const fail = withCat.filter(h =>
-        (h.telemetry.checks || [])
-            .some(c => c.category === cat && !c.ok));
-    if (pass.length < 5 || fail.length < 5) {
-        lifts[cat] = null;   // ← null también
-        continue;
-    }
-    const expPass = pass.reduce((a,h) => a + h.rMult, 0) / pass.length;
-    const expFail = fail.reduce((a,h) => a + h.rMult, 0) / fail.length;
-    lifts[cat] = expPass - expFail;
-}
 
-    // Convertir lifts en pesos positivos normalizados
-    // Lift negativo o nulo → peso mínimo (0.05), no cero (puede ser ruido)
     const raw = {};
     let sum = 0;
     for (const cat of TIER2_CATEGORIES) {
@@ -1963,7 +1956,6 @@ for (const cat of TIER2_CATEGORIES) {
         weights[cat] = +(raw[cat] / sum).toFixed(3);
     }
 
-    // Ajuste fino: cap máximo 0.45 (ninguna categoría puede dominar)
     for (const cat of TIER2_CATEGORIES) {
         if (weights[cat] > 0.45) {
             const excess = weights[cat] - 0.45;
@@ -2000,7 +1992,6 @@ function makeExitPlan(risk) {
     };
 }
 
-/* SCORE TÉCNICO */
 function computeTechnicalScore(tech, price, structureOk = null) {
     const parts = { trend: 0, momentum: 0, strength: 0, participation: 0, structure: 0 };
     if (tech.ema20 != null && tech.ema50 != null && tech.ema200 != null) {
@@ -2064,7 +2055,6 @@ function classifyRsi(rsi) {
     return 'BAJISTA';
 }
 
-/* RÉGIMEN */
 async function getMarketRegime(key) {
     const ck = `regime_SPY_${today()}`;
     try { const cached = localStorage.getItem(ck); if (cached) return JSON.parse(cached); } catch(_) {}
@@ -2100,7 +2090,6 @@ function setRegimeBadge(regime) {
     el.title = `SPY $${regime.price.toFixed(2)} · SMA50 $${regime.sma50.toFixed(2)} · SMA200 $${regime.sma200.toFixed(2)} · distancia ${regime.distPct >= 0 ? '+' : ''}${regime.distPct.toFixed(1)}% · pendiente SMA200 20d ${regime.slopePct >= 0 ? '+' : ''}${regime.slopePct.toFixed(2)}%`;
 }
 
-/* CONTEXTO / SETUPS */
 function buildCtx(data, tech, regime) {
     const n = data.length, last = n - 1;
     const closes = data.map(d => d.close);
@@ -2195,7 +2184,6 @@ function resetThresholds() {
     toast('Umbrales restaurados a defaults', 'success');
     if (currentChartSymbol) renderEntries(currentChartSymbol);
 }
-/* ═══ BLOQUE 6: UI DE CALIBRACIÓN TIER2 ═══ */
 
 function resetTier2Weights() {
     localStorage.removeItem('sa_tier2_weights');
@@ -2216,7 +2204,7 @@ function renderCalibrationStatus() {
         if (raw) meta = JSON.parse(raw);
     } catch(_) {}
 
-    const history = loadClosedHistory().filter(h => h.telemetry && h.rMult != null);
+    const history = loadClosedHistory().filter(isRealTrade).filter(h => h.telemetry && h.rMult != null);
     const n = history.length;
     const ready = n >= 50;
 
@@ -2362,7 +2350,6 @@ function applyCalibration(weights) {
     document.getElementById('calibrationPreview').style.display = 'none';
     renderCalibrationStatus();
     if (currentChartSymbol && lastSymbolsData?.[currentChartSymbol]) {
-        // Re-renderizar los setups con los pesos nuevos
         const live = lastSymbolsData[currentChartSymbol];
         const data = lastFetchedData[currentChartSymbol];
         if (data) {
@@ -2400,7 +2387,6 @@ function contextChecks(ctx, isLong = true) {
     return out;
 }
 
-/* ENTRY QUALITY */
 function computeEntryQuality(ctx, setupId, entry, stop, targets) {
     const atr = ctx?.atr;
     const price = ctx?.price ?? entry;
@@ -2539,7 +2525,6 @@ function computeEntryQuality(ctx, setupId, entry, stop, targets) {
     };
 }
 
-/* CONFIRMACIÓN */
 function computeSetupConfirmation(ctx, setupId, primaryConfirmed) {
     const price = ctx?.price;
     const last = ctx?.last;
@@ -2610,7 +2595,6 @@ function computeSetupConfirmation(ctx, setupId, primaryConfirmed) {
     return { state: 'none', label: 'SIN CONFIRMACIÓN', icon: '○', note };
 }
 
-/* LIFECYCLE */
 function computeSetupLifecycle(ctx, setupId, primaryConfirmed, confirmation, entryQuality) {
     const data = ctx?.data || [];
     const last = ctx?.last ?? (data.length - 1);
@@ -2689,21 +2673,17 @@ function computeSetupLifecycle(ctx, setupId, primaryConfirmed, confirmation, ent
     return { state, label: state === 'confirmed' ? 'CONFIRMADO' : 'VÁLIDO', age, expired: false, reason: reasons.join(' ') };
 }
 
-/* FINALIZE SETUP */
 function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, stopSource, atr, data, regime, momentumSetup, ctx }) {
     const TH = getThresholds();
 
-    /* ═══ VALIDACIONES DE RIESGO BASE ═══ */
     const risk = entry - stop;
     if (!isFinite(risk) || risk <= 0) return null;
     const riskInAtr = risk / atr;
     if (riskInAtr > TH.maxRiskAtr) return null;
     if (riskInAtr < TH.minRiskAtr) return null;
 
-    // Los setups de momentum no se muestran en régimen hostil (gate duro previo)
     if (momentumSetup && (regime?.regime === 'RISK_OFF' || regime?.regime === 'STRONG_RISK_OFF')) return null;
 
-    /* ═══ FILTROS DE CONTEXTO (SOFT) ═══ */
     const ccfg = getContextConfig();
     const softFilters = [];
     if (ctx) {
@@ -2714,7 +2694,6 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
             softFilters.push('MTF semanal BAJISTA');
         }
         if (ctx.daysEarnings != null && ctx.daysEarnings <= ccfg.minDaysEarnings) {
-            // Blackout duro: earnings mañana o pasado
             if (ctx.daysEarnings <= 1) return null;
             softFilters.push(`Earnings en ${ctx.daysEarnings}d`);
         }
@@ -2727,13 +2706,11 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
         }
     }
 
-    /* ═══ TARGETS BASE ═══ */
     const targets = computeTargets(data, entry, stop, atr);
     if (!targets) return null;
     const rrT1 = (targets.t1 - entry) / risk;
     if (rrT1 < TH.minRrT1) return null;
 
-    // Measured move para breakouts: proyecta el rango del rango de 20 sesiones
     if (id === 'donchian' || id === 'bb_breakout') {
         const slice20 = data.slice(-20);
         const rHigh = slice20.reduce((m, d) => Math.max(m, d.high), -Infinity);
@@ -2745,14 +2722,11 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
         }
     }
 
-    /* ═══ QUALITY 3-TIER ═══ */
-    // quality es ahora un OBJETO: { score, blocked, gate_fails, tier1, tier2, breakdown, confidence, sample_quality }
     const quality = weightedQuality(checks);
     const entryQuality = computeEntryQuality(ctx, id, entry, stop, targets);
     const confirmation = computeSetupConfirmation(ctx, id, primaryConfirmed);
     const lifecycle = computeSetupLifecycle(ctx, id, primaryConfirmed, confirmation, entryQuality);
 
-    /* ═══ CONVERSIÓN A ORDEN LÍMITE SI LA ENTRADA ESTÁ EXTENDIDA ═══ */
     let operationalEntry = entry;
     let entryType = 'market';
     let finalStop = stop;
@@ -2790,7 +2764,6 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
     const finalRrT1 = (finalTargets.t1 - operationalEntry) / finalRisk;
     const finalRrT2 = (finalTargets.t2 - operationalEntry) / finalRisk;
 
-    /* ═══ CICLO EXPIRADO ═══ */
     if (lifecycle.expired) {
         return {
             id, name, desc,
@@ -2810,14 +2783,12 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
         };
     }
 
-    /* ═══ DECISIÓN ═══ */
     let status = 'WAITING';
     let decisionState = 'WAITING';
     let decisionLabel = 'ESPERAR';
     let decisionReason = '';
 
     if (quality.blocked) {
-        // Tier1 falla: no se opera, da igual el resto
         decisionReason = `⛔ Gates Tier1 fallidos: ${quality.gate_fails.join(' · ')}`;
     }
     else if (softFilters.length) {
@@ -2830,7 +2801,6 @@ function finalizeSetup({ id, name, desc, primaryConfirmed, checks, entry, stop, 
         decisionReason = `Score Tier2 ${quality.score}/100 por debajo del umbral (${TH.minSetupQuality}).`;
     }
     else if (quality.confidence < 0.75) {
-        // Score alto pero faltan categorías: no te fíes del número
         decisionReason = `Score ${quality.score}/100, pero confianza ${(quality.confidence * 100).toFixed(0)}% — faltan datos de calidad.`;
     }
     else if (confirmation.state !== 'confirmed') {
@@ -3032,6 +3002,10 @@ function setupBbBreakout(ctx) {
         atr, data, regime, ctx
     });
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FIX 1 — computeEntries con tiebreak corregido (quality puede ser objeto)
+   ══════════════════════════════════════════════════════════════════════════ */
 function computeEntries(data, tech, regime) {
     if (!tech.atr || !isFinite(tech.atr)) return [];
     if (data.length < MIN_BARS) return [];
@@ -3040,6 +3014,7 @@ function computeEntries(data, tech, regime) {
         setupDonchian(ctx), setupPullback(ctx), setupSma200(ctx),
         setupGoldenCross(ctx), setupBbBreakout(ctx)
     ].filter(Boolean);
+
     setups.sort((a, b) => {
         if (a.status !== b.status) {
             if (a.status === 'READY') return -1;
@@ -3047,13 +3022,18 @@ function computeEntries(data, tech, regime) {
             if (a.status === 'EXPIRED') return 1;
             if (b.status === 'EXPIRED') return -1;
         }
-        if ((b.entryQuality?.score ?? 0) !== (a.entryQuality?.score ?? 0)) return (b.entryQuality?.score ?? 0) - (a.entryQuality?.score ?? 0);
-        return b.quality - a.quality;
+        const aEq = a.entryQuality?.score ?? 0;
+        const bEq = b.entryQuality?.score ?? 0;
+        if (bEq !== aEq) return bEq - aEq;
+
+        const aQ = typeof a.quality === 'object' && a.quality !== null ? (a.quality.score ?? 0) : (a.quality ?? 0);
+        const bQ = typeof b.quality === 'object' && b.quality !== null ? (b.quality.score ?? 0) : (b.quality ?? 0);
+        return bQ - aQ;
     });
+
     return setups;
 }
 
-/* ═══ V4.9: SIZING ADAPTATIVO ═══ */
 function getRiskConfig() {
     const size = parseFloat(localStorage.getItem('sa_account_size'));
     const pct = parseFloat(localStorage.getItem('sa_risk_pct'));
@@ -3087,7 +3067,6 @@ function loadRiskConfig() {
     const hEl = document.getElementById('maxHeatR'); if (hEl) hEl.value = c.maxHeatR;
 }
 
-/* Multiplicadores de sizing */
 function getRegimeSizeMultiplier() {
     const regime = getRegimeSnapshot()?.regime || null;
     switch (regime) {
@@ -3099,12 +3078,19 @@ function getRegimeSizeMultiplier() {
         default:               return { mult: 0.70, reason: 'sin régimen — cauto' };
     }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FIX 3b — getStreakMultiplier filtra trades reales (excluye backtest)
+   ══════════════════════════════════════════════════════════════════════════ */
 function getStreakMultiplier() {
     const history = loadClosedHistory()
+        .filter(isRealTrade)
         .filter(h => h.rMult != null && isFinite(h.rMult))
         .sort((a, b) => new Date(b.closeDate) - new Date(a.closeDate));
+
     let consecutiveLosses = 0;
     let consecutiveWins = 0;
+
     for (const h of history) {
         if ((h.rMult || 0) < 0) {
             if (consecutiveWins > 0) break;
@@ -3114,6 +3100,7 @@ function getStreakMultiplier() {
             consecutiveWins++;
         } else break;
     }
+
     if (consecutiveLosses >= 4) return { mult: 0.25, reason: `${consecutiveLosses} pérdidas seguidas — parar`, stop: true };
     if (consecutiveLosses === 3) return { mult: 0.40, reason: '3 pérdidas seguidas — reducir 60%' };
     if (consecutiveLosses === 2) return { mult: 0.65, reason: '2 pérdidas seguidas — reducir 35%' };
@@ -3168,7 +3155,6 @@ function getEffectiveRiskPct(symbol, entryQualityScore) {
     };
 }
 
-/* RENDER SETUPS */
 function sourceLabel(src) {
     switch (src) {
         case 'swing': return 'bajo swing';
@@ -3215,12 +3201,10 @@ function renderContextBadges(symbol, prependBadges = '') {
     if (!badges.length && !prependBadges) return '';
     return `<div class="ctx-badges">${prependBadges}${badges.join('')}</div>`;
 }
-/* ═══ BLOQUE 5: RENDER DEL BREAKDOWN TIER2 ═══ */
+
 function renderQualityBreakdown(quality) {
-    // Si no es un objeto (score antiguo tipo número), no mostramos nada
     if (!quality || typeof quality !== 'object') return '';
 
-    // Si los gates Tier1 fallaron, mostramos por qué en vez del breakdown
     if (quality.blocked) {
         return `
             <div style="margin:10px 0;padding:10px 12px;background:rgba(255,69,58,.08);border:1px solid rgba(255,69,58,.3);border-radius:10px;">
@@ -3237,7 +3221,6 @@ function renderQualityBreakdown(quality) {
     const cats = Object.entries(quality.breakdown || {});
     if (!cats.length) return '';
 
-    // Color de la barra de confianza
     const confPct = (quality.confidence * 100).toFixed(0);
     const confColor = quality.confidence >= 0.99 ? 'var(--green)'
                     : quality.confidence >= 0.75 ? 'var(--orange)'
@@ -3286,14 +3269,12 @@ function renderQualityBreakdown(quality) {
     `;
 }
 function setupQualityBadge(quality) {
-    // Compatibilidad: si quality es número antiguo, mostrarlo como antes
     if (typeof quality === 'number') {
         const q = quality;
         const cls = q >= 75 ? 'sq-high' : q >= 55 ? 'sq-mid' : 'sq-low';
         return `<span class="setup-quality-badge ${cls}">Setup Q <b>${q}</b></span>`;
     }
 
-    // Nuevo formato: objeto con tier1/tier2/confidence
     if (!quality || typeof quality !== 'object') return '';
 
     if (quality.blocked) {
@@ -3673,15 +3654,19 @@ function saveClosedHistory(list) {
     return ok;
 }
 
-/* Telemetría */
 function getRegimeSnapshot() {
     try {
         const raw = localStorage.getItem(`regime_SPY_${today()}`);
         return raw ? JSON.parse(raw) : null;
     } catch(_) { return null; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FIX 2a — buildEntryTelemetry extrae setupQuality numérico
+   ══════════════════════════════════════════════════════════════════════════ */
 function buildEntryTelemetry(symbol, topSetup, live) {
     if (!live) return null;
+
     const regime = getRegimeSnapshot();
     const checks = (topSetup?.checks || []).map(c => ({
         label: c.label,
@@ -3689,8 +3674,10 @@ function buildEntryTelemetry(symbol, topSetup, live) {
         category: c.category || 'other',
         detail: c.detail || null
     }));
+
     const totalChecks = checks.length;
     const passedChecks = checks.filter(c => c.ok).length;
+
     let sizingApplied = null;
     try {
         const s = getEffectiveRiskPct(symbol, topSetup?.entryQuality?.score);
@@ -3704,6 +3691,29 @@ function buildEntryTelemetry(symbol, topSetup, live) {
             entryQuality: s.components.entryQuality.mult
         };
     } catch(_) {}
+
+    const setupQualityNum =
+        typeof topSetup?.quality === 'object' && topSetup.quality !== null
+            ? (topSetup.quality.score ?? null)
+            : (typeof topSetup?.quality === 'number' ? topSetup.quality : null);
+
+    const setupQualityBreakdown =
+        typeof topSetup?.quality === 'object' && topSetup.quality !== null
+            ? (topSetup.quality.breakdown ?? null)
+            : null;
+
+    const setupQualityTier =
+        typeof topSetup?.quality === 'object' && topSetup.quality !== null
+            ? {
+                tier1: topSetup.quality.tier1 ?? null,
+                tier2: topSetup.quality.tier2 ?? null,
+                blocked: !!topSetup.quality.blocked,
+                gate_fails: topSetup.quality.gate_fails || [],
+                confidence: topSetup.quality.confidence ?? null,
+                sample_quality: topSetup.quality.sample_quality ?? null
+            }
+            : null;
+
     return {
         score: live.score ?? null,
         scoreParts: live.scoreParts || null,
@@ -3735,7 +3745,9 @@ function buildEntryTelemetry(symbol, topSetup, live) {
         regimeSlopePct: regime?.slopePct ?? null,
         setupId: topSetup?.id ?? null,
         setupName: topSetup?.name ?? null,
-        setupQuality: topSetup?.quality ?? null,
+        setupQuality: setupQualityNum,
+        setupQualityBreakdown: setupQualityBreakdown,
+        setupQualityTier: setupQualityTier,
         entryQualityScore: topSetup?.entryQuality?.score ?? null,
         entryQualityState: topSetup?.entryQuality?.state ?? null,
         entryType: topSetup?.entryType ?? null,
@@ -3754,24 +3766,27 @@ function buildEntryTelemetry(symbol, topSetup, live) {
         lifecycleState: topSetup?.lifecycle?.state ?? null,
         lifecycleAge: topSetup?.lifecycle?.age ?? null,
         sizingApplied,
-macroExposure: (() => {
-    try {
-        const exp = getMacroExposure(symbol);
-        if (!exp) return null;
-        const ref = MACRO_REFERENCE[exp];
-        const corr = ref && lastFetchedData[symbol] && lastFetchedData[ref.symbol]
-            ? computeCorrelation({ symbol }, { symbol: ref.symbol }) : null;
-        return {
-            commodity: exp,
-            referenceSymbol: ref?.symbol ?? null,
-            correlation60d: corr != null ? +corr.toFixed(3) : null
-        };
-    } catch(_) { return null; }
-})(),
+        macroExposure: (() => {
+            try {
+                const exp = getMacroExposure(symbol);
+                if (!exp) return null;
+                const ref = MACRO_REFERENCE[exp];
+                const corr = ref && lastFetchedData[symbol] && lastFetchedData[ref.symbol]
+                    ? computeCorrelation({ symbol }, { symbol: ref.symbol }) : null;
+                return {
+                    commodity: exp,
+                    referenceSymbol: ref?.symbol ?? null,
+                    correlation60d: corr != null ? +corr.toFixed(3) : null
+                };
+            } catch(_) { return null; }
+        })(),
         loggedAt: new Date().toISOString()
     };
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   FIX 2b — addManualPosition guarda setupQuality numérico
+   ══════════════════════════════════════════════════════════════════════════ */
 function addManualPosition() {
     const symbolEl = document.getElementById("posSymbol");
     const sharesEl = document.getElementById("posShares");
@@ -3779,15 +3794,18 @@ function addManualPosition() {
     const symbol = symbolEl.value.trim().toUpperCase();
     const shares = parseFloat(sharesEl.value);
     const entry = parseFloat(entryEl.value);
+
     if (!symbol || !isFinite(shares) || shares <= 0 || !isFinite(entry) || entry <= 0) {
         toast("Rellena símbolo, acciones y precio correctamente.", "error");
         return;
     }
+
     const heatCheck = computePortfolioHeat();
     if (heatCheck.totalHeatR + 1 > heatCheck.cfg.maxHeatR) {
         toast(`Heat actual ${heatCheck.totalHeatR.toFixed(2)}R + 1R excede máximo ${heatCheck.cfg.maxHeatR}R. Posición bloqueada.`, 'error', 6000);
         return;
     }
+
     const live = lastSymbolsData?.[symbol];
     const sizingCheck = getEffectiveRiskPct(symbol, live?.entries?.[0]?.entryQuality?.score);
     if (sizingCheck.blocked) {
@@ -3799,17 +3817,30 @@ function addManualPosition() {
         toast(`🚫 Entrada bloqueada: ${reasons}`, 'error', 7000);
         return;
     }
-    const id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+
+    const id = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+
     const topSetup = live?.entries?.[0] || null;
     const regimeBadgeEl = document.getElementById('regimeBadge');
-    const regimeText = (regimeBadgeEl && regimeBadgeEl.style.display !== 'none') ? regimeBadgeEl.textContent.replace('● ', '').trim() : null;
+    const regimeText = (regimeBadgeEl && regimeBadgeEl.style.display !== 'none')
+        ? regimeBadgeEl.textContent.replace('● ', '').trim()
+        : null;
+
     const telemetry = buildEntryTelemetry(symbol, topSetup, live);
+
+    const setupQualityNum =
+        typeof topSetup?.quality === 'object' && topSetup.quality !== null
+            ? (topSetup.quality.score ?? null)
+            : (typeof topSetup?.quality === 'number' ? topSetup.quality : null);
+
     manualPositions.push({
         id, symbol, shares, entry,
         entryDate: new Date().toISOString(),
         setupId: topSetup?.id || null,
         setupName: topSetup?.name || null,
-        setupQuality: topSetup?.quality ?? null,
+        setupQuality: setupQualityNum,
         entryQualityScore: topSetup?.entryQuality?.score ?? null,
         entryQualityState: topSetup?.entryQuality?.state || null,
         entryType: topSetup?.entryType || null,
@@ -3821,12 +3852,18 @@ function addManualPosition() {
         note: '',
         telemetry
     });
+
     saveManualPositions();
     symbolEl.value = ""; sharesEl.value = ""; entryEl.value = "";
     renderManualPositions();
     renderPortfolioHeat();
-    if (topSetup) toast(`${symbol} añadido · Setup ${topSetup.name} Q${topSetup.quality}${topSetup.entryType === 'limit' ? ' · orden límite' : ''}`, "success", 3500);
-    else toast(`${symbol} añadido a cartera`, "success");
+
+    if (topSetup) {
+        const qTxt = setupQualityNum != null ? ` Q${setupQualityNum}` : '';
+        toast(`${symbol} añadido · Setup ${topSetup.name}${qTxt}${topSetup.entryType === 'limit' ? ' · orden límite' : ''}`, "success", 3500);
+    } else {
+        toast(`${symbol} añadido a cartera`, "success");
+    }
 }
 function removeManualPosition(id) {
     manualPositions = manualPositions.filter(p => String(p.id) !== String(id));
@@ -3887,7 +3924,6 @@ function computeRMultiple(position) {
     return (price - position.entry) / riskPerShare;
 }
 
-/* EXIT SIGNAL ENGINE */
 function detectRsiDivergence(data, lookback = 60, strength = 3) {
     const n = data.length;
     if (n < lookback + 5) return { bearish: false, bullish: false, detail: null };
@@ -4075,7 +4111,8 @@ function renderManualPositions() {
             const eqTxt = p.entryQualityScore != null ? ` · Entrada ${p.entryQualityScore}${p.entryQualityState ? ' ('+p.entryQualityState+')' : ''}` : '';
             const regimeTxt = p.regime ? ` · ${escapeHtml(p.regime)}` : '';
             const limitTxt = p.entryType === 'limit' ? ' · <b style="color:#32d4e0;">orden límite</b>' : '';
-            setupHint = `<div class="pos-orig-setup"><b>Setup entrada:</b> ${escapeHtml(p.setupName)} Q${p.setupQuality ?? '—'}${eqTxt}${regimeTxt}${limitTxt}</div>`;
+            const qTxt = (typeof p.setupQuality === 'number') ? ` Q${p.setupQuality}` : '';
+            setupHint = `<div class="pos-orig-setup"><b>Setup entrada:</b> ${escapeHtml(p.setupName)}${qTxt}${eqTxt}${regimeTxt}${limitTxt}</div>`;
         } else if (live?.entries?.length) {
             setupHint = `<div class="pos-meta" style="font-size:10px;color:var(--text-3);">Setup actual: ${escapeHtml(live.entries[0].name)}</div>`;
         }
@@ -4126,7 +4163,6 @@ function renderManualPositions() {
     }).join("");
 }
 
-/* MAE / MFE */
 function computeMAEMFE(position, fullData) {
     if (!position || !Array.isArray(fullData) || !fullData.length) return null;
     if (!position.entryDate || !position.stopInitial) return null;
@@ -4174,18 +4210,25 @@ function computeMAEMFE(position, fullData) {
         maeConsumed: +mae.toFixed(3)
     };
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FIX 2c — closePositionWithReason normaliza setupQuality y telemetría
+   ══════════════════════════════════════════════════════════════════════════ */
 function closePositionWithReason(id) {
     const pos = manualPositions.find(p => String(p.id) === String(id));
     if (!pos) { toast('Posición no encontrada', 'error'); return; }
+
     const live = lastSymbolsData?.[pos.symbol];
     const signal = live ? computeExitSignal(pos, live, lastFetchedData[pos.symbol]) : null;
     const exitPrice = live?.price ?? pos.entry;
     const pnlPct = ((exitPrice - pos.entry) / pos.entry) * 100;
     const pnlDollar = (exitPrice - pos.entry) * pos.shares;
     const rMult = signal?.rMult ?? computeRMultiple(pos);
+
     const reasonText = signal && signal.reasons.length
         ? signal.reasons.filter(r => r.level >= 2).map(r => r.text).join(' · ')
         : 'Cierre manual';
+
     const confirmed = confirm(
         `Cerrar ${pos.symbol}\n\n` +
         `Entrada: $${pos.entry.toFixed(2)}\n` +
@@ -4195,19 +4238,51 @@ function closePositionWithReason(id) {
         `Motivo: ${reasonText}\n\n¿Confirmar cierre?`
     );
     if (!confirmed) return;
+
+    let telemetry = pos.telemetry || null;
+    if (telemetry) {
+        if (telemetry.setupQuality != null && typeof telemetry.setupQuality === 'object') {
+            telemetry.setupQuality = telemetry.setupQuality.score ?? null;
+        }
+        if (!Array.isArray(telemetry.checks)) {
+            telemetry.checks = [];
+        }
+    }
+
+    const setupQualityNum =
+        typeof pos.setupQuality === 'object' && pos.setupQuality !== null
+            ? (pos.setupQuality.score ?? null)
+            : (typeof pos.setupQuality === 'number' ? pos.setupQuality : null);
+
     const entry = {
-        id: String(pos.id), symbol: pos.symbol, shares: pos.shares,
-        entry: pos.entry, exit: exitPrice,
-        entryDate: pos.entryDate, closeDate: new Date().toISOString(),
-        pnlPct, pnlDollar, rMult,
-        setupId: pos.setupId, setupName: pos.setupName,
-        reason: reasonText, journal: pos.journal || '',
+        id: String(pos.id),
+        symbol: pos.symbol,
+        shares: pos.shares,
+        entry: pos.entry,
+        exit: exitPrice,
+        entryDate: pos.entryDate,
+        closeDate: new Date().toISOString(),
+        pnlPct,
+        pnlDollar,
+        rMult,
+        setupId: pos.setupId,
+        setupName: pos.setupName,
+        setupQuality: setupQualityNum,
+        reason: reasonText,
+        journal: pos.journal || '',
         regime: pos.regime || null,
-        telemetry: pos.telemetry || null
+        telemetry
     };
+
     try {
         const maeMfe = computeMAEMFE(
-            { entry: pos.entry, stopInitial: pos.stopInitial, entryDate: pos.entryDate, closeDate: entry.closeDate, rMult },
+            {
+                entry: pos.entry,
+                stopInitial: pos.stopInitial,
+                entryDate: pos.entryDate,
+                closeDate: entry.closeDate,
+                rMult
+            },
             lastFetchedData[pos.symbol] || []
         );
         if (maeMfe) {
@@ -4219,20 +4294,32 @@ function closePositionWithReason(id) {
             entry.capture = maeMfe.capture;
             entry.maeConsumed = maeMfe.maeConsumed;
         }
-    } catch(e) { console.warn('[MAE/MFE] fallo al calcular', e); }
+    } catch(e) {
+        console.warn('[MAE/MFE] fallo al calcular', e);
+    }
+
     const history = loadClosedHistory();
     history.push(entry);
     const historySaved = saveClosedHistory(history);
+
     manualPositions = manualPositions.filter(p => String(p.id) !== String(id));
     const positionsSaved = saveManualPositions();
+
     renderManualPositions();
     renderPortfolioHeat();
     renderClosedHistory();
     renderPerformance();
+
     if (!historySaved || !positionsSaved) {
         toast('⚠ Cierre aplicado pero no persistido. Exporta el CSV y limpia caché.', 'error', 7000);
     } else {
-        toast(`${pos.symbol} cerrada · ${rMult != null ? `${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R` : `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`}`, 'success', 4000);
+        toast(
+            `${pos.symbol} cerrada · ${rMult != null
+                ? `${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R`
+                : `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`}`,
+            'success',
+            4000
+        );
     }
 }
 function renderClosedHistory() {
@@ -4317,7 +4404,6 @@ function computeCorrelation(posA, posB) {
     if (da <= 0 || db <= 0) return null;
     return num / Math.sqrt(da * db);
 }
-/* ═══ BALANCE DE CARTERA ═══ */
 function computePortfolioBalance() {
     let openCost = 0, openValue = 0, openPnl = 0;
     let positionsWithPrice = 0;
@@ -4331,7 +4417,7 @@ function computePortfolioBalance() {
         openPnl += (price - p.entry) * p.shares;
         if (live?.price != null) positionsWithPrice++;
     }
-    const closed = loadClosedHistory();
+    const closed = loadClosedHistory().filter(isRealTrade);
     const realizedPnl = closed.reduce((a, h) => a + (h.pnlDollar || 0), 0);
     const realizedR = closed.reduce((a, h) => a + (h.rMult || 0), 0);
     const totalPnl = openPnl + realizedPnl;
@@ -4547,7 +4633,6 @@ async function refreshPortfolioPrices() {
     else toast(`Actualizados ${ok}/${symbols.length} · revisa consola`, 'warn', 4000);
 }
 
-/* CHART */
 function setChartStyle(style) {
     chartStyle = style;
     document.querySelectorAll('[data-chart-style]').forEach(b => b.classList.toggle('active', b.dataset.chartStyle === style));
@@ -4631,7 +4716,6 @@ document.addEventListener("click", (e) => {
     card.classList.add("selected");
     renderPriceChart(r.symbol);
     refreshCompanyCard(r.symbol);
-    try { renderBtPreview(); } catch(_) {}
     showMobileTab("chart");
 });
 function renderPriceChart(symbol) {
@@ -4769,17 +4853,14 @@ document.getElementById("chartPeriod").innerHTML =
     if (upPts.length > 1 && loPts.length > 1 && midPts.length > 1) {
         const col   = "#bf5af2";
         const fillC = 'rgba(191,90,242,0.10)';
-        // Superior
         datasets.push({ type: 'line', label: `Canal Sup`, data: upPts,
             borderColor: col, borderWidth: 2, borderDash: [6, 4],
             pointRadius: 0, fill: false, order: 5, yAxisID: 'y',
             parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
-        // Inferior (rellena hasta superior)
         datasets.push({ type: 'line', label: `Canal Inf`, data: loPts,
             borderColor: col, backgroundColor: fillC, borderWidth: 2, borderDash: [6, 4],
             pointRadius: 0, fill: '-1', order: 5, yAxisID: 'y',
             parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
-        // Central (regresión pura)
         datasets.push({ type: 'line', label: `Canal Medio`, data: midPts,
             borderColor: 'rgba(191,90,242,0.75)', borderWidth: 1, borderDash: [3, 3],
             pointRadius: 0, fill: false, order: 6, yAxisID: 'y',
@@ -4901,7 +4982,6 @@ function renderMacdPanel(dates, macdLine, macdSig, macdHist) {
     else { try { macdChart = new Chart(canvas.getContext('2d'), config); } catch(e) { console.error(e); } }
 }
 
-/* IA */
 function getGeminiKey() { return localStorage.getItem(GEMINI_KEY_STORAGE) || ''; }
 function getGeminiModel() { return localStorage.getItem(GEMINI_MODEL_STORAGE) || GEMINI_DEFAULT_MODEL; }
 function getGeminiAuto() { return localStorage.getItem(GEMINI_AUTO_STORAGE) === '1'; }
@@ -5072,7 +5152,8 @@ function buildAIPayload(results, regime) {
             participation: r.scoreParts.participation, structure: r.scoreParts.structure, total: r.score
         } : null;
         const setups = (r.entries || []).map(e => ({
-            id: e.id, name: e.name, desc: e.desc, status: e.status, setup_quality: e.quality,
+            id: e.id, name: e.name, desc: e.desc, status: e.status,
+            setup_quality: typeof e.quality === 'object' ? (e.quality?.score ?? null) : e.quality,
             entry_quality: {
                 score: e.entryQuality?.score, state: e.entryQuality?.state, note: e.entryQuality?.note,
                 distance_atr: e.entryQuality?.distanceAtr, risk_atr: e.entryQuality?.riskAtr,
@@ -5099,7 +5180,7 @@ function buildAIPayload(results, regime) {
         }));
         const micro = analyzeMicrostructure(data);
         return {
-            symbol, score: r.score, trend: r.trend, score_breakdown: scoreBreakdown,
+            symbol, trend: r.trend, score_breakdown: scoreBreakdown,
             price_action: priceAction, moving_averages: movingAverages, momentum, volatility, volume_flow: volumeFlow,
             microstructure: micro ? {
                 vwap_monthly: micro.avwap.monthly ? +micro.avwap.monthly.vwap.toFixed(2) : null,
@@ -5124,7 +5205,7 @@ function buildAIPayload(results, regime) {
     return {
         meta: {
             generated_at: new Date().toISOString(),
-            app_version: '4.9.0',
+            app_version: '4.9.1',
             universe_size: results.length,
             tickers_analyzed: top.length,
             micro_filter_active: getMicroFilterConfig()
@@ -5180,6 +5261,22 @@ Devuelve EXCLUSIVAMENTE JSON válido (sin markdown, sin backticks):
   "action_plan": "4-5 frases."
 }`;
 }
+// Envuelve callGemini con reintentos automáticos para 503
+const _originalCallGemini = callGemini;
+callGemini = async function(prompt) {
+    const delays = [2000, 5000, 12000]; // 2s, 5s, 12s
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+        try {
+            return await _originalCallGemini(prompt);
+        } catch (e) {
+            const msg = String(e.message || '');
+            const is503 = msg.includes('503') || msg.includes('UNAVAILABLE') || msg.includes('high demand');
+            if (!is503 || attempt === delays.length) throw e;
+            console.log(`[Gemini] 503 detectado, reintentando en ${delays[attempt]/1000}s… (intento ${attempt+1}/${delays.length})`);
+            await new Promise(r => setTimeout(r, delays[attempt]));
+        }
+    }
+};
 async function callGemini(prompt) {
     const key = getGeminiKey();
     if (!key) throw new Error('Falta API Key de Gemini');
@@ -5379,7 +5476,6 @@ function renderAICard(data, opts = {}) {
     `;
 }
 
-/* BÚSQUEDA POR NOMBRE */
 const COMPANY_NAME_CACHE_PREFIX = 'sa_company_';
 async function searchSymbolByName(query, key) {
     const url = `https://api.twelvedata.com/symbol_search?symbol=${encodeURIComponent(query)}&apikey=${key}`;
@@ -5536,7 +5632,6 @@ async function refreshCompanyCard(symbol) {
     }
 }
 
-/* API COUNTER */
 function getApiCalls() { const s = localStorage.getItem("api_calls"); if (s) { try { const d = JSON.parse(s); if (d.date === today()) return d.count; } catch(_) {} } return 0; }
 function incrementApiCall() { trySave("api_calls", JSON.stringify({date: today(), count: getApiCalls() + 1})); updateApiCounterDisplay(); }
 function updateApiCounterDisplay() {
@@ -5573,7 +5668,6 @@ function updateProgress(percent, text) {
     if (text) setStatus(text, percent >= 100 ? "done" : "running");
 }
 
-/* FETCH */
 let apiTimestamps = [], apiQueue = Promise.resolve();
 function apiGate() {
     const next = apiQueue.then(async () => {
@@ -5641,7 +5735,6 @@ async function fetchAllData(symbol, key, outputsize, forceRefresh = false) {
     return out;
 }
 
-/* ANÁLISIS TÉCNICO */
 function analyzeTechnicals(data) {
     const n = data.length;
     const closes = data.map(d => d.close);
@@ -5724,7 +5817,6 @@ function setAnalyzing(active, label) {
     }
 }
 
-/* RUN */
 async function run() {
     const key = document.getElementById("apikey").value;
     if (!key) { toast("Introduce tu API Key en Config", "error"); return; }
@@ -5818,7 +5910,7 @@ async function run() {
                     <div class="score-component"><div class="k">Fuerza</div><div class="v">${top.scoreParts.strength}/20</div></div>
                     <div class="score-component"><div class="k">Vol</div><div class="v">${top.scoreParts.participation}/15</div></div>
                     <div class="score-component"><div class="k">Estr</div><div class="v">${top.scoreParts.structure}/15</div></div>
-                </div><div class="gate-note"><b>Lectura V4.9:</b> Motor por capas + sizing adaptativo + telemetría. Pulsa "Análisis IA" para que Gemini explique los indicadores.${getMicroFilterConfig() ? ' <b>Fase 2 activa.</b>' : ''}</div>`;
+                </div><div class="gate-note"><b>Lectura V4.9.1:</b> Motor por capas + sizing adaptativo + telemetría. Pulsa "Análisis IA" para que Gemini explique los indicadores.${getMicroFilterConfig() ? ' <b>Fase 2 activa.</b>' : ''}</div>`;
             }
         }
         window.currentResults = results;
@@ -5863,27 +5955,37 @@ function renderErrors(errors) {
     box.classList.add("visible");
 }
 
-/* DASHBOARD DE RENDIMIENTO */
+/* ══════════════════════════════════════════════════════════════════════════
+   FIX 3c — computePerformance filtra trades reales
+   ══════════════════════════════════════════════════════════════════════════ */
 function computePerformance() {
-    const history = loadClosedHistory();
+    const history = loadClosedHistory().filter(isRealTrade);
     if (!history.length) return null;
+
     const withR = history.filter(h => h.rMult != null && isFinite(h.rMult));
     const n = history.length;
     const wins = history.filter(h => (h.rMult || 0) > 0);
     const losses = history.filter(h => (h.rMult || 0) < 0);
     const flat = history.filter(h => (h.rMult || 0) === 0);
+
     const wr = n > 0 ? wins.length / n : 0;
     const avgWin = wins.length ? wins.reduce((a, h) => a + (h.rMult || 0), 0) / wins.length : 0;
     const avgLoss = losses.length ? losses.reduce((a, h) => a + (h.rMult || 0), 0) / losses.length : 0;
+
     const grossProfit = wins.reduce((a, h) => a + Math.abs(h.rMult || 0), 0);
     const grossLoss = losses.reduce((a, h) => a + Math.abs(h.rMult || 0), 0);
     const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? Infinity : 0);
+
     const totalR = history.reduce((a, h) => a + (h.rMult || 0), 0);
     const expectancy = n > 0 ? totalR / n : 0;
+
     const rVals = withR.map(h => h.rMult);
     const meanR = rVals.length ? rVals.reduce((a, b) => a + b, 0) / rVals.length : 0;
-    const stdR = rVals.length > 1 ? Math.sqrt(rVals.reduce((a, b) => a + Math.pow(b - meanR, 2), 0) / (rVals.length - 1)) : 0;
+    const stdR = rVals.length > 1
+        ? Math.sqrt(rVals.reduce((a, b) => a + Math.pow(b - meanR, 2), 0) / (rVals.length - 1))
+        : 0;
     const sqn = stdR > 0 ? Math.sqrt(rVals.length) * meanR / stdR : 0;
+
     let peak = 0, equity = 0, maxDD = 0;
     let consecLoss = 0, maxConsecLoss = 0;
     for (const h of history) {
@@ -5896,6 +5998,7 @@ function computePerformance() {
             if (consecLoss > maxConsecLoss) maxConsecLoss = consecLoss;
         } else consecLoss = 0;
     }
+
     let totalDays = 0, daysCount = 0;
     for (const h of history) {
         if (h.entryDate && h.closeDate) {
@@ -5904,7 +6007,12 @@ function computePerformance() {
         }
     }
     const avgDays = daysCount ? totalDays / daysCount : null;
-    return { n, wr, avgWin, avgLoss, profitFactor, expectancy, sqn, maxDD, maxConsecLoss, totalR, rVals, avgDays, wins: wins.length, losses: losses.length, flat: flat.length };
+
+    return {
+        n, wr, avgWin, avgLoss, profitFactor, expectancy, sqn,
+        maxDD, maxConsecLoss, totalR, rVals, avgDays,
+        wins: wins.length, losses: losses.length, flat: flat.length
+    };
 }
 function classifySQN(sqn) {
     if (sqn >= 5) return { text: 'EXCELENTE', color: 'var(--green)' };
@@ -5968,41 +6076,69 @@ function renderGroupTable(map, emptyMsg) {
         </table>
     </div>`;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FIX 3d — analyzeContributions filtra trades reales
+   ══════════════════════════════════════════════════════════════════════════ */
 function analyzeContributions() {
-    const allHistory = loadClosedHistory();
+    const allHistory = loadClosedHistory().filter(isRealTrade);
     const history = allHistory.filter(h => h.telemetry && h.rMult != null && isFinite(h.rMult));
+
     if (history.length < 10) {
-        return { insufficient: true, n: history.length, nTotal: allHistory.length,
-            message: `Necesitas al menos 10 trades cerrados con telemetría. Tienes ${history.length}.` };
+        return {
+            insufficient: true,
+            n: history.length,
+            nTotal: allHistory.length,
+            message: `Necesitas al menos 10 trades cerrados con telemetría. Tienes ${history.length}.`
+        };
     }
+
     const expectancy = arr => arr.length ? arr.reduce((a, h) => a + (h.rMult || 0), 0) / arr.length : null;
     const winrate = arr => arr.length ? arr.filter(h => (h.rMult || 0) > 0).length / arr.length : null;
+
     const CATEGORY_LABELS = {
         regime: 'Régimen', trend: 'Tendencia', structure: 'Estructura',
         volume: 'Volumen', momentum: 'Momentum', strength: 'Fuerza',
         timing: 'Timing', health: 'Health', rs: 'RS', mtf: 'MTF'
     };
+
     const byCategory = [];
     for (const cat of Object.keys(CATEGORY_LABELS)) {
         const withCat = history.filter(h => (h.telemetry.checks || []).some(c => c.category === cat));
         if (withCat.length < 5) continue;
-        const passGroup = withCat.filter(h => (h.telemetry.checks || []).filter(c => c.category === cat).every(c => c.ok));
-        const failGroup = withCat.filter(h => (h.telemetry.checks || []).some(c => c.category === cat && !c.ok));
+
+        const passGroup = withCat.filter(h =>
+            (h.telemetry.checks || []).filter(c => c.category === cat).every(c => c.ok)
+        );
+        const failGroup = withCat.filter(h =>
+            (h.telemetry.checks || []).some(c => c.category === cat && !c.ok)
+        );
+
         const expPass = expectancy(passGroup);
         const expFail = expectancy(failGroup);
         const lift = (expPass != null && expFail != null) ? expPass - expFail : null;
+
         byCategory.push({
-            category: cat, label: CATEGORY_LABELS[cat], n: withCat.length,
-            passN: passGroup.length, passExp: expPass, passWr: winrate(passGroup),
-            failN: failGroup.length, failExp: expFail, failWr: winrate(failGroup), lift
+            category: cat,
+            label: CATEGORY_LABELS[cat],
+            n: withCat.length,
+            passN: passGroup.length,
+            passExp: expPass,
+            passWr: winrate(passGroup),
+            failN: failGroup.length,
+            failExp: expFail,
+            failWr: winrate(failGroup),
+            lift
         });
     }
+
     byCategory.sort((a, b) => {
         if (a.lift == null && b.lift == null) return 0;
         if (a.lift == null) return 1;
         if (b.lift == null) return -1;
         return b.lift - a.lift;
     });
+
     const bucketize = (keyFn, buckets) => {
         const out = {};
         for (const b of buckets) out[b.label] = [];
@@ -6013,26 +6149,32 @@ function analyzeContributions() {
             }
         }
         return Object.entries(out).map(([label, arr]) => ({
-            label, n: arr.length,
-            expectancy: expectancy(arr), winrate: winrate(arr),
+            label,
+            n: arr.length,
+            expectancy: expectancy(arr),
+            winrate: winrate(arr),
             totalR: arr.reduce((a, h) => a + (h.rMult || 0), 0)
         })).filter(b => b.n > 0);
     };
+
     const rsBuckets = bucketize(h => h.telemetry.rsRating, [
         { label: 'Líder (RS > +2%)', match: v => v != null && v > 2 },
         { label: 'Neutral (−2% a +2%)', match: v => v != null && v >= -2 && v <= 2 },
         { label: 'Laggard (RS < −2%)', match: v => v != null && v < -2 }
     ]);
+
     const eqBuckets = bucketize(h => h.telemetry.entryQualityScore, [
         { label: 'Óptima (≥80)', match: v => v != null && v >= 80 },
         { label: 'Aceptable (60–79)', match: v => v != null && v >= 60 && v < 80 },
         { label: 'Extendida (<60)', match: v => v != null && v < 60 }
     ]);
+
     const setupQBuckets = bucketize(h => h.telemetry.setupQuality, [
         { label: 'Q ≥ 80', match: v => v != null && v >= 80 },
         { label: 'Q 65–79', match: v => v != null && v >= 65 && v < 80 },
         { label: 'Q < 65', match: v => v != null && v < 65 }
     ]);
+
     const regimeBuckets = bucketize(h => h.telemetry.regime, [
         { label: 'RISK_ON+', match: v => v === 'STRONG_RISK_ON' },
         { label: 'RISK_ON', match: v => v === 'RISK_ON' },
@@ -6040,40 +6182,58 @@ function analyzeContributions() {
         { label: 'RISK_OFF', match: v => v === 'RISK_OFF' },
         { label: 'RISK_OFF+', match: v => v === 'STRONG_RISK_OFF' }
     ]);
+
     const entryTypeBuckets = bucketize(h => h.telemetry.entryType, [
         { label: 'Market', match: v => v === 'market' },
         { label: 'Límite', match: v => v === 'limit' }
     ]);
+
     const weeklyTrendBuckets = bucketize(h => h.telemetry.weeklyTrend, [
         { label: 'W ALCISTA', match: v => v === 'ALCISTA' },
         { label: 'W LATERAL', match: v => v === 'LATERAL' },
         { label: 'W BAJISTA', match: v => v === 'BAJISTA' }
     ]);
+
     const softFilterBuckets = bucketize(h => h.telemetry.softFilterCount, [
         { label: 'Sin filtros soft', match: v => v === 0 },
         { label: '1 filtro soft', match: v => v === 1 },
         { label: '≥2 filtros soft', match: v => v != null && v >= 2 }
     ]);
+
     const passRateBuckets = bucketize(h => h.telemetry.passRate, [
         { label: '≥90% checks OK', match: v => v != null && v >= 0.9 },
         { label: '75–89%', match: v => v != null && v >= 0.75 && v < 0.9 },
         { label: '60–74%', match: v => v != null && v >= 0.6 && v < 0.75 },
         { label: '<60%', match: v => v != null && v < 0.6 }
     ]);
+
     const setupMap = {};
     for (const h of history) {
         const k = h.telemetry.setupName || 'Sin setup';
         (setupMap[k] = setupMap[k] || []).push(h);
     }
     const bySetup = Object.entries(setupMap).map(([name, arr]) => ({
-        name, n: arr.length,
-        expectancy: expectancy(arr), winrate: winrate(arr),
+        name,
+        n: arr.length,
+        expectancy: expectancy(arr),
+        winrate: winrate(arr),
         totalR: arr.reduce((a, h) => a + (h.rMult || 0), 0)
     })).filter(s => s.n >= 3).sort((a, b) => b.n - a.n);
+
     return {
-        insufficient: false, n: history.length, nTotal: allHistory.length,
-        byCategory, rsBuckets, eqBuckets, setupQBuckets, regimeBuckets,
-        entryTypeBuckets, weeklyTrendBuckets, softFilterBuckets, passRateBuckets, bySetup
+        insufficient: false,
+        n: history.length,
+        nTotal: allHistory.length,
+        byCategory,
+        rsBuckets,
+        eqBuckets,
+        setupQBuckets,
+        regimeBuckets,
+        entryTypeBuckets,
+        weeklyTrendBuckets,
+        softFilterBuckets,
+        passRateBuckets,
+        bySetup
     };
 }
 function renderContributionAnalysis() {
@@ -6190,7 +6350,7 @@ function renderPerformance() {
     const byRegimeEl = document.getElementById('perfByRegime');
     const maeMfeEl = document.getElementById('perfMaeMfe');
     if (!body) return;
-    const history = loadClosedHistory();
+    const history = loadClosedHistory().filter(isRealTrade);
     const perf = computePerformance();
     if (!perf) {
         body.innerHTML = `<div class="empty-state" style="padding:24px;"><span class="icon">📊</span>Sin operaciones cerradas.<br>Cierra posiciones para medir tu edge real.</div>`;
@@ -6397,7 +6557,6 @@ function renderPerformance() {
     try { renderContributionAnalysis(); } catch(e) { console.warn('[contribution]', e); }
 }
 
-/* CSV */
 function csvEscape(v) {
     if (v == null) return '';
     const s = String(v);
@@ -6408,10 +6567,14 @@ function exportClosedCSV() {
     if (!history.length) { toast('Sin historial cerrado', 'warn'); return; }
     const headers = ['id', 'symbol', 'shares', 'entry', 'exit', 'entryDate', 'closeDate',
                      'pnlPct', 'pnlDollar', 'rMult', 'mae', 'mfe', 'maePct', 'mfePct', 'barsHeld', 'capture',
-                     'setupId', 'setupName', 'regime', 'reason', 'journal'];
+                     'setupId', 'setupName', 'setupQuality', 'regime', 'reason', 'journal'];
     const lines = [headers.join(',')];
     for (const h of history) {
-        lines.push(headers.map(k => csvEscape(h[k])).join(','));
+        lines.push(headers.map(k => {
+            let v = h[k];
+            if (v != null && typeof v === 'object') v = v.score ?? JSON.stringify(v);
+            return csvEscape(v);
+        }).join(','));
     }
     const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -6451,7 +6614,7 @@ function importClosedCSV(event) {
             if (lines.length < 2) { toast('CSV vacío o inválido', 'error'); return; }
             const headers = parseCSVLine(lines[0]).map(h => h.trim());
             const numFields = ['shares', 'entry', 'exit', 'pnlPct', 'pnlDollar', 'rMult',
-                               'mae', 'mfe', 'maePct', 'mfePct', 'barsHeld', 'capture'];
+                               'mae', 'mfe', 'maePct', 'mfePct', 'barsHeld', 'capture', 'setupQuality'];
             const parsed = [];
             for (let i = 1; i < lines.length; i++) {
                 const cols = parseCSVLine(lines[i]);
@@ -6488,114 +6651,55 @@ function importClosedCSV(event) {
     reader.readAsText(file);
     event.target.value = '';
 }
-/* ═══════════════════════════════════════════════════════════════════════
-   INTEGRACIÓN BACKTESTER V1.0
-   Lanza backtest.html con la config + datos del ticker activo
-   y recibe los resultados de vuelta por localStorage
-   ═══════════════════════════════════════════════════════════════════════ */
 
-const BT_CFG_KEY     = 'sa_bt_config';
-const BT_DATA_KEY    = 'sa_bt_data';
-const BT_RESULTS_KEY = 'sa_bt_results';
-const BT_READY_KEY   = 'sa_bt_ready';
+let _btReady = false;
+let _btAnnounceCount = 0;
 
-let _btEquityChart = null;
-let _btPollTimer = null;
-
-/* ─── 1. Previsualización en vivo de la config ─── */
-function renderBtPreview() {
-    // Ticker objetivo
-    const symEl = document.getElementById('btTargetSymbol');
-    const infoEl = document.getElementById('btTargetInfo');
-    const sym = currentChartSymbol;
-
-    if (symEl) {
-        if (sym && lastFetchedData[sym]) {
-            const bars = lastFetchedData[sym].length;
-            symEl.textContent = sym;
-            const first = lastFetchedData[sym][0]?.datetime || '';
-            const last = lastFetchedData[sym][bars - 1]?.datetime || '';
-            if (infoEl) infoEl.innerHTML = `${bars} barras · ${first} → ${last}`;
-        } else {
-            symEl.textContent = '—';
-            if (infoEl) infoEl.textContent = 'Selecciona una tarjeta en Resultados para fijar el ticker';
+function _btCollectSectors(symbols) {
+    const needed = new Set();
+    for (let i = 0; i < symbols.length; i++) {
+        const etf = SECTOR_ETF_MAP[symbols[i]];
+        if (etf) needed.add(etf);
+    }
+    const out = {};
+    const etfList = Array.from(needed);
+    for (let i = 0; i < etfList.length; i++) {
+        const etf = etfList[i];
+        const fromSectorCache = sectorCache[etf];
+        const fromFetched = lastFetchedData ? lastFetchedData[etf] : null;
+        if (Array.isArray(fromSectorCache) && fromSectorCache.length >= 250) {
+            out[etf] = fromSectorCache;
+        } else if (Array.isArray(fromFetched) && fromFetched.length >= 250) {
+            out[etf] = fromFetched;
         }
     }
-
-    // Config actual
-    const el = document.getElementById('btConfigPreview');
-    if (!el) return;
-    const TH = getThresholds();
-    const ctx = getContextConfig();
-    const risk = getRiskConfig();
-    const nSyms = Object.keys(lastFetchedData || {}).length;
-    const hasSpy = !!(lastFetchedData && lastFetchedData['SPY']);
-
-    el.innerHTML = `
-        <div>Q≥${TH.minSetupQuality} · R:R≥${TH.minRrT1} · ATR ${TH.minRiskAtr}–${TH.maxRiskAtr}</div>
-        <div>RS≥${ctx.minRs}% · Earn>${ctx.minDaysEarnings}d · DV≥$${(ctx.minDollarVolume/1e6).toFixed(1)}M</div>
-        <div>Riesgo ${risk.pct}% · MaxPos ${risk.maxPositionPct}% · Cuenta $${risk.size.toLocaleString()}</div>
-        <div style="margin-top:4px;">
-            <span style="color:${hasSpy ? 'var(--green)' : 'var(--red)'};">
-                ${hasSpy ? '✓' : '✗'} SPY ${hasSpy ? 'disponible' : 'FALTA (analiza SPY primero)'}
-            </span>
-            · ${nSyms} símbolo${nSyms === 1 ? '' : 's'} en caché
-        </div>
-    `;
+    return out;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   BRIDGE BACKTESTER ↔ STOCKANALYZER (iframe, mismo origen)
-   ═══════════════════════════════════════════════════════════════ */
-
-const _btFrame = () => document.getElementById('btFrame');
-let _btFrameReady = false;
-let _btLastResult = null;
-
-// El iframe avisa cuando está listo
-window.addEventListener('message', (ev) => {
-    const msg = ev.data;
-    if (!msg || typeof msg !== 'object') return;
-
-    if (msg.type === 'bt_ready') {
-        _btFrameReady = true;
-        console.log('[sa] backtester listo');
-        // Si ya hay config guardada, la mandamos automáticamente
-        pushConfigToBacktester();
+function _btCollectEarnings(symbols) {
+    const out = {};
+    for (let i = 0; i < symbols.length; i++) {
+        const s = symbols[i];
+        try {
+            const raw = localStorage.getItem('sa_earnings_' + s);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed.date === 'string' && parsed.date.length >= 10) {
+                out[s] = parsed.date;
+            }
+        } catch (_) {}
     }
+    return out;
+}
 
-    if (msg.type === 'bt_ack') {
-        console.log('[sa] backtester confirmó config');
-        toast('Backtester cargado ✓', 'success', 2000);
-    }
-
-    if (msg.type === 'bt_results') {
-        console.log('[sa] resultados recibidos:', msg.result?.n, 'trades');
-        _btLastResult = msg.result;
-        renderBtSummaryInParent(msg.result);
-        toast(`Backtest: ${msg.result.n} trades · ${msg.result.expectancy >= 0 ? '+' : ''}${msg.result.expectancy.toFixed(2)}R`, 'success', 4000);
-    }
-
-    if (msg.type === 'bt_log') {
-        console.log('[bt]', msg.text);
-    }
-});
-
-// Enviar config + datos al iframe
-function pushConfigToBacktester() {
-    const frame = _btFrame();
-    if (!frame || !frame.contentWindow) {
-        toast('Backtester aún no cargado', 'warn');
-        return;
-    }
-
-    // Construir config
+function _btBuildPayload() {
     const cfg = {
-        version: '4.9',
+        version: '4.9.1',
         thresholds: getThresholds(),
         context: getContextConfig(),
         risk: getRiskConfig(),
         setupsEnabled: { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true },
+        tier2Weights: getTier2Weights(),
         meta: {
             generatedAt: new Date().toISOString(),
             source: 'stockanalyzer',
@@ -6603,405 +6707,108 @@ function pushConfigToBacktester() {
         }
     };
 
-    // Construir datos: SPY desde spyDataCache, resto desde lastFetchedData
-    const btData = {};
-    if (spyDataCache && Array.isArray(spyDataCache) && spyDataCache.length >= 250) {
-        btData['SPY'] = spyDataCache;
+    const data = {};
+    if (Array.isArray(spyDataCache) && spyDataCache.length >= 250) data['SPY'] = spyDataCache;
+    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol] &&
+        lastFetchedData[currentChartSymbol].length >= 250) {
+        data[currentChartSymbol] = lastFetchedData[currentChartSymbol];
     }
-    if (lastFetchedData && lastFetchedData['SPY'] && !btData['SPY']) {
-        btData['SPY'] = lastFetchedData['SPY'];
-    }
-    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol]) {
-        btData[currentChartSymbol] = lastFetchedData[currentChartSymbol];
-    }
-    for (const s of Object.keys(lastFetchedData || {})) {
-        if (Object.keys(btData).length >= 8) break;
-        if (!btData[s] && Array.isArray(lastFetchedData[s]) && lastFetchedData[s].length >= 250) {
-            btData[s] = lastFetchedData[s];
+    for (const s in (lastFetchedData || {})) {
+        if (!lastFetchedData.hasOwnProperty(s)) continue;
+        if (Object.keys(data).length >= 7) break;
+        if (data[s]) continue;
+        if (Array.isArray(lastFetchedData[s]) && lastFetchedData[s].length >= 250) {
+            data[s] = lastFetchedData[s];
         }
     }
 
-    console.log('[sa] enviando al iframe:', {
-        symbols: Object.keys(btData),
-        bars: Object.fromEntries(Object.entries(btData).map(([k,v]) => [k, v.length]))
-    });
-
-    
-
-    try {
-        frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg, data: btData }, '*');
-    } catch(e) {
-        console.error('[sa] postMessage al iframe falló:', e);
-        toast('Error enviando datos: ' + e.message, 'error', 5000);
+        const symbolsSent = Object.keys(data).filter(function (s) { return s !== 'SPY'; });
+    const sectors = _btCollectSectors(symbolsSent);
+    const earnings = _btCollectEarnings(symbolsSent);
+    const sectorMap = {};
+    for (let i = 0; i < symbolsSent.length; i++) {
+        const s = symbolsSent[i];
+        const etf = SECTOR_ETF_MAP[s];
+        if (etf) sectorMap[s] = etf;
     }
+
+    return { cfg: cfg, data: data, sectors: sectors, earnings: earnings, sectorMap: sectorMap };
 }
 
-// Cuando el usuario entra a la pestaña Test, asegurarse de que el iframe tiene datos
-const _origShowMobileTab2 = showMobileTab;
-showMobileTab = function(name) {
-    _origShowMobileTab2(name);
-    if (name === 'backtest') {
-        // Pequeño delay para que el iframe esté listo
-        setTimeout(() => {
-            if (_btFrameReady) pushConfigToBacktester();
-        }, 200);
+function _btPushToFrame() {
+    var frame = document.getElementById('btFrame');
+    if (!frame || !frame.contentWindow) return;
+
+    var payload = _btBuildPayload();
+    var symbolsSent = Object.keys(payload.data);
+    var sectorCount = Object.keys(payload.sectors).length;
+    var earningsCount = Object.keys(payload.earnings).length;
+
+    console.log('[sa] push al iframe:', symbolsSent,
+                '| sectores:', sectorCount,
+                '| earnings:', earningsCount,
+                '| tier2:', payload.cfg.tier2Weights);
+
+    if (!payload.data['SPY']) {
+        console.warn('[sa] sin SPY, no se envía');
+        return;
     }
-};
-
-// Refresco cuando se selecciona tarjeta de resultado
-document.addEventListener('click', (e) => {
-    const card = e.target.closest('.result-card');
-    if (card && _btFrameReady) {
-        // No reenviamos al instante, solo si el usuario va a Test
-    }
-});
-
-// Al terminar un análisis, si el iframe está listo, ofrecer datos frescos
-const _origRun = run;
-run = async function() {
-    const r = await _origRun.apply(this, arguments);
-    setTimeout(() => {
-        if (_btFrameReady && _btFrame() && document.querySelector('.tab-panel.active')?.dataset.tab === 'backtest') {
-            pushConfigToBacktester();
-        }
-    }, 500);
-    return r;
-};
-
-// Render compacto de resultados en el padre (opcional, se muestra debajo del iframe)
-function renderBtSummaryInParent(res) {
-    // El iframe ya muestra todo. Aquí solo podríamos añadir un resumen rápido,
-    // pero como el iframe está visible, lo dejamos limpio.
-    console.log('[sa] backtest recibido, el iframe muestra los detalles');
-}
-
-/* ─── 3. Leer resultados de localStorage ─── */
-function loadBacktestResults(manual = false) {
-    let raw;
-    try { raw = localStorage.getItem(BT_RESULTS_KEY); } catch(_) { raw = null; }
-
-    const emptyCard = document.getElementById('btEmptyCard');
-    const resCard   = document.getElementById('btResultsCard');
-    const tradesCard= document.getElementById('btTradesCard');
-
-    if (!raw) {
-        if (emptyCard) emptyCard.style.display = 'block';
-        if (resCard)   resCard.style.display = 'none';
-        if (tradesCard)tradesCard.style.display = 'none';
-        if (manual) toast('No hay resultados guardados todavía', 'warn');
+    if (symbolsSent.length < 2) {
+        console.warn('[sa] solo SPY, no se envía');
         return;
     }
 
-    let res;
-    try { res = JSON.parse(raw); }
-    catch(e) { if (manual) toast('Resultados corruptos', 'error'); return; }
-    if (!res.trades || !res.trades.length) {
-        if (manual) toast('El backtest no generó trades', 'warn');
-        return;
-    }
-
-    if (emptyCard) emptyCard.style.display = 'none';
-    if (resCard)   resCard.style.display = 'block';
-    if (tradesCard)tradesCard.style.display = 'block';
-
-    renderBacktestResultCards(res, manual);
-}
-
-function renderBacktestResultCards(res, isFresh = false) {
-    const sym = res.config?.meta?.targetSymbol
-             || (res.bySymbol && Object.keys(res.bySymbol)[0])
-             || '—';
-    const setEl = document.getElementById('btResSymbol');
-    if (setEl) setEl.textContent = sym;
-
-    const savedAt = res.savedAt ? new Date(res.savedAt) : new Date();
-    const metaEl = document.getElementById('btResMeta');
-    if (metaEl) {
-        metaEl.innerHTML = `
-            ${res.n} trades · ${Object.keys(res.bySymbol || {}).length} símbolos ·
-            Q≥${res.config?.thresholds?.minSetupQuality ?? '—'} ·
-            ${res.config?.slippageBps ?? '—'}bps slip ·
-            ${savedAt.toLocaleString('es-ES', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
-        `;
-    }
-
-    // Métricas
-    const expColor = res.expectancy >= 0.2 ? 'var(--green)' : res.expectancy >= 0 ? 'var(--text)' : 'var(--red)';
-    const pfColor = res.pf >= 1.5 ? 'var(--green)' : res.pf >= 1 ? 'var(--text)' : 'var(--red)';
-    const ddColor = res.maxDDPct <= 15 ? 'var(--green)' : res.maxDDPct <= 30 ? 'var(--orange)' : 'var(--red)';
-    const ciCrossesZero = res.ci95Low <= 0 && res.ci95High >= 0;
-    const ciWarning = ciCrossesZero
-        ? `<div style="margin-top:8px;padding:10px 12px;background:rgba(255,159,10,.10);border:1px solid rgba(255,159,10,.30);border-radius:9px;font-size:11px;color:var(--orange);line-height:1.5;">
-             <b>⚠ IC95% cruza cero.</b> La expectancy observada (${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R) no es estadísticamente distinguible de cero con esta muestra (n=${res.n}). No hay edge demostrable todavía.
-           </div>`
-        : `<div style="margin-top:8px;padding:10px 12px;background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.25);border-radius:9px;font-size:11px;color:var(--green);line-height:1.5;">
-             <b>✓ IC95% no cruza cero.</b> La expectancy (${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R) es positiva con significancia estadística al 95% en esta muestra.
-           </div>`;
-
-    const metricsEl = document.getElementById('btResMetrics');
-    if (metricsEl) {
-        metricsEl.innerHTML = `
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
-                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Trades</div>
-                    <div style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;">${res.n}</div>
-                    <div style="font-size:9px;color:var(--text-3);">${res.wins}W · ${res.losses}L${res.flats?' · '+res.flats+'B':''}</div>
-                </div>
-                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
-                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Win rate</div>
-                    <div style="font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;">${(res.wr*100).toFixed(1)}%</div>
-                    <div style="font-size:9px;color:var(--text-3);">${res.wins}/${res.n}</div>
-                </div>
-                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
-                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Expectancy</div>
-                    <div style="font-size:18px;font-weight:800;color:${expColor};font-variant-numeric:tabular-nums;">${res.expectancy>=0?'+':''}${res.expectancy.toFixed(2)}R</div>
-                    <div style="font-size:9px;color:var(--text-3);">IC [${res.ci95Low.toFixed(2)}, ${res.ci95High.toFixed(2)}]</div>
-                </div>
-                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
-                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Profit factor</div>
-                    <div style="font-size:18px;font-weight:800;color:${pfColor};font-variant-numeric:tabular-nums;">${res.pf===Infinity?'∞':res.pf.toFixed(2)}</div>
-                    <div style="font-size:9px;color:var(--text-3);">P/L brutos</div>
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;">
-                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
-                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">SQN</div>
-                    <div style="font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;">${res.n<10?'—':res.sqn.toFixed(2)}</div>
-                    <div style="font-size:9px;color:var(--text-3);">${res.n<10?'n<10':res.sqn>=3?'bueno':res.sqn>=2?'aceptable':res.sqn>=1?'débil':'malo'}</div>
-                </div>
-                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
-                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Retorno total</div>
-                    <div style="font-size:16px;font-weight:800;color:${res.totalReturn>=0?'var(--green)':'var(--red)'};font-variant-numeric:tabular-nums;">${res.totalReturn>=0?'+':''}${res.totalReturn.toFixed(1)}%</div>
-                    <div style="font-size:9px;color:var(--text-3);">$${(res.config?.capital||10000).toFixed(0)} → $${res.finalEquity.toFixed(0)}</div>
-                </div>
-                <div style="background:var(--bg-elev);border-radius:10px;padding:10px 12px;">
-                    <div style="font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Max DD</div>
-                    <div style="font-size:16px;font-weight:800;color:${ddColor};font-variant-numeric:tabular-nums;">-${res.maxDDPct.toFixed(1)}%</div>
-                    <div style="font-size:9px;color:var(--text-3);">racha perdedora ${res.maxConsecLoss}</div>
-                </div>
-            </div>
-            ${res.n < 30 ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(255,159,10,.08);border-radius:8px;font-size:10px;color:var(--orange);line-height:1.4;"><b>⚠ Muestra pequeña (n=${res.n}).</b> No es estadísticamente significativa hasta ~30 trades.</div>` : ''}
-            ${ciWarning}
-        `;
-    }
-
-    // Equity curve
-    renderBtEquityChart(res.curve);
-
-    // Por setup
-    const bySetupEl = document.getElementById('btResBySetup');
-    if (bySetupEl && res.bySetup) {
-        const entries = Object.entries(res.bySetup).sort((a,b) => b[1].n - a[1].n);
-        bySetupEl.innerHTML = `
-            <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">Por setup</div>
-            <table style="width:100%;font-size:11px;border-collapse:collapse;">
-                <thead>
-                    <tr style="color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">
-                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Setup</th>
-                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">N</th>
-                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">WR</th>
-                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Exp.</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${entries.map(([k, v]) => {
-                        const exp = v.totalR / v.n;
-                        const expColor = exp >= 0.2 ? 'var(--green)' : exp >= 0 ? 'var(--text)' : 'var(--red)';
-                        const wr = (v.wins / v.n) * 100;
-                        return `<tr>
-                            <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);">${escapeHtml(k)}</td>
-                            <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;">${v.n}</td>
-                            <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;color:var(--text-2);">${wr.toFixed(0)}%</td>
-                            <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);color:${expColor};font-weight:700;font-variant-numeric:tabular-nums;">${exp>=0?'+':''}${exp.toFixed(2)}R</td>
-                        </tr>`;
-                    }).join('')}
-                </tbody>
-            </table>
-        `;
-    }
-
-    // Trades
-    const tradesMeta = document.getElementById('btTradesMeta');
-    if (tradesMeta) tradesMeta.textContent = `${res.trades.length} trades simulados · mostrando últimos 200`;
-
-    const tradesEl = document.getElementById('btTradesList');
-    if (tradesEl) {
-        const sorted = [...res.trades].sort((a,b) => (b.entryDate||'').localeCompare(a.entryDate||'')).slice(0, 200);
-        tradesEl.innerHTML = `
-            <table style="width:100%;font-size:11px;border-collapse:collapse;min-width:520px;">
-                <thead>
-                    <tr style="color:var(--text-2);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">
-                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Fecha</th>
-                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Sym</th>
-                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Setup</th>
-                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Ent.</th>
-                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Stop</th>
-                        <th style="text-align:left;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">Motivo</th>
-                        <th style="text-align:right;padding:5px 6px;border-bottom:1px solid var(--separator);font-weight:600;">R</th>
-                    </tr>
-                </thead>
-                <tbody>
-                ${sorted.map(t => {
-                    const tagColor = t.rMult >= 0 ? 'var(--green)' : 'var(--red)';
-                    const tagBg = t.rMult >= 0 ? 'rgba(48,209,88,.15)' : 'rgba(255,69,58,.15)';
-                    return `<tr>
-                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);">${t.entryDate || '—'}</td>
-                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-weight:600;">${escapeHtml(t.symbol || '')}</td>
-                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px;color:var(--text-2);">${escapeHtml(t.setupId || '')}</td>
-                        <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;">$${t.entryPrice.toFixed(2)}</td>
-                        <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums;">$${t.stopPrice.toFixed(2)}</td>
-                        <td style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);font-size:10px;color:var(--text-3);">${escapeHtml(t.exitReason || '')}</td>
-                        <td style="text-align:right;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);">
-                            <span style="background:${tagBg};color:${tagColor};padding:2px 6px;border-radius:5px;font-weight:700;font-variant-numeric:tabular-nums;font-size:10px;">${t.rMult>=0?'+':''}${t.rMult.toFixed(2)}R</span>
-                        </td>
-                    </tr>`;
-                }).join('')}
-                </tbody>
-            </table>
-            ${res.trades.length > 200 ? `<div style="font-size:10px;color:var(--text-3);padding:8px;text-align:center;">Mostrando 200 de ${res.trades.length}. Todos están en el CSV del backtester.</div>` : ''}
-        `;
+        try {
+        frame.contentWindow.postMessage({
+            type: 'sa_bt_init',
+            cfg: payload.cfg,
+            data: payload.data,
+            sectors: payload.sectors,
+            earnings: payload.earnings,
+            sectorMap: payload.sectorMap
+        }, '*');
+    } catch (e) {
+        console.error('[sa] postMessage error:', e);
     }
 }
 
-function renderBtEquityChart(curve) {
-    if (!hasChartJs() || !curve || !curve.length) return;
-    const canvas = document.getElementById('btEquityChart');
-    if (!canvas) return;
-    if (_btEquityChart) { try { _btEquityChart.destroy(); } catch(_) {} }
-
-    const labels = curve.map((_, i) => `#${i}`);
-    const data = curve.map(p => +p.eq.toFixed(2));
-    const last = data[data.length - 1];
-    const first = data[0];
-    const positive = last >= first;
-
-    _btEquityChart = new Chart(canvas.getContext('2d'), {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Equity',
-                data,
-                borderColor: positive ? '#32d4e0' : '#ff453a',
-                backgroundColor: positive ? 'rgba(50,212,224,.08)' : 'rgba(255,69,58,.08)',
-                borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
-            plugins: {
-                legend: { display: false },
-                title: { display: true, text: 'Curva de equity', color: '#8e8e93', font: { size: 11 } }
-            },
-            scales: {
-                x: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { color: '#636366', font: { size: 9 }, maxTicksLimit: 8 } },
-                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 9 }, callback: v => '$' + Number(v).toFixed(0) } }
-            }
-        }
-    });
-}
-
-/* ─── 4. Importar trades al historial cerrado ─── */
-function importBacktestTrades() {
-    let raw;
-    try { raw = localStorage.getItem(BT_RESULTS_KEY); } catch(_) { return; }
-    if (!raw) { toast('Sin resultados de backtest', 'warn'); return; }
-
-    let res;
-    try { res = JSON.parse(raw); } catch(_) { toast('Resultados corruptos', 'error'); return; }
-    if (!res.trades || !res.trades.length) { toast('Backtest sin trades', 'warn'); return; }
-
-    const confirmed = confirm(
-        `Importar ${res.trades.length} trades simulados al historial cerrado?\n\n` +
-        `Expectancy: ${res.expectancy >= 0 ? '+' : ''}${res.expectancy.toFixed(2)}R\n` +
-        `Win rate: ${(res.wr * 100).toFixed(1)}%\n` +
-        `Max DD: -${res.maxDDPct.toFixed(1)}%\n\n` +
-        `Se marcarán con prefijo [BT] para distinguirlos de operaciones reales.`
-    );
-    if (!confirmed) return;
-
-    const current = loadClosedHistory();
-    let added = 0;
-    const stamp = Date.now();
-    for (const t of res.trades) {
-        const riskPerShare = t.entryPrice - t.stopPrice;
-        const exitPrice = t.entryPrice + t.rMult * riskPerShare;
-        current.push({
-            id: `bt_${stamp}_${added}_${Math.random().toString(36).slice(2,6)}`,
-            symbol: t.symbol,
-            shares: 1,
-            entry: t.entryPrice,
-            exit: exitPrice,
-            entryDate: t.entryDate,
-            closeDate: t.exitDate,
-            pnlPct: riskPerShare > 0 ? (t.rMult * riskPerShare / t.entryPrice) * 100 : 0,
-            pnlDollar: 0,
-            rMult: t.rMult,
-            setupId: t.setupId,
-            setupName: `[BT] ${t.setupId}`,
-            reason: `[backtest] ${t.exitReason}`,
-            journal: '',
-            regime: t.regime || null,
-            mae: t.maeR,
-            mfe: t.mfeR,
-            barsHeld: t.barsHeld,
-            telemetry: { source: 'backtest', quality: t.quality }
-        });
-        added++;
+window.addEventListener('message', function(ev) {
+    var msg = ev.data;
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'bt_ready') {
+        _btAnnounceCount++;
+        if (_btAnnounceCount > 8) return;
+        console.log('[sa] iframe listo (anuncio ' + _btAnnounceCount + ')');
+        _btReady = true;
+        _btPushToFrame();
+    } else if (msg.type === 'bt_ack') {
+        console.log('[sa] iframe confirmó init');
+    } else if (msg.type === 'bt_results') {
+    var summary = (msg.result && msg.result.summary) || {};
+    console.log('[sa] resultados recibidos:', summary.n != null ? summary.n : '?', 'trades');
+    if (summary.n != null && summary.exp != null) {
+        toast(
+            'Backtest: ' + summary.n + ' trades · ' +
+            (summary.exp >= 0 ? '+' : '') + summary.exp.toFixed(2) + 'R',
+            'success', 4000
+        );
     }
-    saveClosedHistory(current);
-    renderClosedHistory();
-    renderPerformance();
-    toast(`${added} trades importados al historial`, 'success', 4000);
 }
-
-/* ─── 5. Limpiar resultados ─── */
-function clearBacktestResults() {
-    if (!confirm('¿Borrar los resultados del backtest actual?')) return;
-    try {
-        localStorage.removeItem(BT_RESULTS_KEY);
-        localStorage.removeItem(BT_READY_KEY);
-    } catch(_) {}
-    loadBacktestResults();
-    toast('Resultados eliminados', 'success');
-}
-
-/* ─── 6. Auto-refresco cuando la pestaña del backtester escribe ─── */
-window.addEventListener('storage', (e) => {
-    if (e.key === BT_RESULTS_KEY && e.newValue) {
-        loadBacktestResults();
-        toast('Resultados de backtest recibidos', 'success', 2500);
-    }
 });
 
-// Refresco al volver el foco (por si storage event no dispara)
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-        const active = document.querySelector('.tab-panel.active');
-        if (active && active.dataset.tab === 'backtest') {
-            loadBacktestResults();
-        }
-    }
-});
-
-// Refresco también al cambiar a la pestaña backtest
 const _origShowMobileTab = showMobileTab;
 showMobileTab = function(name) {
     _origShowMobileTab(name);
     if (name === 'backtest') {
-        setTimeout(() => {
-            renderBtPreview();
-            loadBacktestResults();
-        }, 80);
+        setTimeout(function() { if (_btReady) _btPushToFrame(); }, 250);
     }
 };
-/* INIT */
+
 let appInitialized = false;
 function initApp() {
     if (appInitialized) return;
     appInitialized = true;
     try { showMobileTab("analysis"); } catch(e) { console.warn(e); }
-    try { renderBtPreview(); } catch(e) { console.warn(e); }
     try { loadBacktestResults(); } catch(e) { console.warn(e); }
     try { loadKey(); } catch(e) { console.warn(e); }
     try { loadGeminiConfig(); } catch(e) { console.warn(e); }
@@ -7032,79 +6839,438 @@ function initApp() {
             try { if (macdChart) macdChart.resize(); } catch(_) {}
         }, 150);
     });
-    console.log('%cStockAnalyzer Pro V4.9 — Sizing adaptativo + telemetría', 'color: #bf5af2; font-weight: bold;');
-}
-/* ═══ BACKTESTER IFRAME BRIDGE ═══ */
-var _btReady = false;
-var _btAnnounceCount = 0;
-
-function _btBuildPayload() {
-    var cfg = {
-        version: '4.9',
-        thresholds: getThresholds(),
-        context: getContextConfig(),
-        risk: getRiskConfig(),
-        setupsEnabled: { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true },
-        meta: { generatedAt: new Date().toISOString(), source: 'stockanalyzer', targetSymbol: currentChartSymbol || null }
-    };
-    var data = {};
-    if (Array.isArray(spyDataCache) && spyDataCache.length >= 250) data['SPY'] = spyDataCache;
-    if (currentChartSymbol && lastFetchedData && lastFetchedData[currentChartSymbol] && lastFetchedData[currentChartSymbol].length >= 250) {
-        data[currentChartSymbol] = lastFetchedData[currentChartSymbol];
-    }
-    for (var s in (lastFetchedData || {})) {
-        if (!lastFetchedData.hasOwnProperty(s)) continue;
-        if (Object.keys(data).length >= 7) break;
-        if (data[s]) continue;
-        if (Array.isArray(lastFetchedData[s]) && lastFetchedData[s].length >= 250) data[s] = lastFetchedData[s];
-    }
-    return { cfg: cfg, data: data };
+    console.log('%cStockAnalyzer Pro V4.9.1 — fixes: tiebreak, telemetría numérica, isRealTrade', 'color: #bf5af2; font-weight: bold;');
 }
 
-function _btPushToFrame() {
-    var frame = document.getElementById('btFrame');
-    if (!frame || !frame.contentWindow) return;
-    var payload = _btBuildPayload();
-    console.log('[sa] push al iframe:', Object.keys(payload.data), 'símbolos');
-
-    // Sin avisos: si faltan datos, simplemente no se envía nada al iframe.
-    if (!payload.data['SPY']) return;
-    if (Object.keys(payload.data).length < 2) return;
-
-    try {
-        frame.contentWindow.postMessage({ type: 'sa_bt_init', cfg: payload.cfg, data: payload.data }, '*');
-    } catch(e) {
-        console.error('[sa] postMessage error:', e);
-    }
+function loadGeminiConfig() {
+    const k = document.getElementById('geminiKey'); if (k) k.value = getGeminiKey();
+    const m = document.getElementById('geminiMaxTickers'); if (m) m.value = getGeminiMaxTickers();
+    const a = document.getElementById('geminiAuto'); if (a) a.checked = getGeminiAuto();
+}
+function saveGeminiConfig() {
+    const k = document.getElementById('geminiKey')?.value || '';
+    const m = parseInt(document.getElementById('geminiMaxTickers')?.value);
+    const a = document.getElementById('geminiAuto')?.checked;
+    if (k) trySave(GEMINI_KEY_STORAGE, k);
+    if (isFinite(m) && m > 0 && m <= 20) trySave(GEMINI_MAX_TICKERS_STORAGE, m);
+    trySave(GEMINI_AUTO_STORAGE, a ? '1' : '0');
+    toast('Configuración IA guardada', 'success');
 }
 
-window.addEventListener('message', function(ev) {
-    var msg = ev.data;
-    if (!msg || typeof msg !== 'object') return;
-    if (msg.type === 'bt_ready') {
-        _btAnnounceCount++;
-        if (_btAnnounceCount > 8) return;
-        console.log('[sa] iframe listo (anuncio ' + _btAnnounceCount + ')');
-        _btReady = true;
-        _btPushToFrame();
-    } else if (msg.type === 'bt_ack') {
-        console.log('[sa] iframe confirmó init');
-    } else if (msg.type === 'bt_results') {
-        console.log('[sa] resultados recibidos:', msg.result && msg.result.n, 'trades');
-        toast('Backtest: ' + msg.result.n + ' trades · ' + (msg.result.exp >= 0 ? '+' : '') + msg.result.exp.toFixed(2) + 'R', 'success', 4000);
-    }
-});
-
-var _origShowMobileTab_bridge = showMobileTab;
-showMobileTab = function(name) {
-    _origShowMobileTab(name);
-    if (name === 'backtest') {
-        setTimeout(function() { if (_btReady) _btPushToFrame(); }, 250);
-    }
-};
+function loadBacktestResults() { /* no-op en esta versión, el iframe gestiona sus propios resultados */ }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
 else boot();
+</script>
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   HOME DASHBOARD · v4 (directo, sin caché al arrancar)
+   Al entrar: fetch SPY + EUR/USD + cada ticker de cartera → TwelveData.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+
+const LOG = function(){
+    const a = Array.prototype.slice.call(arguments);
+    a.unshift('%c[home]', 'background:#32d4e0;color:#000;font-weight:bold;padding:2px 6px;border-radius:3px');
+    console.log.apply(console, a);
+};
+LOG('v4 cargado');
+
+/* ─── 1. Neutralizar carga de snapshot viejo (lo más importante) ─── */
+// Se ejecuta YA, antes de que initApp corra, para que ningún dato
+// guardado en localStorage se meta en lastSymbolsData al arrancar.
+function killSnapshot(){
+    if (typeof window.loadPriceSnapshot === 'function') {
+        window.loadPriceSnapshot = function(){};
+        LOG('loadPriceSnapshot neutralizado');
+        return true;
+    }
+    return false;
+}
+killSnapshot();
+const _killTimer = setInterval(function(){
+    if (killSnapshot()) clearInterval(_killTimer);
+}, 50);
+setTimeout(function(){ clearInterval(_killTimer); }, 5000);
+
+/* ─── 2. CSS ─── */
+function injectCSS(){
+    if (document.getElementById('home-css')) return;
+    const s = document.createElement('style');
+    s.id = 'home-css';
+    s.textContent = `
+    .home-hero{background:linear-gradient(135deg,rgba(50,212,224,.10),rgba(50,212,224,.02));border:1px solid rgba(50,212,224,.28);border-radius:16px;padding:18px;margin-bottom:12px}
+    .home-hero.neg{background:linear-gradient(135deg,rgba(255,69,58,.10),rgba(255,69,58,.02));border-color:rgba(255,69,58,.32)}
+    .home-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#636366;font-weight:700}
+    .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+    .home-card{background:#1c1c1e;border-radius:16px;padding:14px}
+    .home-card.wide{grid-column:1/-1}
+    .home-value{font-size:24px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1;margin-top:4px}
+    .home-change{font-size:12.5px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}
+    .home-change.pos{color:#30d158}.home-change.neg{color:#ff453a}
+    .home-sub{font-size:10.5px;color:#636366;margin-top:6px}
+    .home-metric{display:flex;justify-content:space-between;font-size:11.5px;padding:4px 0;color:#8e8e93;border-bottom:1px solid rgba(255,255,255,.04)}
+    .home-metric:last-child{border-bottom:none}
+    .home-metric b{color:#fff;font-weight:700}
+    @keyframes home-spin{to{transform:rotate(360deg)}}
+    @media (max-width:520px){.home-value{font-size:21px}.home-hero{padding:14px}}
+    `;
+    document.head.appendChild(s);
+    LOG('CSS inyectado');
+}
+
+/* ─── 3. Panel + botón ─── */
+function injectPanel(){
+    if (document.getElementById('home-panel')) return true;
+    const content = document.querySelector('.content');
+    if (!content) return false;
+    const p = document.createElement('div');
+    p.id = 'home-panel';
+    p.className = 'tab-panel';
+    p.setAttribute('data-tab', 'home');
+    p.innerHTML = '<div id="homeDashboard"></div>';
+    content.insertBefore(p, content.firstChild);
+    LOG('panel inyectado');
+    return true;
+}
+function injectTabButton(){
+    if (document.querySelector('[data-tab-btn="home"]')) return true;
+    const tabbar = document.querySelector('.tabbar');
+    if (!tabbar) return false;
+    const b = document.createElement('button');
+    b.className = 'tab-btn';
+    b.setAttribute('data-tab-btn', 'home');
+    b.innerHTML = '<span class="label">Inicio</span>';
+    b.addEventListener('click', function(e){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        showHome();
+    }, true);
+    tabbar.insertBefore(b, tabbar.firstChild);
+    tabbar.style.gridTemplateColumns = 'repeat(' + tabbar.children.length + ', 1fr)';
+    LOG('botón inyectado · tabbar con', tabbar.children.length, 'hijos');
+    return true;
+}
+
+/* ─── 4. Fetch cotización ─── */
+async function fetchQuote(symbol, key){
+    // Reusar spyDataCache si ya está en memoria (evita llamada extra)
+    if (symbol === 'SPY' && Array.isArray(window.spyDataCache) && window.spyDataCache.length > 20) {
+        const d = window.spyDataCache;
+        const l = d[d.length-1], pv = d[d.length-2];
+        LOG('SPY desde spyDataCache');
+        return {
+            price: l.close,
+            change: pv && pv.close > 0 ? ((l.close - pv.close) / pv.close) * 100 : 0,
+            changeAbs: pv ? l.close - pv.close : 0,
+            dayHigh: l.high, dayLow: l.low
+        };
+    }
+    const url = 'https://api.twelvedata.com/quote?symbol=' + encodeURIComponent(symbol) + '&apikey=' + key;
+    if (typeof window.apiGate === 'function') await window.apiGate();
+    const r = await fetch(url);
+    const d = await r.json();
+    if (!d || d.status === 'error' || !d.close) throw new Error((d && d.message) || 'sin datos');
+    LOG(symbol + ' desde API');
+    return {
+        price: parseFloat(d.close),
+        change: parseFloat(d.percent_change),
+        changeAbs: parseFloat(d.change),
+        dayHigh: parseFloat(d.high),
+        dayLow: parseFloat(d.low)
+    };
+}
+
+/* ─── 5. showHome: LA función que hace todo ─── */
+let busy = false;
+async function showHome(){
+    // Activar panel
+    document.querySelectorAll('.tab-panel').forEach(function(p){
+        p.classList.toggle('active', p.getAttribute('data-tab') === 'home');
+    });
+    document.querySelectorAll('.tab-btn').forEach(function(b){
+        b.classList.toggle('active', b.getAttribute('data-tab-btn') === 'home');
+    });
+    const sa = document.getElementById('scrollArea');
+    if (sa) sa.scrollTop = 0;
+
+    if (busy) { LOG('showHome: ya en curso'); return; }
+    busy = true;
+
+    // Spinner
+    const el = document.getElementById('homeDashboard');
+    if (el) {
+        el.innerHTML = '<div class="empty-state" style="padding:48px 16px;text-align:center;color:#8e8e93;">'
+            + '<span class="icon" style="display:inline-block;animation:home-spin 1s linear infinite;font-size:28px;">⟳</span>'
+            + '<br>Cargando precios actuales…</div>';
+    }
+
+    const key = localStorage.getItem('td_key') || (document.getElementById('apikey') || {}).value;
+    if (!key) {
+        LOG('showHome: sin API key');
+        busy = false;
+        renderHome();
+        return;
+    }
+
+    try {
+        // ── 1) SPY + EUR/USD (los pido yo, para las tarjetas del Home) ──
+        LOG('fetch SPY + EUR/USD…');
+        const [spy, eur] = await Promise.all([
+            fetchQuote('SPY', key).catch(function(e){ LOG('SPY error', e.message); return null; }),
+            fetchQuote('EUR/USD', key).catch(function(e){ LOG('EUR/USD error', e.message); return null; })
+        ]);
+        window.__homeMarket = { spy: spy, eurusd: eur, ts: Date.now() };
+        LOG('mercado OK', { spy: spy && spy.price, eur: eur && eur.price });
+
+        // ── 2) Cartera abierta: DELEGAR a refreshPortfolioPrices() ──
+        // Esta función del script principal actualiza correctamente
+        // lastSymbolsData y lastFetchedData (que son `let`, no window.*)
+        // y luego llama a renderManualPositions + renderPortfolioHeat.
+        if (typeof window.refreshPortfolioPrices === 'function') {
+            LOG('delegando cartera a refreshPortfolioPrices()…');
+            try {
+                await window.refreshPortfolioPrices();
+                LOG('cartera actualizada desde TwelveData');
+            } catch(e) {
+                LOG('refreshPortfolioPrices error:', e.message || e);
+            }
+        } else {
+            LOG('refreshPortfolioPrices no disponible');
+        }
+
+        // ── 3) Render del Home con datos frescos ──
+        renderHome();
+        LOG('showHome: terminado');
+
+    } catch(e) {
+        LOG('showHome error general:', e.message || e);
+        renderHome();
+    }
+    busy = false;
+}
+/* ─── 6. Render del Home ─── */
+function renderHome(){
+    const el = document.getElementById('homeDashboard');
+    if (!el) return;
+
+    const bal = (typeof window.computePortfolioBalance === 'function')
+        ? window.computePortfolioBalance()
+        : { openCost:0, openValue:0, openPnl:0, openPnlPct:0, realizedPnl:0, realizedR:0, totalPnl:0, totalPnlPct:0, positionsCount:0, positionsWithPrice:0, closedCount:0 };
+
+    const closed = (typeof window.loadClosedHistory === 'function')
+        ? window.loadClosedHistory().filter(function(h){
+            return typeof window.isRealTrade === 'function' ? window.isRealTrade(h) : true;
+        })
+        : [];
+    const wins = closed.filter(function(h){ return (h.rMult || 0) > 0; }).length;
+    const wr = closed.length ? (wins / closed.length * 100) : 0;
+
+    const mkt = window.__homeMarket || {};
+    const spy = mkt.spy;
+    const eur = mkt.eurusd;
+
+    const cT  = bal.totalPnl    >= 0 ? '#30d158' : '#ff453a';
+    const cO  = bal.openPnl     >= 0 ? '#30d158' : '#ff453a';
+    const cR  = bal.realizedPnl >= 0 ? '#30d158' : '#ff453a';
+    const cRR = bal.realizedR   >= 0 ? '#30d158' : '#ff453a';
+
+    function sgnD(v){ return (v >= 0 ? '+' : '−') + '$' + Math.abs(v).toFixed(2); }
+    function sgnP(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%'; }
+    function sgnR(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + 'R'; }
+
+    const g = (typeof window.getGreeting === 'function') ? window.getGreeting() : 'Hola';
+    const todayStr = new Date().toLocaleDateString('es-ES', { weekday:'long', day:'2-digit', month:'long' });
+
+    let h = '';
+
+    // HERO
+    h += '<div class="home-hero ' + (bal.totalPnl >= 0 ? '' : 'neg') + '">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">';
+    h += '<div><div class="home-label">' + g + ' · Resumen del sistema</div>';
+    h += '<div style="font-size:11px;color:#636366;margin-top:2px;">' + todayStr + '</div></div>';
+    h += '<button id="homeRefreshBtn" style="width:auto;margin:0;padding:6px 12px;min-height:32px;font-size:12px;background:rgba(50,212,224,.12);color:#32d4e0;font-weight:600;border:none;border-radius:8px;cursor:pointer;">↻</button>';
+    h += '</div>';
+    h += '<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:14px;">';
+    h += '<div><div class="home-label">P&L Total (abierto + realizado)</div>';
+    h += '<div style="font-size:32px;font-weight:800;letter-spacing:-.04em;color:' + cT + ';font-variant-numeric:tabular-nums;line-height:1.1;margin-top:2px;">' + sgnD(bal.totalPnl) + '</div>';
+    if (bal.openCost > 0) {
+        h += '<div class="home-change ' + (bal.totalPnlPct >= 0 ? 'pos' : 'neg') + '" style="font-size:12px;margin-top:4px;">' + sgnP(bal.totalPnlPct) + ' sobre coste abierto</div>';
+    }
+    h += '</div>';
+    h += '<div style="text-align:right;"><div class="home-label">R acumulado</div>';
+    h += '<div style="font-size:20px;font-weight:800;color:' + cRR + ';font-variant-numeric:tabular-nums;">' + sgnR(bal.realizedR) + '</div>';
+    h += '<div style="font-size:10.5px;color:#636366;margin-top:2px;">' + closed.length + ' ops cerradas</div></div>';
+    h += '</div></div>';
+
+    // GRID MARKET
+    h += '<div class="home-grid">';
+
+    // SPY
+    h += '<div class="home-card"><div class="home-label">SPY · S&P 500</div>';
+    if (spy) {
+        const cls = spy.change >= 0 ? 'pos' : 'neg';
+        h += '<div class="home-value">$' + spy.price.toFixed(2) + '</div>';
+        h += '<div class="home-change ' + cls + '">' + (spy.change >= 0 ? '+' : '') + spy.change.toFixed(2) + '% <span style="color:#636366;font-weight:500;">· ' + (spy.changeAbs >= 0 ? '+' : '') + '$' + spy.changeAbs.toFixed(2) + '</span></div>';
+        h += '<div class="home-sub">H $' + (spy.dayHigh != null ? spy.dayHigh.toFixed(2) : '—') + ' · L $' + (spy.dayLow != null ? spy.dayLow.toFixed(2) : '—') + '</div>';
+    } else {
+        h += '<div class="home-value" style="color:#636366;">—</div><div class="home-sub">Sin datos</div>';
+    }
+    h += '</div>';
+
+    // EUR/USD
+    h += '<div class="home-card"><div class="home-label">EUR / USD</div>';
+    if (eur) {
+        const cls = eur.change >= 0 ? 'pos' : 'neg';
+        h += '<div class="home-value">' + eur.price.toFixed(4) + '</div>';
+        h += '<div class="home-change ' + cls + '">' + (eur.change >= 0 ? '+' : '') + eur.change.toFixed(2) + '%</div>';
+        let sub = '1 EUR = ' + eur.price.toFixed(4) + ' USD';
+        if (bal.totalPnl && eur.price > 0) sub += ' · ≈ ' + (bal.totalPnl / eur.price).toFixed(2) + ' €';
+        h += '<div class="home-sub">' + sub + '</div>';
+    } else {
+        h += '<div class="home-value" style="color:#636366;">—</div><div class="home-sub">Sin datos</div>';
+    }
+    h += '</div>';
+
+    h += '</div>';
+
+    // CARTERA ABIERTA
+    h += '<div class="home-card wide" style="margin-bottom:12px;">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+    h += '<div class="home-label">Cartera abierta</div>';
+    h += '<div style="font-size:11px;color:#636366;">' + bal.positionsCount + ' pos' + (bal.positionsCount === 1 ? '' : 'iciones') + (bal.positionsWithPrice < bal.positionsCount ? ' · ' + bal.positionsWithPrice + ' con precio' : '') + '</div>';
+    h += '</div>';
+    h += '<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
+    h += '<div style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:' + cO + ';font-variant-numeric:tabular-nums;">' + sgnD(bal.openPnl) + '</div>';
+    if (bal.openCost > 0) h += '<div style="font-size:14px;font-weight:600;color:' + cO + ';font-variant-numeric:tabular-nums;">' + sgnP(bal.openPnlPct) + '</div>';
+    h += '</div>';
+    h += '<div class="home-metric"><span>Coste en posiciones</span><b>$' + bal.openCost.toFixed(2) + '</b></div>';
+    h += '<div class="home-metric"><span>Valor actual</span><b>$' + bal.openValue.toFixed(2) + '</b></div>';
+    if (bal.positionsCount > 0) {
+        h += '<div class="home-metric"><span>Ver cartera</span><b id="goPortfolio" style="color:#32d4e0;cursor:pointer;font-weight:600;">Abrir →</b></div>';
+    }
+    h += '</div>';
+
+    // POSICIONES CERRADAS
+    h += '<div class="home-card wide" style="margin-bottom:12px;">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">';
+    h += '<div class="home-label">Posiciones cerradas</div>';
+    h += '<div style="font-size:11px;color:#636366;">' + closed.length + ' ops · WR ' + wr.toFixed(0) + '%</div>';
+    h += '</div>';
+    h += '<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px;">';
+    h += '<div style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:' + cR + ';font-variant-numeric:tabular-nums;">' + sgnD(bal.realizedPnl) + '</div>';
+    h += '</div>';
+    h += '<div class="home-metric"><span>R acumulado</span><b style="color:' + cRR + ';">' + sgnR(bal.realizedR) + '</b></div>';
+    h += '<div class="home-metric"><span>Win rate</span><b>' + wr.toFixed(1) + '%</b></div>';
+    h += '<div class="home-metric"><span>Ganadoras / perdedoras</span><b>' + wins + ' / ' + (closed.length - wins) + '</b></div>';
+    if (closed.length > 0) {
+        h += '<div class="home-metric"><span>Ver rendimiento</span><b id="goPerf" style="color:#32d4e0;cursor:pointer;font-weight:600;">Abrir →</b></div>';
+    }
+    h += '</div>';
+
+    // BOTONES
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+    h += '<button id="homeRefreshBtn2" style="margin:0;background:rgba(50,212,224,.12);color:#32d4e0;font-weight:600;font-size:13px;border:none;border-radius:10px;padding:12px;min-height:44px;cursor:pointer;">↻ Actualizar</button>';
+    h += '<button id="goAnalysis" style="margin:0;font-size:13px;border:none;border-radius:10px;padding:12px;min-height:44px;background:#2c2c2e;color:#fff;cursor:pointer;">Ir a Análisis →</button>';
+    h += '</div>';
+
+    el.innerHTML = h;
+
+    ['homeRefreshBtn','homeRefreshBtn2'].forEach(function(id){
+        const b = document.getElementById(id);
+        if (b) b.addEventListener('click', function(){ showHome(); });
+    });
+    const gp = document.getElementById('goPortfolio');
+    if (gp) gp.addEventListener('click', function(){ if (window.showMobileTab) window.showMobileTab('portfolio'); });
+    const gpf = document.getElementById('goPerf');
+    if (gpf) gpf.addEventListener('click', function(){ if (window.showMobileTab) window.showMobileTab('performance'); });
+    const ga = document.getElementById('goAnalysis');
+    if (ga) ga.addEventListener('click', function(){ if (window.showMobileTab) window.showMobileTab('analysis'); });
+}
+
+window.__homeShow = showHome;
+
+/* ─── 7. Interceptar showMobileTab: la llamada a "analysis" → home ─── */
+function interceptShow(){
+    if (window.__homeShowWrapped) return;
+    if (typeof window.showMobileTab !== 'function') return;
+    const orig = window.showMobileTab;
+    window.showMobileTab = function(name){
+        // Si el usuario pulsa Análisis manualmente, respetarlo
+        if (name === 'analysis' && window.__homeUserTouched) {
+            return orig.call(this, name);
+        }
+        // Primera llamada automática de initApp → redirigir a home
+        if (name === 'analysis' && !window.__homeShownOnce) {
+            window.__homeShownOnce = true;
+            LOG('interceptada initApp → showHome()');
+            showHome();
+            return;
+        }
+        orig.call(this, name);
+    };
+    window.__homeShowWrapped = true;
+    LOG('showMobileTab interceptado');
+}
+
+// Marcar interacción del usuario con cualquier tab distinto de home
+document.addEventListener('click', function(e){
+    const btn = e.target.closest && e.target.closest('.tab-btn');
+    if (btn && btn.getAttribute('data-tab-btn') !== 'home') {
+        window.__homeUserTouched = true;
+    }
+}, true);
+
+/* ─── 8. Inyección + arranque ─── */
+let injected = false;
+let tries = 0;
+function tick(){
+    tries++;
+    if (tries > 120) {
+        console.warn('[home] timeout');
+        return;
+    }
+    if (!injected) {
+        injectCSS();
+        const okPanel = injectPanel();
+        const okBtn = injectTabButton();
+        injected = okPanel && okBtn;
+        if (injected) {
+            LOG('inyección OK tras', tries, 'intentos');
+            interceptShow();
+            // Si la app ya está desbloqueada (recarga rápida), mostrar ya
+            if (document.body.classList.contains('unlocked') && !window.__homeShownOnce) {
+                window.__homeShownOnce = true;
+                showHome();
+            }
+        } else {
+            setTimeout(tick, 100);
+        }
+    }
+}
+tick();
+
+// Cuando la app se desbloquee → mostrar Home con datos frescos
+const obs = new MutationObserver(function(){
+    if (document.body.classList.contains('unlocked') && !window.__homeShownOnce) {
+        window.__homeShownOnce = true;
+        LOG('body.unlocked → showHome()');
+        showHome();
+    }
+});
+obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+// Red de seguridad por si algo falla
+setTimeout(function(){
+    if (document.body.classList.contains('unlocked') && !window.__homeShownOnce) {
+        window.__homeShownOnce = true;
+        LOG('fallback 5s → showHome()');
+        showHome();
+    }
+}, 5000);
+
+})();
 </script>
 </body>
 </html>
