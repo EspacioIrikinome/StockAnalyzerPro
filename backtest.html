@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Backtest</title>
+<title>Backtest walk-forward</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-:root{--bg:#000;--card:#1c1c1e;--elev:#2c2c2e;--border:#38383a;--text:#fff;--text-2:#8e8e93;--text-3:#636366;--green:#30d158;--red:#ff453a;--orange:#ff9f0a;--blue:#32d4e0}
+:root{--bg:#000;--card:#1c1c1e;--elev:#2c2c2e;--border:#38383a;--text:#fff;--text-2:#8e8e93;--text-3:#636366;--green:#30d158;--red:#ff453a;--orange:#ff9f0a;--blue:#32d4e0;--purple:#bf5af2}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.45}
-.wrap{max-width:1000px;margin:0 auto;padding:16px}
+.wrap{max-width:1040px;margin:0 auto;padding:16px}
 h1{font-size:20px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
 h2{font-size:14px;font-weight:700;margin:0 0 4px}
 .sub{font-size:11px;color:var(--text-2);margin:0 0 14px}
@@ -52,25 +52,36 @@ td:first-child{text-align:left}
 .mode{display:inline-block;padding:3px 8px;background:var(--elev);border-radius:6px;font-size:10px;font-weight:600;color:var(--text-2);margin-bottom:10px}
 .mode.live{background:rgba(48,209,88,.15);color:var(--green)}
 .cfg-badge{display:inline-block;padding:3px 8px;background:var(--elev);border-radius:6px;font-size:10px;font-weight:600;color:var(--text-2);margin:0 4px 4px 0}
+.tabs{display:flex;gap:6px;margin-bottom:10px;border-bottom:1px solid var(--border)}
+.tab{padding:8px 12px;font-size:12px;font-weight:600;color:var(--text-2);background:transparent;border:none;border-bottom:2px solid transparent;border-radius:0;cursor:pointer;min-height:auto}
+.tab.active{color:var(--text);border-bottom-color:var(--blue)}
+.tab:hover{background:transparent;color:var(--text)}
+.wf-fold{background:var(--elev);border-radius:10px;padding:10px;margin-bottom:6px;font-size:11px}
+.wf-fold .head{display:flex;justify-content:space-between;font-weight:700;margin-bottom:4px}
+.wf-fold .body{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-variant-numeric:tabular-nums}
+.wf-fold .lbl{font-size:9px;color:var(--text-3);text-transform:uppercase}
+.pill{display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;margin-left:4px}
+.pill.on{background:rgba(48,209,88,.15);color:var(--green)}
+.pill.off{background:rgba(255,69,58,.15);color:var(--red)}
 </style>
 </head>
 <body>
 <div class="wrap">
     <h1>Backtest walk-forward</h1>
-    <p class="sub">Sin lookahead · slippage + comisiones · reutiliza la lógica del motor</p>
+    <p class="sub">Motor de validación · sin lookahead · costes de ejecución · partición in-sample / out-of-sample</p>
 
     <div id="modeBox" style="margin-bottom:10px;"><span class="mode" id="modeLabel">Esperando datos…</span></div>
 
     <div class="card">
-        <h2>Config</h2>
+        <h2>Configuración recibida</h2>
         <div id="cfgSummary" class="sub" style="margin:6px 0 0;">—</div>
     </div>
 
     <div class="card" id="dataCard">
         <h2>Datos</h2>
-        <p class="sub">Necesitas SPY + al menos 1 ticker. CSV con datetime,open,high,low,close,volume</p>
+        <p class="sub">Se requiere SPY más al menos un ticker. CSV con columnas datetime, open, high, low, close, volume.</p>
         <div class="drop" id="drop" onclick="document.getElementById('fileInput').click()">
-            Arrastra CSVs aquí o pulsa para seleccionar
+            Arrastrar CSVs aquí o pulsar para seleccionar
         </div>
         <input type="file" id="fileInput" accept=".csv" multiple style="display:none"/>
         <div id="chips" style="min-height:20px;margin-bottom:6px;"><span style="font-size:11px;color:var(--text-3);">Sin datos cargados</span></div>
@@ -78,37 +89,73 @@ td:first-child{text-align:left}
 
     <div class="card">
         <h2>Parámetros de ejecución</h2>
-        <div class="row c2">
-            <div><label>Capital ($)</label><input type="number" id="pCapital" value="10000" step="any"/></div>
-            <div><label>Riesgo/trade (%)</label><input type="number" id="pRisk" value="1" step="0.1"/></div>
+        <div class="row c3">
+            <div><label>Capital inicial ($)</label><input type="number" id="pCapital" value="10000" step="any"/></div>
+            <div><label>Riesgo por operación (%)</label><input type="number" id="pRisk" value="1.5" step="0.1"/></div>
+            <div><label>Heat agregado máximo (%)</label><input type="number" id="pMaxHeat" value="8" step="0.5"/></div>
+        </div>
+        <div class="row c3">
+            <div><label>Posiciones máximas</label><input type="number" id="pMaxPos" value="10" step="1"/></div>
+            <div><label>Entradas por barra</label><input type="number" id="pMaxEntries" value="3" step="1"/></div>
+            <div><label>Máx. notional por posición (%)</label><input type="number" id="pMaxNotional" value="15" step="1"/></div>
         </div>
         <div class="row c3">
             <div><label>Slippage (bps)</label><input type="number" id="pSlip" value="5" step="1"/></div>
-            <div><label>Comisión ($)</label><input type="number" id="pComm" value="2" step="0.5"/></div>
+            <div><label>Comisión ($ por operación)</label><input type="number" id="pComm" value="2" step="0.5"/></div>
             <div><label>Time stop (barras)</label><input type="number" id="pMaxBars" value="20" step="1"/></div>
         </div>
-        <button class="primary" id="runBtn" onclick="runBacktest()" style="width:100%;margin-top:6px;">Ejecutar backtest</button>
+        <div class="row c3">
+            <div><label>Score de régimen mínimo</label><input type="number" id="pMinRegime" value="20" step="1"/></div>
+            <div><label>Percentil RS mínimo (0-1)</label><input type="number" id="pMinRs" value="0.40" step="0.05"/></div>
+            <div><label>Calidad mínima de setup</label><input type="number" id="pMinQ" value="40" step="1"/></div>
+        </div>
+        <div class="row c3">
+            <div><label>Particiones walk-forward</label><input type="number" id="pWfFolds" value="4" step="1"/></div>
+            <div><label>Ratio entrenamiento (%)</label><input type="number" id="pWfTrain" value="70" step="5"/></div>
+            <div><label>Mínimo de trades por partición</label><input type="number" id="pWfMinTrades" value="10" step="1"/></div>
+        </div>
+        <div class="row c2" style="margin-top:6px;">
+            <button class="primary" id="runBtn" onclick="runBacktest()">Ejecutar backtest (muestra completa)</button>
+            <button id="wfBtn" onclick="runWalkForward()">Ejecutar walk-forward</button>
+        </div>
         <div class="status" id="status"></div>
     </div>
 
     <div class="card" id="resultsCard" style="display:none;">
-        <h2>Resultados</h2>
+        <h2>Resultados · muestra completa</h2>
         <p class="sub" id="resultsSub"></p>
+
         <div class="grid4" id="metrics"></div>
-        <div class="grid3" id="metrics2"></div>
+        <div class="grid4" id="metrics2"></div>
+        <div class="grid3" id="metrics3"></div>
+
         <div class="chart-box"><canvas id="eqChart"></canvas></div>
-        <div id="bySetup" style="margin-top:12px;"></div>
-        <div class="hint">
-            <b>Lectura honesta.</b> Si el IC95% de la expectancy cruza cero, no hay edge demostrable con esta muestra. Bajo 30 trades no es significativo.
+
+        <div class="tabs" style="margin-top:14px;">
+            <button class="tab active" data-tab="setup" onclick="switchTab('setup')">Por setup</button>
+            <button class="tab" data-tab="regime" onclick="switchTab('regime')">Por régimen</button>
+            <button class="tab" data-tab="symbol" onclick="switchTab('symbol')">Por símbolo</button>
+            <button class="tab" data-tab="exit" onclick="switchTab('exit')">Por salida</button>
         </div>
+        <div id="breakdown"></div>
+
+        <div class="hint" id="verdict"></div>
+    </div>
+
+    <div class="card" id="wfCard" style="display:none;">
+        <h2>Resultados · walk-forward</h2>
+        <p class="sub" id="wfSub"></p>
+        <div class="grid4" id="wfMetrics"></div>
+        <div id="wfFolds" style="margin-top:10px;"></div>
+        <div class="hint" id="wfVerdict"></div>
     </div>
 
     <div class="card" id="tradesCard" style="display:none;">
-        <h2>Trades</h2>
+        <h2>Operaciones</h2>
         <p class="sub" id="tradesSub"></p>
         <div class="row c2" style="margin-bottom:8px;">
             <button onclick="exportCSV()">Exportar CSV</button>
-            <button onclick="sendResultsToParent()" id="sendBtn" style="display:none;background:rgba(50,212,224,.12);color:var(--blue);">Enviar al principal</button>
+            <button onclick="sendResultsToParent()" id="sendBtn" style="background:rgba(50,212,224,.12);color:var(--blue);">Enviar al sistema principal</button>
         </div>
         <div id="tradesList" style="max-height:400px;overflow-y:auto;"></div>
     </div>
@@ -116,22 +163,53 @@ td:first-child{text-align:left}
 
 <script>
 /* ══════════════════════════════════════════════════════════════════════════
-   BACKTEST ENGINE
+   ESTADO Y PROTOCOLO DE MENSAJES
    ══════════════════════════════════════════════════════════════════════════ */
-const CFG_KEY = 'sa_bt_config';
+const CFG_KEY = 'sa_bt_config_v2';
 const IN_IFRAME = window.parent && window.parent !== window;
 let DATASETS = {};
 let LAST = null;
+let LAST_WF = null;
 let CFG = null;
 let eqChart = null;
-
-function notifyParent(type, payload) {
-    if (!IN_IFRAME) return;
-    try { window.parent.postMessage(Object.assign({ type: type }, payload || {}), '*'); } catch(_) {}
-}
-
 let _initReceived = false;
 let _announceTimer = null;
+let SECTORS = {};
+let SECTOR_MAP = {};
+let EARNINGS = {};
+let TIER2_WEIGHTS_OVERRIDE = null;
+
+window.__btDiag = {
+    bars: 0, inUniverse: 0, rsFail: 0, rsPass: 0,
+    regimeFail: 0, regimePass: 0,
+    candidates: 0, entries: 0,
+    bySetup: {},
+    byReject: {}
+};
+const TIER2_WEIGHTS_DEFAULT = {
+    volume: 0.25,
+    rs:     0.30,
+    mtf:    0.25,
+    health: 0.20
+};
+
+function getTier2Weights() {
+    if (TIER2_WEIGHTS_OVERRIDE) return TIER2_WEIGHTS_OVERRIDE;
+    try {
+        const raw = localStorage.getItem('sa_tier2_weights');
+        if (raw) {
+            const w = JSON.parse(raw);
+            const sum = Object.keys(w).reduce(function (a, k) { return a + w[k]; }, 0);
+            if (Math.abs(sum - 1) < 0.01) return w;
+        }
+    } catch (_) {}
+    return TIER2_WEIGHTS_DEFAULT;
+}
+function notifyParent(type, payload) {
+    if (!IN_IFRAME) return;
+    try { window.parent.postMessage(Object.assign({ type: type }, payload || {}), '*'); } catch (_) {}
+}
+
 function announceReady() {
     if (_initReceived) { clearInterval(_announceTimer); return; }
     notifyParent('bt_ready');
@@ -139,30 +217,53 @@ function announceReady() {
 function startAnnouncing() {
     announceReady();
     _announceTimer = setInterval(announceReady, 700);
-    setTimeout(function() { clearInterval(_announceTimer); }, 15000);
+    setTimeout(function () { clearInterval(_announceTimer); }, 15000);
 }
 
-window.addEventListener('message', function(ev) {
-    var msg = ev.data;
+window.addEventListener('message', function (ev) {
+    const msg = ev.data;
     if (!msg || typeof msg !== 'object') return;
     if (msg.type !== 'sa_bt_init') return;
 
     _initReceived = true;
     clearInterval(_announceTimer);
-    console.log('[bt] init recibido ·', Object.keys(msg.data || {}).length, 'símbolos');
 
     if (msg.cfg) {
         CFG = msg.cfg;
-        try { localStorage.setItem(CFG_KEY, JSON.stringify(msg.cfg)); } catch(_) {}
+        try { localStorage.setItem(CFG_KEY, JSON.stringify(msg.cfg)); } catch (_) {}
         renderCfgSummary(msg.cfg);
-    }
+        applyCfgToForm(msg.cfg);
 
+        if (msg.cfg.tier2Weights && typeof msg.cfg.tier2Weights === 'object') {
+            const w = msg.cfg.tier2Weights;
+            const sum = Object.keys(w).reduce(function (a, k) { return a + w[k]; }, 0);
+            if (Math.abs(sum - 1) < 0.01) {
+                TIER2_WEIGHTS_OVERRIDE = w;
+                console.log('[bt] tier2 weights recibidos:', w);
+            } else {
+                console.warn('[bt] tier2 weights inválidos (suma != 1), usando defaults');
+            }
+        }
+    }
+    if (msg.sectorMap && typeof msg.sectorMap === 'object') {
+        SECTOR_MAP = {};
+        let mOk = 0;
+        for (const sym in msg.sectorMap) {
+            if (!Object.prototype.hasOwnProperty.call(msg.sectorMap, sym)) continue;
+            const etf = msg.sectorMap[sym];
+            if (typeof etf === 'string' && etf.length) {
+                SECTOR_MAP[sym] = etf;
+                mOk++;
+            }
+        }
+        console.log('[bt] sectorMap recibido:', mOk, SECTOR_MAP);
+    }
     if (msg.data) {
         DATASETS = {};
-        var ok = 0;
-        for (var sym in msg.data) {
-            if (!msg.data.hasOwnProperty(sym)) continue;
-            var bars = msg.data[sym];
+        let ok = 0;
+        for (const sym in msg.data) {
+            if (!Object.prototype.hasOwnProperty.call(msg.data, sym)) continue;
+            const bars = msg.data[sym];
             if (Array.isArray(bars) && bars.length >= 250) {
                 DATASETS[sym] = bars;
                 ok++;
@@ -171,28 +272,85 @@ window.addEventListener('message', function(ev) {
         renderChips();
         if (ok) {
             setMode('Datos recibidos · ' + ok + ' símbolos', true);
-            setStatus(ok + ' datasets cargados desde StockAnalyzer');
+            setStatus(ok + ' datasets cargados desde el sistema principal');
         } else {
             setMode('Sin datos válidos');
-            setStatus('Los datos recibidos no tienen barras suficientes (min 250)');
+            setStatus('Los datos recibidos no tienen barras suficientes (mínimo 250)');
         }
     }
 
-    notifyParent('bt_ack');
+    if (msg.sectors && typeof msg.sectors === 'object') {
+        SECTORS = {};
+        let sOk = 0;
+        for (const etf in msg.sectors) {
+            if (!Object.prototype.hasOwnProperty.call(msg.sectors, etf)) continue;
+            const bars = msg.sectors[etf];
+            if (Array.isArray(bars) && bars.length >= 250) {
+                SECTORS[etf] = bars;
+                sOk++;
+            }
+        }
+        console.log('[bt] sectores cargados:', sOk, Object.keys(SECTORS));
+    }
+
+    if (msg.earnings && typeof msg.earnings === 'object') {
+        EARNINGS = {};
+        let eOk = 0;
+        for (const sym in msg.earnings) {
+            if (!Object.prototype.hasOwnProperty.call(msg.earnings, sym)) continue;
+            const date = msg.earnings[sym];
+            if (typeof date === 'string' && date.length >= 10) {
+                EARNINGS[sym] = date;
+                eOk++;
+            }
+        }
+        console.log('[bt] earnings cargados:', eOk, Object.keys(EARNINGS));
+    }
+
+    const summary = [
+        Object.keys(DATASETS).length + ' símbolos',
+        Object.keys(SECTORS).length + ' sectores',
+        Object.keys(EARNINGS).length + ' earnings',
+        TIER2_WEIGHTS_OVERRIDE ? 'tier2 OK' : 'tier2 defaults'
+    ].join(' · ');
+    setStatus('Datos recibidos: ' + summary);
+
+    notifyParent('bt_ack', {
+        received: {
+            symbols: Object.keys(DATASETS).length,
+            sectors: Object.keys(SECTORS).length,
+            earnings: Object.keys(EARNINGS).length,
+            tier2: !!TIER2_WEIGHTS_OVERRIDE
+        }
+    });
 });
 
-function setStatus(t) { var el = document.getElementById('status'); if (el) el.textContent = t || ''; }
+function setStatus(t) { const el = document.getElementById('status'); if (el) el.textContent = t || ''; }
 function setMode(t, live) {
-    var el = document.getElementById('modeLabel');
+    const el = document.getElementById('modeLabel');
     if (!el) return;
     el.textContent = t;
     el.className = 'mode' + (live ? ' live' : '');
 }
+
+function applyCfgToForm(cfg) {
+    const r = cfg.risk || {};
+    const t = cfg.thresholds || {};
+    if (r.accountSize) document.getElementById('pCapital').value = r.accountSize;
+    if (r.riskPct) document.getElementById('pRisk').value = r.riskPct;
+    if (r.maxHeatPct) document.getElementById('pMaxHeat').value = r.maxHeatPct;
+    if (r.maxPositions) document.getElementById('pMaxPos').value = r.maxPositions;
+    if (r.maxPositionPct) document.getElementById('pMaxNotional').value = r.maxPositionPct;
+    if (t.minSetupQuality) document.getElementById('pMinQ').value = t.minSetupQuality;
+    if (t.minRegimeScore) document.getElementById('pMinRegime').value = t.minRegimeScore;
+    if (t.minRsPercentile) document.getElementById('pMinRs').value = t.minRsPercentile;
+}
+
 function renderCfgSummary(cfg) {
-    var t = cfg.thresholds || {};
-    var c = cfg.context || {};
-    var r = cfg.risk || {};
-    var badges = [
+    const t = cfg.thresholds || {};
+    const c = cfg.context || {};
+    const r = cfg.risk || {};
+    const badges = [
         'Q≥' + (t.minSetupQuality != null ? t.minSetupQuality : '—'),
         'R:R≥' + (t.minRrT1 != null ? t.minRrT1 : '—'),
         'ATR ' + (t.minRiskAtr != null ? t.minRiskAtr : '—') + '–' + (t.maxRiskAtr != null ? t.maxRiskAtr : '—'),
@@ -201,54 +359,48 @@ function renderCfgSummary(cfg) {
         'Riesgo ' + (r.riskPct != null ? r.riskPct : '—') + '%',
         'MaxPos ' + (r.maxPositionPct != null ? r.maxPositionPct : '—') + '%'
     ];
-    var setups = [];
-    for (var k in (cfg.setupsEnabled || {})) {
-        if (cfg.setupsEnabled[k]) setups.push(k);
-    }
+    const setups = [];
+    for (const k in (cfg.setupsEnabled || {})) if (cfg.setupsEnabled[k]) setups.push(k);
     document.getElementById('cfgSummary').innerHTML =
-        badges.map(function(b) { return '<span class="cfg-badge">' + b + '</span>'; }).join('') +
-        '<div style="margin-top:6px;font-size:11px;color:var(--text-2);">Setups: <b style="color:var(--text);">' + (setups.join(', ') || '—') + '</b></div>';
-    if (r.accountSize) document.getElementById('pCapital').value = r.accountSize;
-    if (r.riskPct) document.getElementById('pRisk').value = r.riskPct;
+        badges.map(function (b) { return '<span class="cfg-badge">' + b + '</span>'; }).join('') +
+        '<div style="margin-top:6px;font-size:11px;color:var(--text-2);">Setups habilitados: <b style="color:var(--text);">' + (setups.join(', ') || '—') + '</b></div>';
 }
 
-/* ── Carga CSV ── */
+/* ══════════════════════════════════════════════════════════════════════════
+   CSV
+   ══════════════════════════════════════════════════════════════════════════ */
 function parseCSVLine(line) {
-    var out = [], cur = '', q = false;
-    for (var i = 0; i < line.length; i++) {
-        var ch = line[i];
-        if (ch === '"') { if (q && line[i+1] === '"') { cur += '"'; i++; } else q = !q; }
+    const out = []; let cur = ''; let q = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
         else if (ch === ',' && !q) { out.push(cur); cur = ''; }
         else cur += ch;
     }
     out.push(cur); return out;
 }
 function parseCSV(text) {
-    var lines = text.split(/\r?\n/).filter(function(l) { return l.trim(); });
+    const lines = text.split(/\r?\n/).filter(function (l) { return l.trim(); });
     if (lines.length < 2) return [];
-    var hdr = lines[0].split(',').map(function(h) { return h.trim().toLowerCase().replace(/"/g, ''); });
+    const hdr = lines[0].split(',').map(function (h) { return h.trim().toLowerCase().replace(/"/g, ''); });
     function find() {
-        for (var a = 0; a < arguments.length; a++) { var i = hdr.indexOf(arguments[a]); if (i !== -1) return i; }
-        for (var b = 0; b < arguments.length; b++) {
-            for (var j = 0; j < hdr.length; j++) {
-                if (hdr[j].indexOf(arguments[b]) !== -1) return j;
-            }
-        }
+        for (let a = 0; a < arguments.length; a++) { const i = hdr.indexOf(arguments[a]); if (i !== -1) return i; }
+        for (let b = 0; b < arguments.length; b++) for (let j = 0; j < hdr.length; j++) if (hdr[j].indexOf(arguments[b]) !== -1) return j;
         return -1;
     }
-    var iD = find('datetime','date','timestamp','time');
-    var iO = find('open'), iH = find('high'), iL = find('low');
-    var iC = find('adj close','adj_close','adjusted close','close');
-    var iV = find('volume','vol');
+    const iD = find('datetime', 'date', 'timestamp', 'time');
+    const iO = find('open'), iH = find('high'), iL = find('low');
+    const iC = find('adj close', 'adj_close', 'adjusted close', 'close');
+    const iV = find('volume', 'vol');
     if (iD === -1 || iC === -1) return [];
-    var out = [];
-    for (var i = 1; i < lines.length; i++) {
-        var c = parseCSVLine(lines[i]);
+    const out = [];
+    for (let i = 1; i < lines.length; i++) {
+        const c = parseCSVLine(lines[i]);
         if (c.length <= Math.max(iD, iC)) continue;
-        var close = parseFloat(c[iC]);
+        const close = parseFloat(c[iC]);
         if (!isFinite(close)) continue;
-        var raw = c[iD].trim();
-        var dt = raw.length >= 10 ? raw.slice(0, 10) : raw;
+        const raw = c[iD].trim();
+        const dt = raw.length >= 10 ? raw.slice(0, 10) : raw;
         out.push({
             datetime: dt,
             open: iO >= 0 && isFinite(parseFloat(c[iO])) ? parseFloat(c[iO]) : close,
@@ -258,18 +410,18 @@ function parseCSV(text) {
             volume: iV >= 0 && isFinite(parseFloat(c[iV])) ? parseFloat(c[iV]) : 0
         });
     }
-    out.sort(function(a, b) { return a.datetime.localeCompare(b.datetime); });
+    out.sort(function (a, b) { return a.datetime.localeCompare(b.datetime); });
     return out;
 }
 function handleFiles(files) {
-    var list = Array.prototype.slice.call(files);
+    const list = Array.prototype.slice.call(files);
     if (!list.length) return;
-    var pending = list.length, ok = 0;
-    list.forEach(function(f) {
-        var r = new FileReader();
-        r.onload = function(e) {
-            var sym = f.name.replace(/\.csv$/i, '').toUpperCase().replace(/[^A-Z0-9.\-]/g, '');
-            var bars = parseCSV(e.target.result || '');
+    let pending = list.length, ok = 0;
+    list.forEach(function (f) {
+        const r = new FileReader();
+        r.onload = function (e) {
+            const sym = f.name.replace(/\.csv$/i, '').toUpperCase().replace(/[^A-Z0-9.\-]/g, '');
+            const bars = parseCSV(e.target.result || '');
             if (bars.length >= 250) { DATASETS[sym] = bars; ok++; }
             if (--pending === 0) {
                 renderChips();
@@ -280,22 +432,24 @@ function handleFiles(files) {
     });
 }
 function renderChips() {
-    var keys = Object.keys(DATASETS);
-    var el = document.getElementById('chips');
+    const keys = Object.keys(DATASETS);
+    const el = document.getElementById('chips');
     if (!keys.length) { el.innerHTML = '<span style="font-size:11px;color:var(--text-3);">Sin datos cargados</span>'; return; }
-    el.innerHTML = keys.map(function(sym) {
-        var d = DATASETS[sym];
+    el.innerHTML = keys.map(function (sym) {
+        const d = DATASETS[sym];
         return '<span class="chip ' + (sym === 'SPY' ? 'spy' : '') + '">' +
-            sym + ' <small>' + d.length + 'b · ' + d[0].datetime + '→' + d[d.length-1].datetime + '</small>' +
+            sym + ' <small>' + d.length + 'b · ' + d[0].datetime + '→' + d[d.length - 1].datetime + '</small>' +
             '<button onclick="delSym(\'' + sym + '\')">×</button></span>';
     }).join('');
 }
 function delSym(s) { delete DATASETS[s]; renderChips(); }
 
-/* ── Indicadores ── */
+/* ══════════════════════════════════════════════════════════════════════════
+   INDICADORES
+   ══════════════════════════════════════════════════════════════════════════ */
 function sma(v, p) {
-    var o = new Array(v.length).fill(null), s = 0;
-    for (var i = 0; i < v.length; i++) {
+    const o = new Array(v.length).fill(null); let s = 0;
+    for (let i = 0; i < v.length; i++) {
         s += v[i];
         if (i >= p) s -= v[i - p];
         if (i >= p - 1) o[i] = s / p;
@@ -303,24 +457,24 @@ function sma(v, p) {
     return o;
 }
 function ema(v, p) {
-    var o = new Array(v.length).fill(null);
+    const o = new Array(v.length).fill(null);
     if (v.length < p) return o;
-    var k = 2 / (p + 1), s = 0;
-    for (var i = 0; i < p; i++) s += v[i];
-    o[p-1] = s / p;
-    for (var j = p; j < v.length; j++) o[j] = o[j-1] != null ? v[j] * k + o[j-1] * (1 - k) : null;
+    const k = 2 / (p + 1); let s = 0;
+    for (let i = 0; i < p; i++) s += v[i];
+    o[p - 1] = s / p;
+    for (let j = p; j < v.length; j++) o[j] = o[j - 1] != null ? v[j] * k + o[j - 1] * (1 - k) : null;
     return o;
 }
 function rsiC(v, p) {
     p = p || 14;
-    var o = new Array(v.length).fill(null);
+    const o = new Array(v.length).fill(null);
     if (v.length < p + 1) return o;
-    var g = 0, l = 0;
-    for (var i = 1; i <= p; i++) { var d = v[i] - v[i-1]; if (d >= 0) g += d; else l -= d; }
-    var ag = g / p, al = l / p;
+    let g = 0, l = 0;
+    for (let i = 1; i <= p; i++) { const d = v[i] - v[i - 1]; if (d >= 0) g += d; else l -= d; }
+    let ag = g / p, al = l / p;
     o[p] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
-    for (var j = p + 1; j < v.length; j++) {
-        var d2 = v[j] - v[j-1];
+    for (let j = p + 1; j < v.length; j++) {
+        const d2 = v[j] - v[j - 1];
         ag = (ag * (p - 1) + (d2 > 0 ? d2 : 0)) / p;
         al = (al * (p - 1) + (d2 < 0 ? -d2 : 0)) / p;
         o[j] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
@@ -329,555 +483,1673 @@ function rsiC(v, p) {
 }
 function atrC(data, p) {
     p = p || 14;
-    var o = new Array(data.length).fill(null);
+    const o = new Array(data.length).fill(null);
     if (data.length < p + 1) return o;
-    var tr = [0];
-    for (var i = 1; i < data.length; i++) {
+    const tr = [0];
+    for (let i = 1; i < data.length; i++) {
         tr.push(Math.max(
             data[i].high - data[i].low,
-            Math.abs(data[i].high - data[i-1].close),
-            Math.abs(data[i].low - data[i-1].close)
+            Math.abs(data[i].high - data[i - 1].close),
+            Math.abs(data[i].low - data[i - 1].close)
         ));
     }
-    var s = 0;
-    for (var j = 1; j <= p; j++) s += tr[j];
+    let s = 0;
+    for (let j = 1; j <= p; j++) s += tr[j];
     o[p] = s / p;
-    for (var k = p + 1; k < data.length; k++) o[k] = (o[k-1] * (p - 1) + tr[k]) / p;
+    for (let k = p + 1; k < data.length; k++) o[k] = (o[k - 1] * (p - 1) + tr[k]) / p;
     return o;
 }
 function adxC(data, p) {
     p = p || 14;
-    var n = data.length;
+    const n = data.length;
     if (n < p * 2 + 1) return { adx: new Array(n).fill(null), pDI: new Array(n).fill(0), mDI: new Array(n).fill(0) };
-    var tr = new Array(n).fill(0), pdm = new Array(n).fill(0), mdm = new Array(n).fill(0);
-    for (var i = 1; i < n; i++) {
-        var h = data[i].high, l = data[i].low, pc = data[i-1].close;
+    const tr = new Array(n).fill(0), pdm = new Array(n).fill(0), mdm = new Array(n).fill(0);
+    for (let i = 1; i < n; i++) {
+        const h = data[i].high, l = data[i].low, pc = data[i - 1].close;
         tr[i] = Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc));
-        var up = h - data[i-1].high, dn = data[i-1].low - l;
+        const up = h - data[i - 1].high, dn = data[i - 1].low - l;
         pdm[i] = (up > dn && up > 0) ? up : 0;
         mdm[i] = (dn > up && dn > 0) ? dn : 0;
     }
-    var sTR = new Array(n).fill(0), sP = new Array(n).fill(0), sM = new Array(n).fill(0);
-    for (var a = 1; a <= p; a++) { sTR[p] += tr[a]; sP[p] += pdm[a]; sM[p] += mdm[a]; }
-    for (var b = p + 1; b < n; b++) {
-        sTR[b] = sTR[b-1] - sTR[b-1]/p + tr[b];
-        sP[b] = sP[b-1] - sP[b-1]/p + pdm[b];
-        sM[b] = sM[b-1] - sM[b-1]/p + mdm[b];
+    const sTR = new Array(n).fill(0), sP = new Array(n).fill(0), sM = new Array(n).fill(0);
+    for (let a = 1; a <= p; a++) { sTR[p] += tr[a]; sP[p] += pdm[a]; sM[p] += mdm[a]; }
+    for (let b = p + 1; b < n; b++) {
+        sTR[b] = sTR[b - 1] - sTR[b - 1] / p + tr[b];
+        sP[b] = sP[b - 1] - sP[b - 1] / p + pdm[b];
+        sM[b] = sM[b - 1] - sM[b - 1] / p + mdm[b];
     }
-    var pDI = new Array(n).fill(0), mDI = new Array(n).fill(0);
-    for (var c = p; c < n; c++) {
+    const pDI = new Array(n).fill(0), mDI = new Array(n).fill(0);
+    for (let c = p; c < n; c++) {
         pDI[c] = sTR[c] > 0 ? (sP[c] / sTR[c]) * 100 : 0;
         mDI[c] = sTR[c] > 0 ? (sM[c] / sTR[c]) * 100 : 0;
     }
-    var dx = new Array(n).fill(0);
-    for (var e = p; e < n; e++) {
-        var sum = pDI[e] + mDI[e];
+    const dx = new Array(n).fill(0);
+    for (let e = p; e < n; e++) {
+        const sum = pDI[e] + mDI[e];
         dx[e] = sum > 0 ? Math.abs(pDI[e] - mDI[e]) / sum * 100 : 0;
     }
-    var adx = new Array(n).fill(null);
-    var fs = 0;
-    for (var f = p; f < p * 2 && f < n; f++) fs += dx[f];
+    const adx = new Array(n).fill(null);
+    let fs = 0;
+    for (let f = p; f < p * 2 && f < n; f++) fs += dx[f];
     if (p * 2 - 1 < n) {
         adx[p * 2 - 1] = fs / p;
-        for (var g = p * 2; g < n; g++) adx[g] = (adx[g-1] * (p - 1) + dx[g]) / p;
+        for (let g = p * 2; g < n; g++) adx[g] = (adx[g - 1] * (p - 1) + dx[g]) / p;
     }
     return { adx: adx, pDI: pDI, mDI: mDI };
 }
 function donHi(data, p) {
-    var o = new Array(data.length).fill(null);
-    for (var i = p - 1; i < data.length; i++) {
-        var m = -Infinity;
-        for (var j = i - p + 1; j <= i; j++) if (data[j].high > m) m = data[j].high;
+    const o = new Array(data.length).fill(null);
+    for (let i = p - 1; i < data.length; i++) {
+        let m = -Infinity;
+        for (let j = i - p + 1; j <= i; j++) if (data[j].high > m) m = data[j].high;
         o[i] = m;
     }
     return o;
 }
 function boll(v, p, k) {
     p = p || 20; k = k || 2;
-    var mid = sma(v, p);
-    var up = new Array(v.length).fill(null), lo = new Array(v.length).fill(null);
-    for (var i = p - 1; i < v.length; i++) {
-        var s = 0;
-        for (var j = i - p + 1; j <= i; j++) s += Math.pow(v[j] - mid[i], 2);
-        var sd = Math.sqrt(s / p);
+    const mid = sma(v, p);
+    const up = new Array(v.length).fill(null), lo = new Array(v.length).fill(null);
+    for (let i = p - 1; i < v.length; i++) {
+        let s = 0;
+        for (let j = i - p + 1; j <= i; j++) s += Math.pow(v[j] - mid[i], 2);
+        const sd = Math.sqrt(s / p);
         up[i] = mid[i] + k * sd;
         lo[i] = mid[i] - k * sd;
     }
     return { up: up, mid: mid, lo: lo };
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   HELPERS ESTRUCTURALES — alineados con producción
+   ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Régimen SPY ── */
-function buildRegime(spy) {
-    var closes = spy.map(function(d) { return d.close; });
-    var s50 = sma(closes, 50), s200 = sma(closes, 200);
-    var out = new Array(spy.length).fill(null);
-    for (var i = 210; i < spy.length; i++) {
-        if (s50[i] == null || s200[i] == null || s200[i-20] == null || s200[i-20] === 0) continue;
-        var price = closes[i], s200v = s200[i], s200p = s200[i-20];
-        var slopePct = ((s200v - s200p) / s200p) * 100;
-        var r = 'NEUTRAL';
-        if (price > s200v && s50[i] > s200v && slopePct > 0.5) r = 'STRONG_RISK_ON';
-        else if (price > s200v && slopePct >= 0) r = 'RISK_ON';
-        else if (price < s200v && s50[i] < s200v && slopePct < -0.5) r = 'STRONG_RISK_OFF';
-        else if (price < s200v && slopePct <= 0) r = 'RISK_OFF';
-        out[i] = r;
+function findSwings(data, lookback, strength) {
+    lookback = lookback || 90;
+    strength = strength || 3;
+    const n = data.length;
+    const start = Math.max(strength, n - lookback);
+    const end = n - strength - 1;
+    const highs = [], lows = [];
+    for (let i = start; i <= end; i++) {
+        let isHigh = true, isLow = true;
+        for (let j = 1; j <= strength; j++) {
+            if (data[i].high <= data[i-j].high || data[i].high <= data[i+j].high) isHigh = false;
+            if (data[i].low  >= data[i-j].low  || data[i].low  >= data[i+j].low)  isLow = false;
+        }
+        if (isHigh) highs.push({ price: data[i].high, index: i });
+        if (isLow)  lows.push({ price: data[i].low,  index: i });
+    }
+    return { highs, lows };
+}
+
+function recentSwingLow(data, strength, lookback) {
+    strength = strength || 3;
+    lookback = lookback || 30;
+    const { lows } = findSwings(data, lookback + strength, strength);
+    if (!lows.length) return null;
+    const minAge = strength;
+    const valid = lows.filter(l => (data.length - 1 - l.index) >= minAge);
+    if (!valid.length) return null;
+    return valid[valid.length - 1];
+}
+
+function isUptrendStructure(data, lookback) {
+    lookback = lookback || 60;
+    const { highs, lows } = findSwings(data, lookback, 3);
+    if (highs.length < 2 || lows.length < 2) return false;
+    const nH = Math.min(3, highs.length);
+    const nL = Math.min(3, lows.length);
+    const rH = highs.slice(-nH), rL = lows.slice(-nL);
+    let hhCount = 0, hlCount = 0;
+    for (let i = 1; i < rH.length; i++) if (rH[i].price > rH[i-1].price) hhCount++;
+    for (let i = 1; i < rL.length; i++) if (rL[i].price > rL[i-1].price) hlCount++;
+    const hhNeed = Math.max(1, Math.ceil((rH.length - 1) * 0.5));
+    const hlNeed = Math.max(1, Math.ceil((rL.length - 1) * 0.5));
+    return hhCount >= hhNeed && hlCount >= hlNeed;
+}
+
+function pullbackVolumeHealthy(data, pullbackBars, impulseBars) {
+    pullbackBars = pullbackBars || 3;
+    impulseBars = impulseBars || 10;
+    const n = data.length;
+    if (n < pullbackBars + impulseBars + 5) return false;
+    const recent = data.slice(-pullbackBars);
+    const impulse = data.slice(-pullbackBars - impulseBars, -pullbackBars);
+    if (impulse.length < 5) return false;
+    const avgR = recent.reduce((a, b) => a + (b.volume || 0), 0) / recent.length;
+    const avgI = impulse.reduce((a, b) => a + (b.volume || 0), 0) / impulse.length;
+    if (avgI <= 0) return false;
+    return avgR < avgI * 0.75;
+}
+
+function strongClose(data, idx) {
+    const d = (idx == null) ? data[data.length - 1] : data[idx];
+    const range = d.high - d.low;
+    if (range <= 0) return false;
+    return (d.close - d.low) / range >= 0.66;
+}
+
+function findResistances(data, price, maxLookback) {
+    maxLookback = maxLookback || 200;
+    const { highs } = findSwings(data, maxLookback, 3);
+    const raw = [];
+    for (let i = 0; i < highs.length; i++) {
+        if (highs[i].price > price * 1.005) raw.push(highs[i].price);
+    }
+    const slice = data.slice(-maxLookback);
+    let absMax = -Infinity;
+    for (let i = 0; i < slice.length; i++) if (slice[i].high > absMax) absMax = slice[i].high;
+    if (isFinite(absMax) && absMax > price * 1.005) raw.push(absMax);
+    raw.sort((a, b) => a - b);
+    const dedup = [];
+    for (let i = 0; i < raw.length; i++) {
+        const v = raw[i];
+        if (!dedup.length || v > dedup[dedup.length - 1] * 1.015) dedup.push(v);
+    }
+    return dedup;
+}
+
+function computeStructuralStop(data, price, atr, emaRef) {
+    const buffer = 0.5 * atr;
+    const stopMax = price - 2.5 * atr;
+    const minDist = price - 1.0 * atr;
+    const candidates = [];
+    const swing = recentSwingLow(data, 3, 30);
+    if (swing) {
+        const s = swing.price - buffer;
+        if (s < price && s <= minDist && s >= stopMax) candidates.push({ price: s, source: 'swing' });
+    }
+    if (emaRef != null && isFinite(emaRef)) {
+        const s = emaRef - buffer;
+        if (s < price && s <= minDist && s >= stopMax) candidates.push({ price: s, source: 'ema' });
+    }
+    if (!candidates.length) return { price: stopMax, source: 'atr' };
+    candidates.sort((a, b) => b.price - a.price);
+    return candidates[0];
+}
+
+function computeTargets(data, price, stop, atr) {
+    const risk = price - stop;
+    if (risk <= 0) return null;
+    const resistances = findResistances(data, price, 200);
+
+    const minT1 = price + 1.5 * risk;
+    const maxT1 = price + 3.0 * risk;
+    let t1, t1Source;
+    const t1r = resistances.find(r => r >= minT1 && r <= maxT1);
+    if (t1r) { t1 = t1r; t1Source = 'resistance'; }
+    else {
+        t1 = Math.min(price + 2.0 * atr, maxT1);
+        if (t1 < minT1) t1 = minT1;
+        t1Source = 'atr';
+    }
+
+    const minT2 = price + 2.5 * risk;
+    const t2r = resistances.find(r => r >= minT2);
+    let t2, t2Source;
+    if (t2r) { t2 = t2r; t2Source = 'resistance'; }
+    else { t2 = price + 3.0 * atr; t2Source = 'atr'; }
+    if (t2 <= t1) t2 = t1 * 1.02;
+
+    return { t1, t2, t1Source, t2Source, risk };
+}
+
+function volumePercentile(volumes, lookback) {
+    lookback = lookback || 60;
+    const recent = volumes.slice(-lookback).filter(v => v > 0).sort((a, b) => a - b);
+    if (recent.length < 20) return null;
+    const last = volumes[volumes.length - 1];
+    const rank = recent.filter(v => v <= last).length;
+    return rank / recent.length;
+}
+
+function macdCalc(values, fast, slow, signalPeriod) {
+    fast = fast || 12; slow = slow || 26; signalPeriod = signalPeriod || 9;
+    const emaFast = ema(values, fast);
+    const emaSlow = ema(values, slow);
+    const macdLine = values.map(function(_, i) {
+        return (emaFast[i] != null && emaSlow[i] != null) ? emaFast[i] - emaSlow[i] : null;
+    });
+    const signalLine = new Array(values.length).fill(null);
+    const firstValid = macdLine.findIndex(function(v) { return v != null; });
+    if (firstValid !== -1) {
+        const validMacd = macdLine.slice(firstValid);
+        const emaSignal = ema(validMacd, signalPeriod);
+        for (let i = 0; i < emaSignal.length; i++) signalLine[firstValid + i] = emaSignal[i];
+    }
+    const hist = macdLine.map(function(v, i) {
+        return (v != null && signalLine[i] != null) ? v - signalLine[i] : null;
+    });
+    return { macd: macdLine, signal: signalLine, hist: hist };
+}
+
+function buildRsSeriesByBar(d, bench, lookbacks) {
+    lookbacks = lookbacks || [63, 126, 252];
+    const benchIdxByDate = new Map(bench.map(function (x, i) { return [x.datetime, i]; }));
+    const out = new Array(d.length).fill(null);
+    for (let i = 0; i < d.length; i++) {
+        const bIdx = benchIdxByDate.get(d[i].datetime);
+        if (bIdx == null) continue;
+        let acc = 0, wsum = 0;
+        for (let li = 0; li < lookbacks.length; li++) {
+            const lb = lookbacks[li];
+            if (i < lb || bIdx < lb) continue;
+            const stockRet = (d[i].close / d[i - lb].close - 1) * 100;
+            const benchRet = (bench[bIdx].close / bench[bIdx - lb].close - 1) * 100;
+            const w = 1 / lb;
+            acc += (stockRet - benchRet) * w;
+            wsum += w;
+        }
+        if (wsum > 0) out[i] = acc / wsum;
     }
     return out;
 }
 
-/* ── Estructura HH/HL ── */
+function buildWeeklyTrendSeries(d, weeklyBars) {
+    if (!Array.isArray(weeklyBars) || weeklyBars.length < 30) {
+        return { trend: new Array(d.length).fill(null), rsi: new Array(d.length).fill(null) };
+    }
+    const wCloses = weeklyBars.map(function (b) { return b.close; });
+    const wEma10 = ema(wCloses, 10);
+    const wEma30 = ema(wCloses, 30);
+    const wSma30 = sma(wCloses, 30);
+    const wRsi = rsiC(wCloses, 14);
+
+    const trendSeries = new Array(d.length).fill(null);
+    const rsiSeries = new Array(d.length).fill(null);
+
+    let wi = -1;
+    for (let i = 0; i < d.length; i++) {
+        // avanzar wi solo hasta barra semanal con >= 5 días de antigüedad
+        // (evita lookahead: la barra semanal en curso no está cerrada)
+        while (wi + 1 < weeklyBars.length) {
+            const cur = new Date(d[i].datetime + 'T12:00:00Z').getTime();
+            const wd = new Date(weeklyBars[wi + 1].datetime + 'T12:00:00Z').getTime();
+            const daysDiff = (cur - wd) / 86400000;
+            if (daysDiff >= 5) wi++;
+            else break;
+        }
+        if (wi < 0) continue;
+
+        const last = wi;
+        const price = wCloses[last];
+        let trend = 'LATERAL';
+        if (wEma10[last] != null && wEma30[last] != null) {
+            if (price > wEma10[last] && wEma10[last] > wEma30[last]) trend = 'ALCISTA';
+            else if (price < wEma10[last] && wEma10[last] < wEma30[last]) trend = 'BAJISTA';
+        } else if (wSma30[last] != null) {
+            trend = price > wSma30[last] ? 'ALCISTA' : 'BAJISTA';
+        }
+        trendSeries[i] = trend;
+        rsiSeries[i] = wRsi[last];
+    }
+    return { trend: trendSeries, rsi: rsiSeries };
+}
+
+function buildDaysEarningsSeries(d, earningsDate) {
+    const out = new Array(d.length).fill(null);
+    if (!earningsDate || typeof earningsDate !== 'string') return out;
+    const t = new Date(earningsDate + 'T12:00:00Z').getTime();
+    if (!isFinite(t)) return out;
+    for (let i = 0; i < d.length; i++) {
+        const ti = new Date(d[i].datetime + 'T12:00:00Z').getTime();
+        if (!isFinite(ti)) continue;
+        out[i] = Math.round((t - ti) / 86400000);
+    }
+    return out;
+}
+/* ══════════════════════════════════════════════════════════════════════════
+   RÉGIMEN CONTINUO
+   ══════════════════════════════════════════════════════════════════════════ */
+function buildRegimeScore(spy) {
+    const closes = spy.map(d => d.close);
+    const s50 = sma(closes, 50);
+    const s200 = sma(closes, 200);
+    const atr = atrC(spy, 14);
+    const rsi = rsiC(closes, 14);
+
+    const logRets = closes.map((c, i) => i ? Math.log(c / closes[i - 1]) : 0);
+    const vol20 = new Array(spy.length).fill(null);
+    for (let i = 20; i < spy.length; i++) {
+        let acc = 0;
+        for (let j = i - 19; j <= i; j++) acc += logRets[j] * logRets[j];
+        vol20[i] = Math.sqrt(acc / 20) * Math.sqrt(252) * 100;
+    }
+    const atrPctArr = atr.map((a, i) => a == null ? null : (a / spy[i].close) * 100);
+    const atrPct20 = sma(atrPctArr.map(v => v || 0), 20);
+
+    const out = new Array(spy.length).fill(null);
+    for (let i = 220; i < spy.length; i++) {
+        if (s200[i] == null || s200[i - 40] == null || atr[i] == null) continue;
+        const p = closes[i];
+
+        let c1 = 0;
+        if (p > s200[i]) c1 += 10;
+        if (p > s50[i]) c1 += 10;
+        if (s50[i] > s200[i]) c1 += 10;
+
+        const slope = ((s200[i] - s200[i - 40]) / s200[i - 40]) * 100;
+        const c2 = Math.max(0, Math.min(20, 10 + slope * 4));
+
+        const v = vol20[i];
+        const c3 = v == null ? 12
+                 : v < 12 ? 25 : v < 18 ? 18 : v < 25 ? 10 : v < 35 ? 3 : 0;
+
+        const c4 = rsi[i] == null ? 7
+                 : Math.max(0, Math.min(15, ((rsi[i] - 30) / 40) * 15));
+
+        let hh = 0;
+        for (let k = i - 19; k <= i; k++) if (k > 0 && spy[k].high > spy[k - 1].high) hh++;
+        const c5 = Math.min(10, hh / 2);
+
+        const score = Math.round(c1 + c2 + c3 + c4 + c5);
+        const label = score >= 75 ? 'STRONG_ON'
+                    : score >= 55 ? 'ON'
+                    : score >= 40 ? 'NEUTRAL'
+                    : score >= 25 ? 'OFF'
+                    :               'STRONG_OFF';
+
+        const relAtr = atrPct20[i] > 0 ? atrPctArr[i] / atrPct20[i] : 1;
+        const volRegime = relAtr > 1.3 ? 'HIGH' : relAtr < 0.7 ? 'LOW' : 'NORMAL';
+
+        out[i] = { score, label, volRegime, vol20: vol20[i], atrPct: atrPctArr[i] };
+    }
+    return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FUERZA RELATIVA
+   ══════════════════════════════════════════════════════════════════════════ */
+function buildRelativeStrength(datasets, spy, lookbacks) {
+    lookbacks = lookbacks || [63, 126, 252];
+    const spyIdxByDate = new Map(spy.map((d, i) => [d.datetime, i]));
+    const raw = {};
+
+    for (const sym in datasets) {
+        if (sym === 'SPY') continue;
+        const d = datasets[sym];
+        raw[sym] = new Array(d.length).fill(null);
+        for (let i = 0; i < d.length; i++) {
+            const sIdx = spyIdxByDate.get(d[i].datetime);
+            if (sIdx == null) continue;
+            let acc = 0, wsum = 0;
+            for (let li = 0; li < lookbacks.length; li++) {
+                const lb = lookbacks[li];
+                if (i < lb || sIdx < lb) continue;
+                const stockRet = (d[i].close / d[i - lb].close - 1) * 100;
+                const spyRet = (spy[sIdx].close / spy[sIdx - lb].close - 1) * 100;
+                const w = 1 / lb;
+                acc += (stockRet - spyRet) * w;
+                wsum += w;
+            }
+            if (wsum > 0) raw[sym][i] = acc / wsum;
+        }
+    }
+
+    const byDate = new Map();
+    for (const sym in raw) {
+        const d = datasets[sym];
+        for (let i = 0; i < d.length; i++) {
+            if (raw[sym][i] == null) continue;
+            if (!byDate.has(d[i].datetime)) byDate.set(d[i].datetime, []);
+            byDate.get(d[i].datetime).push({ sym, v: raw[sym][i] });
+        }
+    }
+
+    const out = new Map();
+    for (const [dt, arr] of byDate) {
+        arr.sort((a, b) => b.v - a.v);
+        const m = new Map();
+        arr.forEach((x, rank) => m.set(x.sym, 1 - rank / arr.length));
+        out.set(dt, m);
+    }
+    return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ESTRUCTURA
+   ══════════════════════════════════════════════════════════════════════════ */
 function isUptrend(data, i, lookback, strength) {
     lookback = lookback || 60; strength = strength || 3;
-    var start = Math.max(strength, i - lookback + 1);
-    var end = i - strength;
+    const start = Math.max(strength, i - lookback + 1);
+    const end = i - strength;
     if (end <= start) return false;
-    var highs = [], lows = [];
-    for (var k = start; k <= end; k++) {
-        var isH = true, isL = true;
-        for (var j = 1; j <= strength; j++) {
-            if (data[k].high <= data[k-j].high || data[k].high <= data[k+j].high) isH = false;
-            if (data[k].low >= data[k-j].low || data[k].low >= data[k+j].low) isL = false;
+    const highs = [], lows = [];
+    for (let k = start; k <= end; k++) {
+        let isH = true, isL = true;
+        for (let j = 1; j <= strength; j++) {
+            if (data[k].high <= data[k - j].high || data[k].high <= data[k + j].high) isH = false;
+            if (data[k].low >= data[k - j].low || data[k].low >= data[k + j].low) isL = false;
         }
         if (isH) highs.push(data[k].high);
         if (isL) lows.push(data[k].low);
     }
     if (highs.length < 2 || lows.length < 2) return false;
-    var rH = highs.slice(-3), rL = lows.slice(-3);
-    var hh = 0, hl = 0;
-    for (var a = 1; a < rH.length; a++) if (rH[a] > rH[a-1]) hh++;
-    for (var b = 1; b < rL.length; b++) if (rL[b] > rL[b-1]) hl++;
-    return hh >= Math.max(1, Math.ceil((rH.length - 1) * 0.5)) && hl >= Math.max(1, Math.ceil((rL.length - 1) * 0.5));
-}
-function recentLow(data, i, strength, lookback) {
-    strength = strength || 3; lookback = lookback || 30;
-    var start = Math.max(strength, i - lookback);
-    var end = i - strength;
-    var best = null;
-    for (var k = start; k <= end; k++) {
-        var isL = true;
-        for (var j = 1; j <= strength; j++) {
-            if (data[k].low >= data[k-j].low || data[k].low >= data[k+j].low) { isL = false; break; }
-        }
-        if (isL) best = { price: data[k].low, idx: k };
-    }
-    return best;
+    const rH = highs.slice(-3), rL = lows.slice(-3);
+    let hh = 0, hl = 0;
+    for (let a = 1; a < rH.length; a++) if (rH[a] > rH[a - 1]) hh++;
+    for (let b = 1; b < rL.length; b++) if (rL[b] > rL[b - 1]) hl++;
+    return hh >= 1 && hl >= 1;
 }
 
-/* ── Setups ── */
-function tryDonchian(d, i, c, TH) {
-    if (c.dh20[i-1] == null || c.e50[i] == null || c.e200[i] == null || c.atr[i] == null) return null;
-    if (!(d[i].close > c.dh20[i-1]) || !(c.e50[i] > c.e200[i]) || !(d[i].close > c.e20[i])) return null;
-    if (!isUptrend(d, i)) return null;
-    var checks = [
-        d[i].close > c.dh20[i-1],
-        c.e50[i] > c.e200[i],
-        d[i].close > c.e20[i],
-        c.adx[i] != null && c.adx[i] > 20,
-        c.pDI[i] > c.mDI[i],
-        c.vol20[i] != null && d[i].volume > c.vol20[i] * 1.5,
-        c.rsi[i] != null && c.rsi[i] >= 50 && c.rsi[i] <= 80
-    ];
-    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
-    if (ok / checks.length < TH.minSetupQuality / 100) return null;
-    var p = d[i].close;
-    var stop = p - 2.5 * c.atr[i];
-    var sw = recentLow(d, i, 3, 30);
-    if (sw && sw.price < p) {
-        var s = sw.price - 0.5 * c.atr[i];
-        if (s < p - 1.0 * c.atr[i] && s > stop) stop = s;
-    }
-    if (stop >= p) return null;
-    var risk = p - stop;
-    var rAtr = risk / c.atr[i];
-    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
-    var t1 = p + Math.max(1.5 * risk, Math.min(2 * c.atr[i], 3 * risk));
-    var t2 = p + 3.0 * c.atr[i];
-    if (t2 <= t1) return null;
-    var rr = (t1 - p) / risk;
-    if (rr < TH.minRrT1) return null;
-    return { id: 'donchian', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
-}
-function tryPullback(d, i, c, TH) {
-    if (c.e20[i] == null || c.e50[i] == null || c.e200[i] == null || c.atr[i] == null) return null;
-    if (!(c.e20[i] > c.e50[i] && c.e50[i] > c.e200[i])) return null;
-    var touched = false;
-    for (var k = Math.max(0, i - 4); k <= i; k++) {
-        if (c.e20[k] != null && d[k].low <= c.e20[k] * 1.005 && d[k].close >= c.e20[k] * 0.995) { touched = true; break; }
-        if (c.e50[k] != null && d[k].low <= c.e50[k] * 1.005 && d[k].close >= c.e50[k] * 0.995) { touched = true; break; }
-    }
-    if (!touched || !(d[i].close > c.e20[i])) return null;
-    var d20 = (d[i].close - c.e20[i]) / c.atr[i];
-    var d50 = (d[i].close - c.e50[i]) / c.atr[i];
-    var mD = Math.min(d20, d50);
-    if (mD > 1.25 || !isUptrend(d, i)) return null;
-    var checks = [
-        c.e20[i] > c.e50[i] && c.e50[i] > c.e200[i],
-        touched,
-        d[i].close > c.e20[i],
-        mD <= 1.25,
-        c.adx[i] != null && c.adx[i] > 20,
-        c.rsi[i] != null && c.rsi[i] >= 40 && c.rsi[i] <= 65
-    ];
-    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
-    if (ok / checks.length < TH.minSetupQuality / 100) return null;
-    var p = d[i].close;
-    var stop = p - 2.5 * c.atr[i];
-    var rs = c.e50[i] - 0.5 * c.atr[i];
-    if (rs < p - 1.0 * c.atr[i] && rs > stop) stop = rs;
-    if (stop >= p) return null;
-    var risk = p - stop;
-    var rAtr = risk / c.atr[i];
-    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
-    var t1 = p + 2.0 * c.atr[i];
-    var t2 = p + 3.0 * c.atr[i];
-    var rr = (t1 - p) / risk;
-    if (rr < TH.minRrT1) return null;
-    return { id: 'pullback', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
-}
-function trySma200(d, i, c, TH) {
-    if (c.s200[i] == null || c.atr[i] == null) return null;
-    if (!(d[i].close > c.s200[i])) return null;
-    var touched = false;
-    for (var k = Math.max(0, i - 6); k <= i; k++) {
-        if (c.s200[k] != null && d[k].low <= c.s200[k] * 1.005) { touched = true; break; }
-    }
-    if (!touched || !(d[i].close > d[i-1].close)) return null;
-    if (!(c.rsi[i] != null && c.rsi[i] < 50)) return null;
-    var checks = [
-        d[i].close > c.s200[i],
-        touched,
-        d[i].close > d[i-1].close,
-        c.rsi[i] < 50,
-        isUptrend(d, i, 90)
-    ];
-    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
-    if (ok / checks.length < TH.minSetupQuality / 100) return null;
-    var p = d[i].close;
-    var stop = p - 2.5 * c.atr[i];
-    var rs = c.s200[i] - 0.5 * c.atr[i];
-    if (rs < p - 1.0 * c.atr[i] && rs > stop) stop = rs;
-    if (stop >= p) return null;
-    var risk = p - stop;
-    var rAtr = risk / c.atr[i];
-    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
-    var t1 = p + 2.0 * c.atr[i];
-    var t2 = p + 3.0 * c.atr[i];
-    var rr = (t1 - p) / risk;
-    if (rr < TH.minRrT1) return null;
-    return { id: 'sma200', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
-}
-function tryGolden(d, i, c, TH) {
-    if (c.e20[i] == null || c.e50[i] == null || c.e200[i] == null || c.e20[i-1] == null || c.e50[i-1] == null) return null;
-    if (!(c.e20[i] > c.e50[i] && c.e20[i-1] <= c.e50[i-1])) return null;
-    if (!(c.e50[i] > c.e200[i]) || !(c.adx[i] != null && c.adx[i] > 20)) return null;
-    var checks = [
-        c.e20[i] > c.e50[i] && c.e20[i-1] <= c.e50[i-1],
-        c.e50[i] > c.e200[i],
-        c.adx[i] > 20,
-        d[i].volume > (c.vol20[i] || Infinity)
-    ];
-    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
-    if (ok / checks.length < TH.minSetupQuality / 100) return null;
-    var p = d[i].close;
-    var stop = p - 2.0 * c.atr[i];
-    var risk = p - stop;
-    var rAtr = risk / c.atr[i];
-    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
-    var t1 = p + 2.0 * c.atr[i];
-    var t2 = p + 3.0 * c.atr[i];
-    var rr = (t1 - p) / risk;
-    if (rr < TH.minRrT1) return null;
-    return { id: 'golden_cross', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
-}
-function tryBB(d, i, c, TH) {
-    if (c.bbUp[i] == null || c.bbMid[i] == null || c.atr[i] == null) return null;
-    if (!(d[i].close > c.bbUp[i])) return null;
-    if (!(c.adx[i] != null && c.adx[i] > 20)) return null;
-    if (!(c.rsi[i] != null && c.rsi[i] >= 55 && c.rsi[i] <= 80)) return null;
-    var checks = [
-        d[i].close > c.bbUp[i],
-        d[i].volume > (c.vol20[i] || Infinity) * 1.5,
-        c.adx[i] > 20,
-        c.rsi[i] >= 55 && c.rsi[i] <= 80,
-        isUptrend(d, i)
-    ];
-    var ok = 0; for (var a = 0; a < checks.length; a++) if (checks[a]) ok++;
-    if (ok / checks.length < TH.minSetupQuality / 100) return null;
-    var p = d[i].close;
-    var stop = c.bbMid[i] < p ? c.bbMid[i] : p - 2.0 * c.atr[i];
-    if (stop >= p) return null;
-    var risk = p - stop;
-    var rAtr = risk / c.atr[i];
-    if (rAtr > TH.maxRiskAtr || rAtr < TH.minRiskAtr) return null;
-    var t1 = p + 2.0 * c.atr[i];
-    var t2 = p + 3.0 * c.atr[i];
-    var rr = (t1 - p) / risk;
-    if (rr < TH.minRrT1) return null;
-    return { id: 'bb_breakout', entry: p, stop: stop, t1: t1, t2: t2, rr: rr, quality: Math.round(ok / checks.length * 100) };
+/* ══════════════════════════════════════════════════════════════════════════
+   PLANTILLA DE SETUP
+   ══════════════════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════════════
+   FINALIZE SETUP (versión backtester)
+   Replica finalizeSetup de producción sin entryQuality/lifecycle/confirmation.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function regimeCheckBT(regime) {
+    if (!regime) return [];
+    const bullish = regime.label === 'ON' || regime.label === 'STRONG_ON';
+    return [{
+        label: 'Régimen favorable',
+        ok: bullish,
+        detail: (regime.label || '').replace(/_/g, '-'),
+        category: 'regime'
+    }];
 }
 
-/* ── Simulación ── */
-function simulate(d, sigIdx, s, cfg) {
-    var fillIdx = sigIdx + 1;
-    if (fillIdx >= d.length) return null;
-    var slip = cfg.slippageBps / 10000;
-    var fill = d[fillIdx].open * (1 + slip);
-    var stop0 = s.stop;
-    var risk = fill - stop0;
+function finalizeSetupBT(cfg) {
+    const id = cfg.id;
+    const data = cfg.data;
+    const i = cfg.i;
+    const c = cfg.c;
+    const TH = cfg.TH;
+    const regime = cfg.regime;
+    const entry = cfg.entry;
+    const emaRef = cfg.emaRef;
+    const momentumSetup = !!cfg.momentumSetup;
+    const checks = cfg.checks;
+
+    const atr = c.atr[i];
+    if (!atr || !isFinite(atr) || atr <= 0) return null;
+
+    if (momentumSetup) {
+        const label = regime ? regime.label : null;
+        if (label === 'OFF' || label === 'STRONG_OFF') return null;
+    }
+
+    const sub = data.slice(0, i + 1);
+    const stopObj = computeStructuralStop(sub, entry, atr, emaRef);
+    const stop = stopObj.price;
+    const risk = entry - stop;
     if (risk <= 0) return null;
-    var stop = stop0, t1Hit = false, remaining = 1.0, r = 0, mae = 0, mfe = 0;
 
-    for (var i = fillIdx; i < d.length; i++) {
-        var b = d[i];
-        var adverse = fill - b.low;
-        var favor = b.high - fill;
-        if (adverse > mae) mae = adverse;
-        if (favor > mfe) mfe = favor;
+    const riskInAtr = risk / atr;
+    if (riskInAtr > TH.maxRiskAtr) return null;
+    if (riskInAtr < TH.minRiskAtr) return null;
 
-        if (i > fillIdx && b.open <= stop) {
-            r += remaining * ((b.open * (1 - slip) - fill) / risk);
-            return done(i, b.datetime, 'stop_gap');
-        }
-        if (b.low <= stop) {
-            r += remaining * ((stop * (1 - slip) - fill) / risk);
-            return done(i, b.datetime, stop === stop0 ? 'stop' : 'trailing');
-        }
-        if (!t1Hit && b.high >= s.t1) {
-            r += 0.5 * ((s.t1 * (1 - slip) - fill) / risk);
-            remaining = 0.5;
-            t1Hit = true;
-            stop = Math.max(stop, fill);
-        }
-        if (t1Hit && remaining > 0 && b.high >= s.t2) {
-            r += remaining * ((s.t2 * (1 - slip) - fill) / risk);
-            return done(i, b.datetime, 't2');
-        }
-        if (i - fillIdx >= cfg.maxBarsHold) {
-            r += remaining * ((b.close * (1 - slip) - fill) / risk);
-            return done(i, b.datetime, 'time_stop');
-        }
-        if (t1Hit) {
-            var mh = -Infinity;
-            for (var j = Math.max(0, i - 21); j <= i; j++) if (d[j].high > mh) mh = d[j].high;
-            var ch = mh - 3 * cfg.atr[i];
-            if (ch > stop) stop = ch;
+    const targets = computeTargets(sub, entry, stop, atr);
+    if (!targets) return null;
+    const rrT1 = (targets.t1 - entry) / risk;
+    if (rrT1 < TH.minRrT1) return null;
+
+    let t2Final = targets.t2;
+    let t2SourceFinal = targets.t2Source;
+    if (id === 'donchian' || id === 'bb_breakout') {
+        const slice20 = sub.slice(-20);
+        if (slice20.length >= 20) {
+            let rHigh = -Infinity, rLow = Infinity;
+            for (let k = 0; k < slice20.length; k++) {
+                if (slice20[k].high > rHigh) rHigh = slice20[k].high;
+                if (slice20[k].low  < rLow)  rLow  = slice20[k].low;
+            }
+            const measured = entry + (rHigh - rLow);
+            if (isFinite(measured) && measured > t2Final) {
+                t2Final = measured;
+                t2SourceFinal = 'measured';
+            }
         }
     }
-    var last = d[d.length - 1];
-    r += remaining * ((last.close * (1 - slip) - fill) / risk);
-    return done(d.length - 1, last.datetime, 'end_of_data');
 
-    function done(exitIdx, exitDate, reason) {
+    const quality = weightedQuality(checks);
+    if (quality.blocked) return null;
+    if (quality.score < TH.minSetupQuality) return null;
+
+    return {
+        id,
+        entry,
+        stop,
+        stopSource: stopObj.source,
+        t1: targets.t1,
+        t1Source: targets.t1Source,
+        t2: t2Final,
+        t2Source: t2SourceFinal,
+        risk,
+        riskInAtr,
+        rrT1,
+        rrT2: (t2Final - entry) / risk,
+        quality: quality.score,
+        qualityFull: quality
+    };
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TIER1 / TIER2 — scoring ponderado, alineado con producción
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const TIER1_CATEGORIES = ['regime', 'trend', 'structure'];
+const TIER2_CATEGORIES = ['volume', 'rs', 'mtf', 'health'];
+
+function weightedQuality(checks) {
+    const tier1Fails = [];
+    for (let i = 0; i < checks.length; i++) {
+        const c = checks[i];
+        if (c.category && TIER1_CATEGORIES.indexOf(c.category) !== -1 && !c.ok) {
+            tier1Fails.push(c.label);
+        }
+    }
+    if (tier1Fails.length > 0) {
         return {
-            entryDate: d[fillIdx].datetime, exitDate: exitDate,
-            entryPrice: fill, stopPrice: stop0,
-            t1: s.t1, t2: s.t2,
-            rMult: r, maeR: mae / risk, mfeR: mfe / risk,
-            barsHeld: exitIdx - fillIdx,
-            exitReason: reason, setupId: s.id, quality: s.quality
+            score: 0,
+            blocked: true,
+            gate_fails: tier1Fails,
+            tier1: 'FAIL',
+            tier2: null,
+            breakdown: {}
+        };
+    }
+
+    const weights = getTier2Weights();
+    const breakdown = {};
+    let tier2Score = 0;
+    let totalWeight = 0;
+
+    for (let k = 0; k < TIER2_CATEGORIES.length; k++) {
+        const cat = TIER2_CATEGORIES[k];
+        const catChecks = [];
+        for (let i = 0; i < checks.length; i++) {
+            if (checks[i].category === cat) catChecks.push(checks[i]);
+        }
+        if (!catChecks.length) continue;
+        let passed = 0;
+        for (let i = 0; i < catChecks.length; i++) if (catChecks[i].ok) passed++;
+        const ratio = passed / catChecks.length;
+        const w = weights[cat] || 0;
+        breakdown[cat] = {
+            passed, total: catChecks.length,
+            ratio: +ratio.toFixed(2),
+            weight: w,
+            contribution: +(ratio * w * 100).toFixed(1)
+        };
+        tier2Score += ratio * w;
+        totalWeight += w;
+    }
+
+    const normalized = totalWeight > 0
+        ? Math.round((tier2Score / totalWeight) * 100)
+        : 0;
+
+    let present = 0;
+    for (let k = 0; k < TIER2_CATEGORIES.length; k++) {
+        const cat = TIER2_CATEGORIES[k];
+        for (let i = 0; i < checks.length; i++) {
+            if (checks[i].category === cat) { present++; break; }
+        }
+    }
+    const confidence = present / TIER2_CATEGORIES.length;
+
+    return {
+        score: normalized,
+        blocked: false,
+        gate_fails: [],
+        tier1: 'PASS',
+        tier2: normalized,
+        breakdown,
+        confidence: +confidence.toFixed(2),
+        sample_quality: present >= 4 ? 'HIGH' : present >= 3 ? 'MEDIUM' : 'LOW'
+    };
+}
+
+function getContextConfigFromCfg() {
+    const ctx = (CFG && CFG.context) || {};
+    return {
+        minRs: isFinite(ctx.minRs) ? ctx.minRs : 0,
+        minDaysEarnings: isFinite(ctx.minDaysEarnings) ? ctx.minDaysEarnings : 5,
+        minDollarVolume: isFinite(ctx.minDollarVolume) ? ctx.minDollarVolume : 5000000
+    };
+}
+
+function contextChecksBacktester(c, i, d) {
+    const out = [];
+    const cfg = getContextConfigFromCfg();
+
+    const rs = c.rsRating ? c.rsRating[i] : null;
+    if (rs != null) {
+        const ok = rs >= cfg.minRs;
+        out.push({
+            label: 'RS vs SPY favorable',
+            ok,
+            detail: (rs >= 0 ? '+' : '') + rs.toFixed(2) + '%',
+            category: 'rs'
+        });
+    }
+
+    const wt = c.weeklyTrend ? c.weeklyTrend[i] : null;
+    if (wt) {
+        const ok = wt !== 'BAJISTA';
+        out.push({
+            label: 'MTF semanal coherente',
+            ok,
+            detail: wt,
+            category: 'mtf'
+        });
+    }
+
+    const de = c.daysEarnings ? c.daysEarnings[i] : null;
+    if (de != null) {
+        const ok = de > cfg.minDaysEarnings;
+        out.push({
+            label: 'Earnings > ' + cfg.minDaysEarnings + 'd',
+            ok,
+            detail: de + 'd',
+            category: 'timing'
+        });
+    }
+
+    return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SETUPS
+   ══════════════════════════════════════════════════════════════════════════ */
+function tryDonchian(d, i, c, ctx) {
+    const TH = ctx.TH, regime = ctx.regime;
+    const dhPrev = c.dh20[i - 1];
+    if (dhPrev == null) return null;
+    if (!(d[i].close > dhPrev)) return null;
+    if (!(c.e50[i] > c.e200[i])) return null;
+
+    const sub = d.slice(0, i + 1);
+    const volPct = c.volPct[i];
+
+    const checks = [
+        { label: 'Cierre > Donchian High 20', ok: true, detail: '$' + dhPrev.toFixed(2), category: 'trend' },
+        { label: 'EMA50 > EMA200', ok: c.e50[i] > c.e200[i], detail: '', category: 'trend' },
+        { label: 'Precio > EMA20', ok: c.e20[i] != null && d[i].close > c.e20[i], detail: '', category: 'trend' },
+        { label: 'Estructura HH/HL', ok: isUptrendStructure(sub, 60), detail: '', category: 'structure' },
+        { label: 'ADX > 20', ok: c.adx[i] != null && c.adx[i] > 20, detail: c.adx[i] != null ? c.adx[i].toFixed(1) : '—', category: 'strength' },
+        { label: '+DI > −DI', ok: c.pDI[i] > c.mDI[i], detail: '', category: 'strength' },
+        { label: 'Volumen P80 propio', ok: volPct != null && volPct >= 0.8, detail: volPct != null ? 'P' + Math.round(volPct * 100) : '—', category: 'volume' },
+        { label: 'RSI 50-80', ok: c.rsi[i] != null && c.rsi[i] >= 50 && c.rsi[i] <= 80, detail: c.rsi[i] != null ? c.rsi[i].toFixed(1) : '—', category: 'momentum' },
+        ...regimeCheckBT(regime),
+        ...contextChecksBacktester(c, i, d)
+    ];
+
+    return finalizeSetupBT({
+        id: 'donchian', data: d, i, c, TH, regime,
+        entry: d[i].close,
+        emaRef: c.e20[i],
+        momentumSetup: true,
+        checks
+    });
+}
+
+function tryPullback(d, i, c, ctx) {
+    const TH = ctx.TH, regime = ctx.regime;
+    if (!(c.e20[i] > c.e50[i] && c.e50[i] > c.e200[i])) return null;
+
+    let touched = false;
+    for (let k = Math.max(0, i - 4); k <= i; k++) {
+        const ref = (c.e20[k] != null && d[k].low <= c.e20[k] * 1.005) ? c.e20[k]
+                  : (c.e50[k] != null && d[k].low <= c.e50[k] * 1.005) ? c.e50[k] : null;
+        if (ref != null && d[k].close >= ref * 0.995) { touched = true; break; }
+    }
+    if (!touched) return null;
+
+    const sub = d.slice(0, i + 1);
+    const structureOk = isUptrendStructure(sub, 60);
+    const volHealthy = pullbackVolumeHealthy(sub);
+
+    const d20 = c.e20[i] != null ? (d[i].close - c.e20[i]) / c.atr[i] : Infinity;
+    const d50 = c.e50[i] != null ? (d[i].close - c.e50[i]) / c.atr[i] : Infinity;
+    const minDist = Math.min(d20, d50);
+
+    const checks = [
+        { label: 'EMA20 > EMA50 > EMA200', ok: true, detail: '', category: 'trend' },
+        { label: 'Toque EMA20/50 (≤5 sesiones)', ok: touched, detail: '', category: 'timing' },
+        { label: 'Precio > EMA20', ok: c.e20[i] != null && d[i].close > c.e20[i], detail: c.e20[i] != null ? '$' + c.e20[i].toFixed(2) : '—', category: 'trend' },
+        { label: 'Distancia a EMA20/50 ≤ 1.25 ATR', ok: minDist <= 1.25, detail: minDist.toFixed(2) + ' ATR', category: 'timing' },
+        { label: 'Estructura HH/HL', ok: structureOk, detail: '', category: 'structure' },
+        { label: 'Volumen decreciente en pullback', ok: volHealthy, detail: '', category: 'health' },
+        { label: 'RSI 40-65', ok: c.rsi[i] != null && c.rsi[i] >= 40 && c.rsi[i] <= 65, detail: c.rsi[i] != null ? c.rsi[i].toFixed(1) : '—', category: 'momentum' },
+        { label: 'ADX > 20', ok: c.adx[i] != null && c.adx[i] > 20, detail: c.adx[i] != null ? c.adx[i].toFixed(1) : '—', category: 'strength' },
+        ...regimeCheckBT(regime),
+        ...contextChecksBacktester(c, i, d)
+    ];
+
+    return finalizeSetupBT({
+        id: 'pullback', data: d, i, c, TH, regime,
+        entry: d[i].close,
+        emaRef: c.e50[i],
+        momentumSetup: false,
+        checks
+    });
+}
+
+function trySma200(d, i, c, ctx) {
+    const TH = ctx.TH, regime = ctx.regime;
+    if (c.s200[i] == null) return null;
+    if (!(d[i].close > c.s200[i])) return null;
+
+    let touched = false;
+    for (let k = Math.max(0, i - 6); k <= i; k++) {
+        const s200At = c.s200[k];
+        if (s200At != null && d[k].low <= s200At * 1.005) { touched = true; break; }
+    }
+    if (!touched) return null;
+
+    const greenDay = d[i].close > d[i - 1].close;
+    const sub = d.slice(0, i + 1);
+    const structureOk = isUptrendStructure(sub, 90);
+    const volHealthy = pullbackVolumeHealthy(sub);
+
+    const checks = [
+        { label: 'Precio > SMA200', ok: true, detail: '$' + c.s200[i].toFixed(2), category: 'trend' },
+        { label: 'Toque SMA200 (≤7 sesiones)', ok: true, detail: '', category: 'timing' },
+        { label: 'Cierre verde', ok: greenDay, detail: '', category: 'momentum' },
+        { label: 'RSI < 50', ok: c.rsi[i] != null && c.rsi[i] < 50, detail: c.rsi[i] != null ? c.rsi[i].toFixed(1) : '—', category: 'momentum' },
+        { label: 'Estructura HH/HL', ok: structureOk, detail: '', category: 'structure' },
+        { label: 'Volumen decreciente en pullback', ok: volHealthy, detail: '', category: 'health' },
+        ...regimeCheckBT(regime),
+        ...contextChecksBacktester(c, i, d)
+    ];
+
+    return finalizeSetupBT({
+        id: 'sma200', data: d, i, c, TH, regime,
+        entry: d[i].close,
+        emaRef: c.s200[i],
+        momentumSetup: false,
+        checks
+    });
+}
+
+function tryGolden(d, i, c, ctx) {
+    const TH = ctx.TH, regime = ctx.regime;
+
+    let crossIdx = -1;
+    for (let k = i; k >= Math.max(1, i - 2); k--) {
+        if (c.e20[k] != null && c.e50[k] != null && c.e20[k - 1] != null && c.e50[k - 1] != null) {
+            if (c.e20[k] > c.e50[k] && c.e20[k - 1] <= c.e50[k - 1]) { crossIdx = k; break; }
+        }
+    }
+    if (crossIdx === -1) return null;
+    if (!(c.e50[i] > c.e200[i])) return null;
+
+    const adxPrev = c.adx[i - 5];
+    const adxRising = c.adx[i] != null && adxPrev != null && c.adx[i] > adxPrev;
+    const volPct = c.volPct[i];
+    const macdBull = c.macd[i] != null && c.macdSignal[i] != null && c.macd[i] > c.macdSignal[i];
+
+    const checks = [
+        { label: 'Cruce EMA20/50 (≤3 ses.)', ok: true, detail: '', category: 'trend' },
+        { label: 'EMA50 > EMA200', ok: true, detail: '', category: 'trend' },
+        { label: 'ADX > 20 y subiendo', ok: c.adx[i] != null && c.adx[i] > 20 && adxRising, detail: c.adx[i] != null ? c.adx[i].toFixed(1) : '—', category: 'strength' },
+        { label: 'Volumen P75 propio', ok: volPct != null && volPct >= 0.75, detail: volPct != null ? 'P' + Math.round(volPct * 100) : '—', category: 'volume' },
+        { label: 'MACD > Signal', ok: macdBull, detail: '', category: 'momentum' },
+        ...regimeCheckBT(regime),
+        ...contextChecksBacktester(c, i, d)
+    ];
+
+    return finalizeSetupBT({
+        id: 'golden_cross', data: d, i, c, TH, regime,
+        entry: d[i].close,
+        emaRef: null,
+        momentumSetup: true,
+        checks
+    });
+}
+
+function tryBB(d, i, c, ctx) {
+    const TH = ctx.TH, regime = ctx.regime;
+    const bbUp = c.bbUp[i];
+    const bbMid = c.bbMid[i];
+    if (bbUp == null) return null;
+    if (!(d[i].close > bbUp)) return null;
+
+    const sub = d.slice(0, i + 1);
+    const volPct = c.volPct[i];
+
+    // Preferir BB Mid como referencia de stop si está por debajo del precio
+    // y por encima del stop estructural calculado por defecto
+    let emaRef = null;
+    const stopObj = computeStructuralStop(sub, d[i].close, c.atr[i], null);
+    if (bbMid != null && bbMid < d[i].close && bbMid > stopObj.price) {
+        emaRef = bbMid;
+    }
+
+    const checks = [
+        { label: 'Cierre > BB superior', ok: true, detail: '$' + bbUp.toFixed(2), category: 'trend' },
+        { label: 'Volumen P85 propio', ok: volPct != null && volPct >= 0.85, detail: volPct != null ? 'P' + Math.round(volPct * 100) : '—', category: 'volume' },
+        { label: 'ADX > 20', ok: c.adx[i] != null && c.adx[i] > 20, detail: c.adx[i] != null ? c.adx[i].toFixed(1) : '—', category: 'strength' },
+        { label: 'RSI 55-80', ok: c.rsi[i] != null && c.rsi[i] >= 55 && c.rsi[i] <= 80, detail: c.rsi[i] != null ? c.rsi[i].toFixed(1) : '—', category: 'momentum' },
+        { label: 'Estructura HH/HL', ok: isUptrendStructure(sub, 60), detail: '', category: 'structure' },
+        ...regimeCheckBT(regime),
+        ...contextChecksBacktester(c, i, d)
+    ];
+
+    return finalizeSetupBT({
+        id: 'bb_breakout', data: d, i, c, TH, regime,
+        entry: d[i].close,
+        emaRef: emaRef,
+        momentumSetup: true,
+        checks
+    });
+}
+function pickSetup(d, i, c, ctx, enabled) {
+    const cands = [];
+    const isOff = ctx.regime && (ctx.regime.label === 'OFF' || ctx.regime.label === 'STRONG_OFF');
+
+    if (enabled.donchian && !isOff)    { const s = tryDonchian(d, i, c, ctx); if (s) cands.push({ s, p: 1 }); }
+    if (enabled.pullback)              { const s = tryPullback(d, i, c, ctx);  if (s) cands.push({ s, p: 2 }); }
+    if (enabled.bb_breakout && !isOff) { const s = tryBB(d, i, c, ctx);        if (s) cands.push({ s, p: 3 }); }
+    if (enabled.golden_cross && !isOff){ const s = tryGolden(d, i, c, ctx);    if (s) cands.push({ s, p: 4 }); }
+    if (enabled.sma200)                { const s = trySma200(d, i, c, ctx);   if (s) cands.push({ s, p: 5 }); }
+
+    if (!cands.length) return null;
+    cands.sort((a, b) => (b.s.quality - a.s.quality) || (a.p - b.p));
+    return cands[0].s;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SIZING
+   ══════════════════════════════════════════════════════════════════════════ */
+function sizePosition(equity, entry, stop, atrPct, openPositions, cfg) {
+    const maxHeat = cfg.maxHeatPct / 100;
+    const maxPosPct = cfg.maxPositionPct / 100;
+    const baseRisk = cfg.riskPct / 100;
+
+    const volScalar = Math.min(1, 2.5 / Math.max(atrPct, 0.5));
+
+    let currentHeat = 0;
+    for (let i = 0; i < openPositions.length; i++) {
+        const p = openPositions[i];
+        const r = (p.entryPrice - p.stopPrice) / p.entryPrice;
+        currentHeat += (p.shares * p.entryPrice * r) / equity;
+    }
+    if (currentHeat >= maxHeat) return 0;
+
+    const targetRisk = baseRisk * volScalar;
+    const heatRoom = maxHeat - currentHeat;
+    const riskDollar = equity * Math.min(targetRisk, heatRoom);
+
+    const riskPerShare = entry - stop;
+    if (riskPerShare <= 0) return 0;
+
+    const sharesByRisk = Math.floor(riskDollar / riskPerShare);
+    const sharesByNotional = Math.floor((equity * maxPosPct) / entry);
+    return Math.max(0, Math.min(sharesByRisk, sharesByNotional));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SIMULACIÓN DE UN TRADE
+   ══════════════════════════════════════════════════════════════════════════ */
+function checkExitStep(d, i, pos, atrArr, cfg) {
+    const b = d[i];
+    const slip = cfg.slippageBps / 10000;
+    const fill = pos.entryPrice;
+    const R0 = fill - pos.initialStop;
+
+    if (i > pos.entryIdx && b.open <= pos.stopPrice) {
+        return finalize(b.open * (1 - slip), b.datetime, 'stop_gap');
+    }
+    if (b.low <= pos.stopPrice) {
+        return finalize(pos.stopPrice * (1 - slip), b.datetime,
+                        pos.stage === 0 ? 'stop' : 'trail_stop');
+    }
+
+    if (pos.stage === 0 && b.high >= fill + 0.5 * R0) {
+        pos.stopPrice = Math.max(pos.stopPrice, fill + 0.25 * R0);
+        pos.stage = 1;
+    }
+
+    // t1 y t2 vienen del setup finalizado (precios absolutos)
+    const t1Price = pos.t1;
+    const t2Price = pos.t2;
+
+    if (pos.stage === 1 && t1Price != null && b.high >= t1Price) {
+        pos.rAccum += (1 / 3) * ((t1Price * (1 - slip) - fill) / R0);
+        pos.remaining -= 1 / 3;
+        pos.stopPrice = Math.max(pos.stopPrice, fill + 0.75 * R0);
+        pos.stage = 2;
+    }
+    if (pos.stage === 2 && t2Price != null && b.high >= t2Price) {
+        pos.rAccum += (1 / 3) * ((t2Price * (1 - slip) - fill) / R0);
+        pos.remaining -= 1 / 3;
+        pos.stage = 3;
+    }
+    if (pos.stage === 3) {
+        let mh = -Infinity;
+        for (let j = Math.max(0, i - 19); j <= i; j++) if (d[j].high > mh) mh = d[j].high;
+        const ch = mh - 3.0 * atrArr[i];
+        if (ch > pos.stopPrice) pos.stopPrice = ch;
+    }
+
+    if (i - pos.entryIdx >= cfg.maxBarsHold) {
+        const unrealized = pos.rAccum + pos.remaining * ((b.close * (1 - slip) - fill) / R0);
+        if (unrealized < 0) {
+            return finalize(b.close * (1 - slip), b.datetime, 'time_stop');
+        }
+    }
+    return null;
+
+    function finalize(exitPrice, exitDate, reason) {
+        const rMult = pos.rAccum + pos.remaining * ((exitPrice - fill) / R0);
+        return {
+            symbol: pos.symbol,
+            entryDate: pos.entryDate,
+            exitDate: exitDate,
+            entryPrice: fill,
+            stopPrice: pos.initialStop,
+            t1: pos.t1,
+            t2: pos.t2,
+            exitPrice: exitPrice,
+            shares: pos.shares,
+            rMult: rMult,
+            barsHeld: i - pos.entryIdx,
+            exitReason: reason,
+            setupId: pos.setupId,
+            quality: pos.quality,
+            stageReached: pos.stage,
+            regime: pos.regimeLabel,
+            rsAtEntry: pos.rsAtEntry,
+            pnlDollar: pos.shares * (exitPrice - fill) - cfg.commission
         };
     }
 }
+function resampleWeekly(dailyBars) {
+    if (!Array.isArray(dailyBars) || dailyBars.length === 0) return [];
+    const weeks = new Map();
+    for (let i = 0; i < dailyBars.length; i++) {
+        const b = dailyBars[i];
+        if (!b || !b.datetime) continue;
+        const d = new Date(b.datetime + 'T12:00:00Z');
+        if (!isFinite(d.getTime())) continue;
+        const dayOfWeek = (d.getUTCDay() + 6) % 7;
+        const monday = new Date(d);
+        monday.setUTCDate(d.getUTCDate() - dayOfWeek);
+        const key = monday.toISOString().slice(0, 10);
+        if (!weeks.has(key)) {
+            weeks.set(key, {
+                datetime: key,
+                open: b.open,
+                high: b.high,
+                low: b.low,
+                close: b.close,
+                volume: b.volume || 0
+            });
+        } else {
+            const w = weeks.get(key);
+            if (b.high > w.high) w.high = b.high;
+            if (b.low < w.low) w.low = b.low;
+            w.close = b.close;
+            w.volume += (b.volume || 0);
+        }
+    }
+    return Array.from(weeks.values()).sort(function (a, b) {
+        return a.datetime.localeCompare(b.datetime);
+    });
+}
+/* ══════════════════════════════════════════════════════════════════════════
+   PREPARACIÓN DE SÍMBOLO
+   ══════════════════════════════════════════════════════════════════════════ */
+function prepareSymbol(d, opts) {
+    opts = opts || {};
+    const closes = d.map(x => x.close);
+    const volumes = d.map(x => x.volume || 0);
+    const e20 = ema(closes, 20);
+    const e50 = ema(closes, 50);
+    const e200 = ema(closes, 200);
+    const s200 = sma(closes, 200);
+    const rsi = rsiC(closes, 14);
+    const atr = atrC(d, 14);
+    const adxObj = adxC(d, 14);
+    const dh20 = donHi(d, 20);
+    const bb = boll(closes, 20, 2);
+    const vol20 = sma(volumes, 20);
+    const macdObj = macdCalc(closes, 12, 26, 9);
 
-/* ── Main ── */
-async function runBacktest() {
-    var btn = document.getElementById('runBtn');
-    var TH = (CFG && CFG.thresholds) || { minSetupQuality: 55, minRrT1: 1.5, maxRiskAtr: 3.0, minRiskAtr: 0.8 };
-    var enabled = (CFG && CFG.setupsEnabled) || { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true };
+    const volPct = new Array(d.length).fill(null);
+    for (let i = 60; i < d.length; i++) {
+        volPct[i] = volumePercentile(volumes.slice(0, i + 1), 60);
+    }
 
-    if (!DATASETS['SPY']) { setStatus('Falta SPY'); return; }
-    var symbols = Object.keys(DATASETS).filter(function(s) { return s !== 'SPY'; });
-    if (!symbols.length) { setStatus('Falta al menos un ticker además de SPY'); return; }
+    const recentLow = new Array(d.length).fill(null);
+    for (let i = 0; i < d.length; i++) {
+        if (i < 4) continue;
+        let best = null;
+        const start = Math.max(3, i - 30);
+        const end = i - 3;
+        for (let k = start; k <= end; k++) {
+            let isL = true;
+            for (let j = 1; j <= 3; j++) {
+                if (k - j < 0 || k + j >= d.length) { isL = false; break; }
+                if (d[k].low >= d[k - j].low || d[k].low >= d[k + j].low) { isL = false; break; }
+            }
+            if (isL) best = d[k].low;
+        }
+        recentLow[i] = best;
+    }
 
-    var cfg = {
-        capital: parseFloat(document.getElementById('pCapital').value) || 10000,
-        riskPct: parseFloat(document.getElementById('pRisk').value) || 1,
-        slippageBps: parseFloat(document.getElementById('pSlip').value) || 5,
-        commission: parseFloat(document.getElementById('pComm').value) || 2,
-        maxBarsHold: parseInt(document.getElementById('pMaxBars').value) || 20
+    const rsRating = opts.spyBars
+        ? buildRsSeriesByBar(d, opts.spyBars, [63, 126, 252])
+        : new Array(d.length).fill(null);
+
+    const rsVsSector = opts.sectorBars
+        ? buildRsSeriesByBar(d, opts.sectorBars, [63, 126, 252])
+        : new Array(d.length).fill(null);
+
+    const weekly = opts.weeklyBars
+        ? buildWeeklyTrendSeries(d, opts.weeklyBars)
+        : { trend: new Array(d.length).fill(null), rsi: new Array(d.length).fill(null) };
+
+    const daysEarnings = buildDaysEarningsSeries(d, opts.earningsDate || null);
+
+    const dateIdx = new Map();
+    for (let i = 0; i < d.length; i++) dateIdx.set(d[i].datetime, i);
+
+    return {
+        e20, e50, e200, s200, atr, rsi,
+        adx: adxObj.adx, pDI: adxObj.pDI, mDI: adxObj.mDI,
+        dh20, bbUp: bb.up, bbMid: bb.mid, bbLo: bb.lo,
+        vol20, volPct, recentLow, dateIdx,
+        macd: macdObj.macd, macdSignal: macdObj.signal,
+        rsRating, rsVsSector,
+        weeklyTrend: weekly.trend, weeklyRsi: weekly.rsi,
+        daysEarnings,
+        sectorETF: opts.sectorETF || null
+    };
+}
+function precomputeWeeklyMap() {
+    const map = {};
+    const symbols = Object.keys(DATASETS).filter(function (s) { return s !== 'SPY'; });
+    for (let i = 0; i < symbols.length; i++) {
+        const sym = symbols[i];
+        const daily = DATASETS[sym];
+        if (!Array.isArray(daily) || daily.length < 250) continue;
+        const weekly = resampleWeekly(daily);
+        if (weekly.length >= 30) {
+            map[sym] = weekly;
+        }
+    }
+    return map;
+}
+/* ══════════════════════════════════════════════════════════════════════════
+   PORTFOLIO LOOP EVENT-DRIVEN
+   ══════════════════════════════════════════════════════════════════════════ */
+async function runPortfolioCore(cfg, TH, enabled, dateStart, dateEnd) {
+    const spy = DATASETS['SPY'];
+
+    const regimeSeries = buildRegimeScore(spy);
+    const regimeByDate = new Map();
+    for (let i = 0; i < spy.length; i++) if (regimeSeries[i]) regimeByDate.set(spy[i].datetime, regimeSeries[i]);
+
+    const rsMap = buildRelativeStrength(DATASETS, spy);
+
+    const weeklyMap = precomputeWeeklyMap();
+    window.__btWeeklyMap = weeklyMap;
+    console.log('[bt] weekly precomputado:', Object.keys(weeklyMap).length, 'símbolos');
+
+    const prepared = {};
+    const symbols = Object.keys(DATASETS).filter(s => s !== 'SPY');
+    const SPY_BARS = DATASETS['SPY'];
+
+    for (let i = 0; i < symbols.length; i++) {
+        const sym = symbols[i];
+        if (DATASETS[sym].length < 250) continue;
+
+        const sectorETF = SECTOR_MAP[sym] || null;
+        const sectorBars = (sectorETF && SECTORS[sectorETF]) ? SECTORS[sectorETF] : null;
+
+        prepared[sym] = prepareSymbol(DATASETS[sym], {
+            spyBars: SPY_BARS,
+            sectorBars: sectorBars,
+            sectorETF: sectorETF,
+            earningsDate: EARNINGS[sym] || null,
+            weeklyBars: weeklyMap[sym] || null
+        });
+    }
+
+    let cov = { rs: 0, sector: 0, weekly: 0, earn: 0 };
+    for (const s in prepared) {
+        const p = prepared[s];
+        if (p.rsRating.some(v => v != null)) cov.rs++;
+        if (p.rsVsSector.some(v => v != null)) cov.sector++;
+        if (p.weeklyTrend.some(v => v != null)) cov.weekly++;
+        if (p.daysEarnings.some(v => v != null)) cov.earn++;
+    }
+    console.log('[bt] cobertura por símbolo:', cov, 'de', Object.keys(prepared).length);
+
+    const allDates = spy.map(d => d.datetime);
+    const dates = allDates.filter(dt => (!dateStart || dt >= dateStart) && (!dateEnd || dt < dateEnd));
+
+    const portfolio = {
+        equity: cfg.capital,
+        open: [],
+        closed: [],
+        curve: [{ dt: dates[0] || 'start', eq: cfg.capital }]
     };
 
-    btn.disabled = true;
-    setStatus('Calculando régimen…');
-    await new Promise(function(r) { setTimeout(r, 30); });
+    for (let di = 0; di < dates.length; di++) {
+        const dt = dates[di];
+        window.__btDiag.bars++;
 
-    var spy = DATASETS['SPY'];
-    var regSeries = buildRegime(spy);
-    var regMap = Object.create(null);
-    for (var ri = 0; ri < spy.length; ri++) if (regSeries[ri]) regMap[spy[ri].datetime] = regSeries[ri];
+        for (let k = portfolio.open.length - 1; k >= 0; k--) {
+            const pos = portfolio.open[k];
+            const d = DATASETS[pos.symbol];
+            const i = pos.currentIdx;
+            if (i >= d.length || d[i].datetime !== dt) continue;
 
-    var trades = [];
-    var totalBars = 0;
-    for (var ti = 0; ti < symbols.length; ti++) totalBars += DATASETS[symbols[ti]].length;
-    var done = 0;
-
-    for (var si = 0; si < symbols.length; si++) {
-        var sym = symbols[si];
-        var d = DATASETS[sym];
-        if (d.length < 250) continue;
-
-        var closes = d.map(function(x) { return x.close; });
-        var e20 = ema(closes, 20), e50 = ema(closes, 50), e200 = ema(closes, 200);
-        var s200 = sma(closes, 200);
-        var rsi = rsiC(closes, 14);
-        var atr = atrC(d, 14);
-        var adxObj = adxC(d, 14);
-        var dh20 = donHi(d, 20);
-        var bb = boll(closes, 20, 2);
-        var vol20 = sma(d.map(function(x) { return x.volume || 0; }), 20);
-
-        var c = {
-            e20: e20, e50: e50, e200: e200, s200: s200, atr: atr, rsi: rsi,
-            adx: adxObj.adx, pDI: adxObj.pDI, mDI: adxObj.mDI,
-            dh20: dh20, bbUp: bb.up, bbMid: bb.mid, bbLo: bb.lo,
-            vol20: vol20
-        };
-
-        for (var i = 210; i < d.length - 1; i++) {
-            var regime = regMap[d[i].datetime] || 'NEUTRAL';
-            var isRO = regime === 'RISK_OFF' || regime === 'STRONG_RISK_OFF';
-
-            var cands = [];
-            if (enabled.donchian && !isRO) { var sd = tryDonchian(d, i, c, TH); if (sd) cands.push({ s: sd, p: 1 }); }
-            if (enabled.pullback) { var sp = tryPullback(d, i, c, TH); if (sp) cands.push({ s: sp, p: 2 }); }
-            if (enabled.bb_breakout && !isRO) { var sb = tryBB(d, i, c, TH); if (sb) cands.push({ s: sb, p: 3 }); }
-            if (enabled.golden_cross && !isRO) { var sg = tryGolden(d, i, c, TH); if (sg) cands.push({ s: sg, p: 4 }); }
-            if (enabled.sma200) { var s2 = trySma200(d, i, c, TH); if (s2) cands.push({ s: s2, p: 5 }); }
-
-            if (!cands.length) { done++; continue; }
-            cands.sort(function(a, b) { return a.p - b.p; });
-            var chosen = cands[0].s;
-
-            var t = simulate(d, i, chosen, { slippageBps: cfg.slippageBps, maxBarsHold: cfg.maxBarsHold, atr: atr });
-            if (t) {
-                t.symbol = sym;
-                t.regime = regime;
-                trades.push(t);
-                i = Math.min(d.length - 2, i + t.barsHeld);
+            const exit = checkExitStep(d, i, pos, prepared[pos.symbol].atr, cfg);
+            if (exit) {
+                portfolio.equity += exit.pnlDollar;
+                portfolio.closed.push(exit);
+                portfolio.open.splice(k, 1);
+            } else {
+                pos.currentIdx++;
             }
-            done++;
-            if (done % 500 === 0) {
-                setStatus('Simulando… ' + done + '/' + totalBars);
-                await new Promise(function(r) { setTimeout(r, 0); });
+        }
+
+        const regime = regimeByDate.get(dt);
+        portfolio.curve.push({ dt, eq: portfolio.equity });
+
+        if (!regime) continue;
+        if (regime.score < TH.minRegimeScore) { window.__btDiag.regimeFail++; continue; }
+        window.__btDiag.regimePass++;
+
+        if (portfolio.open.length >= cfg.maxPositions) continue;
+
+        const rsAtDate = rsMap.get(dt);
+        if (!rsAtDate) continue;
+
+        const candidates = [];
+        for (const sym in prepared) {
+            const d = DATASETS[sym];
+            const i = prepared[sym].dateIdx.get(dt);
+            if (i == null || i < 220) continue;
+
+            window.__btDiag.inUniverse++;
+
+            const rs = rsAtDate.get(sym);
+            if (rs == null || rs < TH.minRsPercentile) { window.__btDiag.rsFail++; continue; }
+            window.__btDiag.rsPass++;
+
+            const c = prepared[sym];
+            if (c.atr[i] == null) continue;
+
+            const setup = pickSetup(d, i, c, { TH, regime }, enabled);
+            if (!setup) continue;
+
+            window.__btDiag.candidates++;
+            window.__btDiag.bySetup[setup.id] = (window.__btDiag.bySetup[setup.id] || 0) + 1;
+
+            candidates.push({
+                sym, i, setup, rs,
+                atrPct: c.atr[i] / d[i].close * 100
+            });
+        }
+
+        candidates.sort((a, b) => (b.setup.quality * b.rs) - (a.setup.quality * a.rs));
+
+        let openedThisBar = 0;
+        for (let ci = 0; ci < candidates.length; ci++) {
+            if (openedThisBar >= cfg.maxEntriesPerBar) break;
+            if (portfolio.open.length >= cfg.maxPositions) break;
+
+            const cand = candidates[ci];
+            if (portfolio.open.some(p => p.symbol === cand.sym)) continue;
+
+            const shares = sizePosition(
+                portfolio.equity, cand.setup.entry, cand.setup.stop,
+                cand.atrPct, portfolio.open, cfg
+            );
+            if (shares <= 0) {
+                window.__btDiag.byReject['size_zero'] = (window.__btDiag.byReject['size_zero'] || 0) + 1;
+                continue;
             }
+
+            portfolio.open.push({
+    symbol: cand.sym,
+    entryIdx: cand.i + 1,
+    currentIdx: cand.i + 1,
+    entryDate: DATASETS[cand.sym][cand.i + 1].datetime,
+    entryPrice: cand.setup.entry,
+    stopPrice: cand.setup.stop,
+    initialStop: cand.setup.stop,
+    t1: cand.setup.t1,
+    t2: cand.setup.t2,
+    shares: shares,
+    setupId: cand.setup.id,
+    quality: cand.setup.quality,
+    stage: 0,
+    remaining: 1.0,
+    rAccum: 0,
+    regimeLabel: regime.label,
+    rsAtEntry: cand.rs
+});
+            openedThisBar++;
+            window.__btDiag.entries++;
+        }
+
+        if (di % 200 === 0) {
+            setStatus('Simulando… barra ' + di + '/' + dates.length);
+            await new Promise(r => setTimeout(r, 0));
         }
     }
 
-    btn.disabled = false;
-    if (!trades.length) { setStatus('Sin trades. Baja el umbral de calidad.'); return; }
+    for (let k = 0; k < portfolio.open.length; k++) {
+        const pos = portfolio.open[k];
+        const d = DATASETS[pos.symbol];
+        const lastIdx = Math.min(d.length - 1, pos.currentIdx);
+        const b = d[lastIdx];
+        const slip = cfg.slippageBps / 10000;
+        const exitPrice = b.close * (1 - slip);
+        const risk = pos.entryPrice - pos.initialStop;
+        const rMult = pos.rAccum + pos.remaining * ((exitPrice - pos.entryPrice) / risk);
+        portfolio.closed.push({
+            symbol: pos.symbol,
+            entryDate: pos.entryDate,
+            exitDate: b.datetime,
+            entryPrice: pos.entryPrice,
+            stopPrice: pos.initialStop,
+            exitPrice: exitPrice,
+            shares: pos.shares,
+            rMult: rMult,
+            barsHeld: lastIdx - pos.entryIdx,
+            exitReason: 'window_end',
+            setupId: pos.setupId,
+            quality: pos.quality,
+            stageReached: pos.stage,
+            regime: pos.regimeLabel,
+            rsAtEntry: pos.rsAtEntry,
+            pnlDollar: pos.shares * (exitPrice - pos.entryPrice) - cfg.commission
+        });
+        portfolio.equity += pos.shares * (exitPrice - pos.entryPrice) - cfg.commission;
+    }
+    portfolio.open = [];
 
-    LAST = computeMetrics(trades, cfg);
-    LAST.trades = trades;
-    renderResults(LAST, cfg);
-    setStatus(trades.length + ' trades simulados');
+    return portfolio;
 }
 
-function computeMetrics(trades, cfg) {
-    var n = trades.length;
-    var rs = trades.map(function(t) { return t.rMult; });
-    var wins = trades.filter(function(t) { return t.rMult > 0; });
-    var losses = trades.filter(function(t) { return t.rMult < 0; });
-    var flats = trades.filter(function(t) { return t.rMult === 0; });
-    var wr = n ? wins.length / n : 0;
-    var avgW = wins.length ? wins.reduce(function(a, t) { return a + t.rMult; }, 0) / wins.length : 0;
-    var avgL = losses.length ? losses.reduce(function(a, t) { return a + t.rMult; }, 0) / losses.length : 0;
-    var gp = wins.reduce(function(a, t) { return a + t.rMult; }, 0);
-    var gl = Math.abs(losses.reduce(function(a, t) { return a + t.rMult; }, 0));
-    var pf = gl > 0 ? gp / gl : (gp > 0 ? Infinity : 0);
-    var totalR = rs.reduce(function(a, b) { return a + b; }, 0);
-    var exp = totalR / n;
-    var sd = n > 1 ? Math.sqrt(rs.reduce(function(a, b) { return a + Math.pow(b - exp, 2); }, 0) / (n - 1)) : 0;
-    var sqn = sd > 0 ? Math.sqrt(n) * exp / sd : 0;
+/* ══════════════════════════════════════════════════════════════════════════
+   MÉTRICAS
+   ══════════════════════════════════════════════════════════════════════════ */
+function computeMetrics(portfolio, cfg) {
+    const trades = portfolio.closed;
+    const n = trades.length;
+    if (!n) return null;
 
-    var rp = cfg.riskPct / 100;
-    var eq = cfg.capital;
-    var curve = [{ i: 0, eq: eq }];
-    var peak = eq, maxDD = 0, maxDDPct = 0, cl = 0, maxCL = 0;
-    for (var i = 0; i < trades.length; i++) {
-        eq = eq * (1 + rp * trades[i].rMult) - cfg.commission;
-        curve.push({ i: i + 1, eq: eq });
-        if (eq > peak) peak = eq;
-        var dd = peak - eq;
-        var ddPct = (dd / peak) * 100;
-        if (dd > maxDD) maxDD = dd;
-        if (ddPct > maxDDPct) maxDDPct = ddPct;
-        if (trades[i].rMult < 0) { cl++; if (cl > maxCL) maxCL = cl; } else cl = 0;
-    }
-    var finalEq = eq;
-    var ret = ((finalEq - cfg.capital) / cfg.capital) * 100;
+    const rs = trades.map(t => t.rMult);
+    const wins = trades.filter(t => t.rMult > 0);
+    const losses = trades.filter(t => t.rMult < 0);
 
-    var boot = [];
-    for (var b = 0; b < 1000; b++) {
-        var s = 0;
-        for (var k = 0; k < n; k++) s += rs[Math.floor(Math.random() * n)];
+    const wr = wins.length / n;
+    const avgW = wins.length ? wins.reduce((a, t) => a + t.rMult, 0) / wins.length : 0;
+    const avgL = losses.length ? losses.reduce((a, t) => a + t.rMult, 0) / losses.length : 0;
+
+    const gp = wins.reduce((a, t) => a + t.rMult, 0);
+    const gl = Math.abs(losses.reduce((a, t) => a + t.rMult, 0));
+    const pf = gl > 0 ? gp / gl : (gp > 0 ? Infinity : 0);
+
+    const totalR = rs.reduce((a, b) => a + b, 0);
+    const exp = totalR / n;
+    const sd = n > 1 ? Math.sqrt(rs.reduce((a, b) => a + Math.pow(b - exp, 2), 0) / (n - 1)) : 0;
+    const sqn = sd > 0 ? Math.sqrt(n) * exp / sd : 0;
+
+    const boot = [];
+    for (let b = 0; b < 2000; b++) {
+        let s = 0;
+        for (let k = 0; k < n; k++) s += rs[Math.floor(Math.random() * n)];
         boot.push(s / n);
     }
-    boot.sort(function(a, b) { return a - b; });
-    var ciL = boot[Math.floor(boot.length * 0.025)];
-    var ciH = boot[Math.floor(boot.length * 0.975)];
+    boot.sort((a, b) => a - b);
+    const ciL = boot[Math.floor(boot.length * 0.025)];
+    const ciH = boot[Math.floor(boot.length * 0.975)];
 
-    var bySetup = {};
-    for (var a = 0; a < trades.length; a++) {
-        var t = trades[a];
+    let permBetter = 0;
+    const TRIALS = 2000;
+    for (let p = 0; p < TRIALS; p++) {
+        let s = 0;
+        for (let k = 0; k < n; k++) s += rs[Math.floor(Math.random() * n)] * (Math.random() < 0.5 ? 1 : -1);
+        if (s / n >= exp) permBetter++;
+    }
+    const pValue = permBetter / TRIALS;
+
+    const curve = portfolio.curve;
+    const eqs = curve.map(p => p.eq);
+
+    let peak = eqs[0], maxDD = 0, maxDDPct = 0;
+    for (let i = 0; i < eqs.length; i++) {
+        if (eqs[i] > peak) peak = eqs[i];
+        const dd = peak - eqs[i];
+        const ddPct = peak > 0 ? (dd / peak) * 100 : 0;
+        if (dd > maxDD) maxDD = dd;
+        if (ddPct > maxDDPct) maxDDPct = ddPct;
+    }
+
+    const rets = [];
+    for (let i = 1; i < eqs.length; i++) {
+        if (eqs[i - 1] > 0) rets.push(eqs[i] / eqs[i - 1] - 1);
+    }
+    const meanRet = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : 0;
+    const sdRet = rets.length > 1
+        ? Math.sqrt(rets.reduce((a, b) => a + Math.pow(b - meanRet, 2), 0) / (rets.length - 1))
+        : 0;
+    const downside = rets.filter(r => r < 0);
+    const sdDown = downside.length
+        ? Math.sqrt(downside.reduce((a, b) => a + b * b, 0) / downside.length)
+        : 0;
+
+    const sharpe = sdRet > 0 ? (meanRet / sdRet) * Math.sqrt(252) : 0;
+    const sortino = sdDown > 0 ? (meanRet / sdDown) * Math.sqrt(252) : 0;
+
+    const years = eqs.length / 252;
+    const finalEq = eqs[eqs.length - 1];
+    const cagr = years > 0 && eqs[0] > 0
+        ? (Math.pow(finalEq / eqs[0], 1 / years) - 1) * 100
+        : 0;
+    const calmar = maxDDPct > 0 ? cagr / maxDDPct : 0;
+
+    const nTrials = 100;
+    const em = 0.5772;
+    const eMax = Math.sqrt(2 * Math.log(nTrials)) -
+                 (Math.log(Math.log(nTrials)) + Math.log(4 * Math.PI)) / (2 * Math.sqrt(2 * Math.log(nTrials)));
+    const sr0 = eMax * (1 - em) * Math.sqrt(1 / Math.max(1, rets.length));
+    const dsr = (sharpe / Math.sqrt(252)) - sr0;
+
+    let cl = 0, maxCL = 0;
+    for (let i = 0; i < trades.length; i++) {
+        if (trades[i].rMult < 0) { cl++; if (cl > maxCL) maxCL = cl; }
+        else cl = 0;
+    }
+
+    const bySetup = {};
+    for (const t of trades) {
         if (!bySetup[t.setupId]) bySetup[t.setupId] = { n: 0, totalR: 0, wins: 0 };
         bySetup[t.setupId].n++;
         bySetup[t.setupId].totalR += t.rMult;
         if (t.rMult > 0) bySetup[t.setupId].wins++;
     }
-    var bySymbol = {};
-    for (var c2 = 0; c2 < trades.length; c2++) {
-        var t2 = trades[c2];
-        if (!bySymbol[t2.symbol]) bySymbol[t2.symbol] = { n: 0, totalR: 0, wins: 0 };
-        bySymbol[t2.symbol].n++;
-        bySymbol[t2.symbol].totalR += t2.rMult;
-        if (t2.rMult > 0) bySymbol[t2.symbol].wins++;
+    const byRegime = {};
+    for (const t of trades) {
+        const k = t.regime || 'UNKNOWN';
+        if (!byRegime[k]) byRegime[k] = { n: 0, totalR: 0, wins: 0 };
+        byRegime[k].n++;
+        byRegime[k].totalR += t.rMult;
+        if (t.rMult > 0) byRegime[k].wins++;
+    }
+    const bySymbol = {};
+    for (const t of trades) {
+        if (!bySymbol[t.symbol]) bySymbol[t.symbol] = { n: 0, totalR: 0, wins: 0 };
+        bySymbol[t.symbol].n++;
+        bySymbol[t.symbol].totalR += t.rMult;
+        if (t.rMult > 0) bySymbol[t.symbol].wins++;
+    }
+    const byExit = {};
+    for (const t of trades) {
+        const k = t.exitReason || 'unknown';
+        if (!byExit[k]) byExit[k] = { n: 0, totalR: 0, wins: 0 };
+        byExit[k].n++;
+        byExit[k].totalR += t.rMult;
+        if (t.rMult > 0) byExit[k].wins++;
     }
 
     return {
-        n: n, wr: wr, avgW: avgW, avgL: avgL, pf: pf, exp: exp, sqn: sqn,
-        totalR: totalR, maxDD: maxDD, maxDDPct: maxDDPct, finalEq: finalEq, ret: ret,
-        ciL: ciL, ciH: ciH, wins: wins.length, losses: losses.length, flats: flats.length,
-        maxCL: maxCL, curve: curve, bySetup: bySetup, bySymbol: bySymbol
+        n, wr, avgW, avgL, pf, exp, sqn, totalR,
+        ciL, ciH, pValue,
+        maxDD, maxDDPct, maxCL, sharpe, sortino, calmar, cagr, dsr,
+        finalEq, curve, trades, bySetup, byRegime, bySymbol, byExit,
+        config: cfg
     };
 }
 
-function renderResults(R, cfg) {
+/* ══════════════════════════════════════════════════════════════════════════
+   RUNNERS
+   ══════════════════════════════════════════════════════════════════════════ */
+function readCfgFromForm() {
+    return {
+        capital: parseFloat(document.getElementById('pCapital').value) || 10000,
+        riskPct: parseFloat(document.getElementById('pRisk').value) || 1.5,
+        maxHeatPct: parseFloat(document.getElementById('pMaxHeat').value) || 8,
+        maxPositions: parseInt(document.getElementById('pMaxPos').value) || 10,
+        maxEntriesPerBar: parseInt(document.getElementById('pMaxEntries').value) || 3,
+        maxPositionPct: parseFloat(document.getElementById('pMaxNotional').value) || 15,
+        slippageBps: parseFloat(document.getElementById('pSlip').value) || 5,
+        commission: parseFloat(document.getElementById('pComm').value) || 2,
+        maxBarsHold: parseInt(document.getElementById('pMaxBars').value) || 20
+    };
+}
+function readTHFromForm() {
+    const base = (CFG && CFG.thresholds) || {};
+    return {
+        minSetupQuality: parseFloat(document.getElementById('pMinQ').value) || 40,
+        minRrT1: base.minRrT1 != null ? base.minRrT1 : 1.5,
+        maxRiskAtr: base.maxRiskAtr != null ? base.maxRiskAtr : 3.5,
+        minRiskAtr: base.minRiskAtr != null ? base.minRiskAtr : 0.5,
+        minRegimeScore: parseFloat(document.getElementById('pMinRegime').value) || 20,
+        minRsPercentile: parseFloat(document.getElementById('pMinRs').value) || 0.40
+    };
+}
+function readEnabled() {
+    const base = (CFG && CFG.setupsEnabled) || {};
+    return {
+        donchian: base.donchian !== false,
+        pullback: base.pullback !== false,
+        sma200: base.sma200 !== false,
+        golden_cross: base.golden_cross !== false,
+        bb_breakout: base.bb_breakout !== false
+    };
+}
+
+function validate() {
+    if (!DATASETS['SPY']) { setStatus('Falta SPY'); return false; }
+    const symbols = Object.keys(DATASETS).filter(s => s !== 'SPY');
+    if (!symbols.length) { setStatus('Falta al menos un ticker además de SPY'); return false; }
+    return true;
+}
+
+async function runBacktest() {
+    if (!validate()) return;
+    const btn = document.getElementById('runBtn');
+    btn.disabled = true;
+    setStatus('Preparando…');
+
+    window.__btDiag = { bars: 0, inUniverse: 0, rsFail: 0, rsPass: 0, regimeFail: 0, regimePass: 0, candidates: 0, entries: 0, bySetup: {}, byReject: {} };
+
+    try {
+        const cfg = readCfgFromForm();
+        const TH = readTHFromForm();
+        const enabled = readEnabled();
+
+        const portfolio = await runPortfolioCore(cfg, TH, enabled, null, null);
+
+        console.log('Diagnóstico:', JSON.parse(JSON.stringify(window.__btDiag)));
+        console.table(window.__btDiag.bySetup);
+
+        if (!portfolio.closed.length) {
+            setStatus('Sin operaciones. Ver consola para diagnóstico detallado.');
+            return;
+        }
+
+        LAST = computeMetrics(portfolio, cfg);
+        renderResults(LAST);
+        setStatus(portfolio.closed.length + ' operaciones simuladas');
+    } catch (err) {
+        console.error(err);
+        setStatus('Error: ' + (err.message || err));
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function runWalkForward() {
+    if (!validate()) return;
+    const btn = document.getElementById('wfBtn');
+    btn.disabled = true;
+    setStatus('Ejecutando walk-forward…');
+
+    try {
+        const cfg = readCfgFromForm();
+        const TH = readTHFromForm();
+        const enabled = readEnabled();
+
+        const spy = DATASETS['SPY'];
+        const allDates = spy.map(d => d.datetime);
+        const folds = parseInt(document.getElementById('pWfFolds').value) || 4;
+        const trainRatio = (parseFloat(document.getElementById('pWfTrain').value) || 70) / 100;
+        const minTrades = parseInt(document.getElementById('pWfMinTrades').value) || 10;
+
+        const totalLen = allDates.length;
+        const foldLen = Math.floor(totalLen / folds);
+        const foldResults = [];
+
+        for (let f = 0; f < folds; f++) {
+            const start = f * foldLen;
+            const end = f === folds - 1 ? totalLen : (f + 1) * foldLen;
+            const slice = allDates.slice(start, end);
+            const trainEnd = Math.floor(slice.length * trainRatio);
+            const isStart = slice[0];
+            const isEnd = slice[trainEnd];
+            const oosEnd = slice[slice.length - 1];
+
+            setStatus('Walk-forward · partición ' + (f + 1) + '/' + folds + ' (IS)');
+            const isPortfolio = await runPortfolioCore(cfg, TH, enabled, isStart, isEnd);
+            const isM = isPortfolio.closed.length ? computeMetrics(isPortfolio, cfg) : null;
+
+            setStatus('Walk-forward · partición ' + (f + 1) + '/' + folds + ' (OOS)');
+            const oosPortfolio = await runPortfolioCore(cfg, TH, enabled, isEnd, oosEnd);
+            const oosM = oosPortfolio.closed.length ? computeMetrics(oosPortfolio, cfg) : null;
+
+            foldResults.push({
+                index: f + 1,
+                isStart, isEnd, oosEnd,
+                is: isM, oos: oosM,
+                minTrades
+            });
+        }
+
+        const validFolds = foldResults.filter(f => f.is && f.oos && f.oos.n >= minTrades);
+        let consistency = 0;
+        let aggOOSn = 0, aggOOSsumR = 0, aggOOSwins = 0;
+        let aggOOSFinalEq = 1;
+
+        if (validFolds.length) {
+            const ratios = [];
+            for (const f of validFolds) {
+                if (Math.abs(f.is.exp) > 0.01) ratios.push(f.oos.exp / f.is.exp);
+                aggOOSn += f.oos.n;
+                aggOOSsumR += f.oos.totalR;
+                aggOOSwins += f.oos.trades.filter(t => t.rMult > 0).length;
+                aggOOSFinalEq *= (f.oos.finalEq / cfg.capital);
+            }
+            ratios.sort((a, b) => a - b);
+            consistency = ratios.length ? ratios[Math.floor(ratios.length / 2)] : 0;
+        }
+
+        LAST_WF = {
+            folds: foldResults,
+            validFolds: validFolds.length,
+            consistency,
+            agg: validFolds.length ? {
+                n: aggOOSn,
+                exp: aggOOSn ? aggOOSsumR / aggOOSn : 0,
+                wr: aggOOSn ? aggOOSwins / aggOOSn : 0,
+                totalR: aggOOSsumR,
+                compoundReturnPct: (aggOOSFinalEq - 1) * 100
+            } : null
+        };
+
+        renderWalkForward(LAST_WF, cfg);
+        setStatus('Walk-forward completado: ' + validFolds.length + '/' + folds + ' particiones válidas');
+    } catch (err) {
+        console.error(err);
+        setStatus('Error: ' + (err.message || err));
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RENDER · RESULTADOS
+   ══════════════════════════════════════════════════════════════════════════ */
+let currentTab = 'setup';
+
+function switchTab(tab) {
+    currentTab = tab;
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    if (LAST) renderBreakdown(LAST);
+}
+
+function metric(k, v, s, color) {
+    return '<div class="metric"><div class="k">' + k + '</div>' +
+           '<div class="v"' + (color ? ' style="color:' + color + '"' : '') + '>' + v + '</div>' +
+           '<div class="s">' + (s || '') + '</div></div>';
+}
+
+function renderResults(R) {
     document.getElementById('resultsCard').style.display = 'block';
     document.getElementById('tradesCard').style.display = 'block';
 
-    var expC = R.exp >= 0.2 ? 'var(--green)' : R.exp >= 0 ? 'var(--text)' : 'var(--red)';
-    var pfC = R.pf >= 1.5 ? 'var(--green)' : R.pf >= 1 ? 'var(--text)' : 'var(--red)';
-    var ddC = R.maxDDPct <= 15 ? 'var(--green)' : R.maxDDPct <= 30 ? 'var(--orange)' : 'var(--red)';
-    var ciCross = R.ciL <= 0 && R.ciH >= 0;
+    const expC = R.exp >= 0.2 ? 'var(--green)' : R.exp >= 0 ? 'var(--text)' : 'var(--red)';
+    const pfC = R.pf >= 1.5 ? 'var(--green)' : R.pf >= 1 ? 'var(--text)' : 'var(--red)';
+    const ddC = R.maxDDPct <= 15 ? 'var(--green)' : R.maxDDPct <= 30 ? 'var(--orange)' : 'var(--red)';
+    const shC = R.sharpe >= 1.5 ? 'var(--green)' : R.sharpe >= 0.5 ? 'var(--text)' : 'var(--red)';
+    const caC = R.calmar >= 0.5 ? 'var(--green)' : R.calmar >= 0.2 ? 'var(--text)' : 'var(--red)';
+    const pvC = R.pValue <= 0.05 ? 'var(--green)' : R.pValue <= 0.10 ? 'var(--orange)' : 'var(--red)';
+    const ciCross = R.ciL <= 0 && R.ciH >= 0;
 
     document.getElementById('resultsSub').innerHTML =
-        R.n + ' trades · ' + Object.keys(R.bySymbol).length + ' símbolos · ' + cfg.slippageBps + 'bps slip · $' + cfg.commission + ' comisión';
+        R.n + ' operaciones · ' + Object.keys(R.bySymbol).length + ' símbolos · ' +
+        R.config.slippageBps + ' bps slippage · $' + R.config.commission + ' comisión · ' +
+        'riesgo ' + R.config.riskPct + '% · heat ' + R.config.maxHeatPct + '%';
 
     document.getElementById('metrics').innerHTML =
-        '<div class="metric"><div class="k">Trades</div><div class="v">' + R.n + '</div><div class="s">' + R.wins + 'W · ' + R.losses + 'L</div></div>' +
-        '<div class="metric"><div class="k">Win rate</div><div class="v">' + (R.wr * 100).toFixed(1) + '%</div><div class="s">' + R.wins + '/' + R.n + '</div></div>' +
-        '<div class="metric"><div class="k">Expectancy</div><div class="v" style="color:' + expC + '">' + (R.exp >= 0 ? '+' : '') + R.exp.toFixed(2) + 'R</div><div class="s">IC95% [' + R.ciL.toFixed(2) + ', ' + R.ciH.toFixed(2) + ']</div></div>' +
-        '<div class="metric"><div class="k">Profit factor</div><div class="v" style="color:' + pfC + '">' + (R.pf === Infinity ? '∞' : R.pf.toFixed(2)) + '</div><div class="s">P/L brutos</div></div>';
+        metric('Operaciones', R.n, R.trades.filter(t => t.rMult > 0).length + 'G · ' + R.trades.filter(t => t.rMult < 0).length + 'P') +
+        metric('Tasa de acierto', (R.wr * 100).toFixed(1) + '%', R.trades.filter(t => t.rMult > 0).length + '/' + R.n) +
+        metric('Expectancy', (R.exp >= 0 ? '+' : '') + R.exp.toFixed(3) + 'R', 'IC95% [' + R.ciL.toFixed(2) + ', ' + R.ciH.toFixed(2) + ']', expC) +
+        metric('Profit factor', R.pf === Infinity ? '∞' : R.pf.toFixed(2), 'G/P brutos', pfC);
 
     document.getElementById('metrics2').innerHTML =
-        '<div class="metric"><div class="k">SQN</div><div class="v">' + (R.n < 10 ? '—' : R.sqn.toFixed(2)) + '</div><div class="s">' + (R.n < 10 ? 'n<10' : R.sqn >= 3 ? 'bueno' : R.sqn >= 2 ? 'aceptable' : R.sqn >= 1 ? 'débil' : 'malo') + '</div></div>' +
-        '<div class="metric"><div class="k">Retorno</div><div class="v" style="color:' + (R.ret >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (R.ret >= 0 ? '+' : '') + R.ret.toFixed(1) + '%</div><div class="s">$' + cfg.capital.toFixed(0) + ' → $' + R.finalEq.toFixed(0) + '</div></div>' +
-        '<div class="metric"><div class="k">Max DD</div><div class="v" style="color:' + ddC + '">-' + R.maxDDPct.toFixed(1) + '%</div><div class="s">racha ' + R.maxCL + '</div></div>';
+        metric('Sharpe', R.sharpe.toFixed(2), 'anualizado', shC) +
+        metric('Sortino', R.sortino.toFixed(2), 'anualizado') +
+        metric('Calmar', R.calmar.toFixed(2), 'CAGR / MaxDD', caC) +
+        metric('SQN', R.n < 10 ? '—' : R.sqn.toFixed(2), R.n < 10 ? 'n<10' : (R.sqn >= 2 ? 'aceptable' : R.sqn >= 1 ? 'débil' : 'insuficiente'));
 
-    document.getElementById('resultsSub').innerHTML += ciCross
-        ? '<div style="margin-top:8px;padding:9px 11px;background:rgba(255,159,10,.10);border:1px solid rgba(255,159,10,.30);border-radius:8px;font-size:11px;color:var(--orange);"><b>⚠ IC95% cruza cero.</b> Sin edge demostrable con esta muestra.</div>'
-        : '<div style="margin-top:8px;padding:9px 11px;background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.25);border-radius:8px;font-size:11px;color:var(--green);"><b>✓ IC95% no cruza cero.</b> Expectancy significativa al 95%.</div>';
+    document.getElementById('metrics3').innerHTML =
+        metric('Retorno', (R.cagr >= 0 ? '+' : '') + R.cagr.toFixed(1) + '%', 'CAGR', R.cagr >= 0 ? 'var(--green)' : 'var(--red)') +
+        metric('Max drawdown', '-' + R.maxDDPct.toFixed(1) + '%', 'racha ' + R.maxCL + ' pérdidas', ddC) +
+        metric('p-value', R.pValue.toFixed(3), 'test de permutación', pvC);
+
+    let verdict = '';
+    if (ciCross) {
+        verdict += '<b>Intervalo de confianza al 95% cruza cero.</b> Con la muestra actual no se puede rechazar que la expectancy sea cero. ';
+    } else {
+        verdict += '<b>Intervalo de confianza al 95% no cruza cero.</b> Expectancy significativa al 95% sobre la muestra. ';
+    }
+    if (R.pValue > 0.10) {
+        verdict += 'El test de permutación no permite rechazar la hipótesis nula (p=' + R.pValue.toFixed(3) + '). ';
+    }
+    if (R.dsr <= 0) {
+        verdict += 'El Sharpe ajustado por múltiples pruebas es negativo. ';
+    }
+    if (R.n < 30) {
+        verdict += 'Con menos de 30 operaciones la inferencia es débil.';
+    }
+    document.getElementById('verdict').innerHTML = verdict;
 
     if (eqChart) eqChart.destroy();
     eqChart = new Chart(document.getElementById('eqChart'), {
         type: 'line',
         data: {
-            labels: R.curve.map(function(_, i) { return i === 0 ? 'start' : '#' + i; }),
+            labels: R.curve.map((_, i) => i === 0 ? 'inicio' : '#' + i),
             datasets: [{
                 label: 'Equity',
-                data: R.curve.map(function(p) { return +p.eq.toFixed(2); }),
-                borderColor: R.ret >= 0 ? '#32d4e0' : '#ff453a',
-                backgroundColor: R.ret >= 0 ? 'rgba(50,212,224,.08)' : 'rgba(255,69,58,.08)',
+                data: R.curve.map(p => +p.eq.toFixed(2)),
+                borderColor: R.curve[R.curve.length - 1].eq >= R.curve[0].eq ? '#32d4e0' : '#ff453a',
+                backgroundColor: R.curve[R.curve.length - 1].eq >= R.curve[0].eq ? 'rgba(50,212,224,.08)' : 'rgba(255,69,58,.08)',
                 borderWidth: 2, pointRadius: 0, fill: true, tension: 0.1
             }]
         },
@@ -886,107 +2158,232 @@ function renderResults(R, cfg) {
             plugins: { legend: { display: false } },
             scales: {
                 x: { grid: { color: 'rgba(255,255,255,.03)' }, ticks: { color: '#636366', font: { size: 9 }, maxTicksLimit: 8 } },
-                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 9 }, callback: function(v) { return '$' + Number(v).toFixed(0); } } }
+                y: { position: 'right', grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#636366', font: { size: 9 }, callback: v => '$' + Number(v).toFixed(0) } }
             }
         }
     });
 
-    var sEntries = Object.entries(R.bySetup).sort(function(a, b) { return b[1].n - a[1].n; });
-    document.getElementById('bySetup').innerHTML =
-        '<div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:6px;">Por setup</div>' +
-        '<table><thead><tr><th>Setup</th><th>N</th><th>WR</th><th>Exp.</th></tr></thead><tbody>' +
-        sEntries.map(function(e) {
-            var k = e[0], v = e[1];
-            var exp = v.totalR / v.n;
-            var c = exp >= 0.2 ? 'var(--green)' : exp >= 0 ? 'var(--text)' : 'var(--red)';
-            return '<tr><td>' + k + '</td><td style="text-align:right">' + v.n + '</td><td style="text-align:right;color:var(--text-2)">' + (v.wins / v.n * 100).toFixed(0) + '%</td><td style="text-align:right;color:' + c + ';font-weight:700">' + (exp >= 0 ? '+' : '') + exp.toFixed(2) + 'R</td></tr>';
-        }).join('') +
-        '</tbody></table>';
+    renderBreakdown(R);
+    renderTrades(R);
+    document.getElementById('sendBtn').style.display = IN_IFRAME ? 'block' : 'none';
+}
 
-    document.getElementById('tradesSub').textContent = R.n + ' trades · mostrando 200 más recientes';
-    var sorted = R.trades.slice().sort(function(a, b) { return (b.entryDate || '').localeCompare(a.entryDate || ''); }).slice(0, 200);
-    document.getElementById('tradesList').innerHTML =
-        '<table><thead><tr><th>Fecha</th><th>Sym</th><th>Setup</th><th>Ent.</th><th>Stop</th><th>Salida</th><th>R</th></tr></thead><tbody>' +
-        sorted.map(function(t) {
+function renderBreakdown(R) {
+    const el = document.getElementById('breakdown');
+    let data, label;
+    if (currentTab === 'setup') { data = R.bySetup; label = 'Setup'; }
+    else if (currentTab === 'regime') { data = R.byRegime; label = 'Régimen'; }
+    else if (currentTab === 'symbol') { data = R.bySymbol; label = 'Símbolo'; }
+    else { data = R.byExit; label = 'Motivo de salida'; }
+
+    const entries = Object.entries(data).sort((a, b) => b[1].n - a[1].n);
+    if (!entries.length) { el.innerHTML = '<div class="sub">Sin datos.</div>'; return; }
+
+    el.innerHTML =
+        '<table><thead><tr><th>' + label + '</th><th>N</th><th>WR</th><th>Expectancy</th><th>Total R</th></tr></thead><tbody>' +
+        entries.map(([k, v]) => {
+            const exp = v.totalR / v.n;
+            const c = exp >= 0.2 ? 'var(--green)' : exp >= 0 ? 'var(--text)' : 'var(--red)';
             return '<tr>' +
-                '<td>' + (t.entryDate || '—') + '</td>' +
-                '<td><b>' + (t.symbol || '') + '</b></td>' +
-                '<td style="font-size:10px;color:var(--text-2)">' + (t.setupId || '') + '</td>' +
-                '<td style="text-align:right">$' + t.entryPrice.toFixed(2) + '</td>' +
-                '<td style="text-align:right">$' + t.stopPrice.toFixed(2) + '</td>' +
-                '<td style="font-size:10px;color:var(--text-3)">' + (t.exitReason || '') + '</td>' +
-                '<td style="text-align:right"><span class="tag ' + (t.rMult >= 0 ? 'win' : 'loss') + '">' + (t.rMult >= 0 ? '+' : '') + t.rMult.toFixed(2) + 'R</span></td>' +
+                '<td>' + k + '</td>' +
+                '<td style="text-align:right">' + v.n + '</td>' +
+                '<td style="text-align:right;color:var(--text-2)">' + (v.wins / v.n * 100).toFixed(0) + '%</td>' +
+                '<td style="text-align:right;color:' + c + ';font-weight:700">' + (exp >= 0 ? '+' : '') + exp.toFixed(2) + 'R</td>' +
+                '<td style="text-align:right;color:var(--text-3)">' + (v.totalR >= 0 ? '+' : '') + v.totalR.toFixed(1) + 'R</td>' +
                 '</tr>';
         }).join('') +
         '</tbody></table>';
-
-    if (IN_IFRAME) {
-        document.getElementById('sendBtn').style.display = 'block';
-        sendResultsToParent();
-    }
 }
 
+function renderTrades(R) {
+    document.getElementById('tradesSub').textContent = R.n + ' operaciones · mostrando las 200 más recientes';
+    const sorted = R.trades.slice().sort((a, b) => (b.entryDate || '').localeCompare(a.entryDate || '')).slice(0, 200);
+
+    document.getElementById('tradesList').innerHTML =
+        '<table><thead><tr>' +
+            '<th>Entrada</th><th>Salida</th><th>Sym</th><th>Setup</th><th>Rég.</th>' +
+            '<th>P. entrada</th><th>Stop</th><th>P. salida</th><th>R</th><th>Motivo</th>' +
+        '</tr></thead><tbody>' +
+        sorted.map(t => {
+            const exitPrice = t.exitPrice != null ? t.exitPrice : null;
+            const exitTxt = exitPrice != null ? '$' + exitPrice.toFixed(2) : '—';
+
+            // Comparación visual entrada vs salida
+            const diff = exitPrice != null ? (exitPrice - t.entryPrice) : 0;
+            const exitColor = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--red)' : 'var(--text-2)';
+
+            // Motivo con etiqueta si es gap
+            const reasonLabel = (t.exitReason || '').replace('_', ' ');
+            const reasonClass = /stop|time_stop|trail_stop|window_end/.test(t.exitReason || '')
+                ? 'color:var(--text-3)'
+                : 'color:var(--text-3)';
+
+            return '<tr>' +
+                '<td>' + (t.entryDate || '—') + '</td>' +
+                '<td>' + (t.exitDate || '—') + '</td>' +
+                '<td><b>' + (t.symbol || '') + '</b></td>' +
+                '<td style="font-size:10px;color:var(--text-2)">' + (t.setupId || '') + '</td>' +
+                '<td style="font-size:10px;color:var(--text-3)">' + (t.regime || '') + '</td>' +
+                '<td style="text-align:right">$' + t.entryPrice.toFixed(2) + '</td>' +
+                '<td style="text-align:right">$' + t.stopPrice.toFixed(2) + '</td>' +
+                '<td style="text-align:right;color:' + exitColor + ';font-weight:600">' + exitTxt + '</td>' +
+                '<td style="text-align:right"><span class="tag ' + (t.rMult >= 0 ? 'win' : 'loss') + '">' + (t.rMult >= 0 ? '+' : '') + t.rMult.toFixed(2) + 'R</span></td>' +
+                '<td style="font-size:10px;' + reasonClass + '">' + reasonLabel + '</td>' +
+                '</tr>';
+        }).join('') +
+        '</tbody></table>';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RENDER · WALK-FORWARD
+   ══════════════════════════════════════════════════════════════════════════ */
+function renderWalkForward(WF, cfg) {
+    document.getElementById('wfCard').style.display = 'block';
+
+    document.getElementById('wfSub').textContent =
+        WF.validFolds + ' de ' + WF.folds.length + ' particiones válidas · ' +
+        'consistencia mediana OOS/IS: ' + WF.consistency.toFixed(2);
+
+    if (WF.agg) {
+        document.getElementById('wfMetrics').innerHTML =
+            metric('Operaciones OOS', WF.agg.n, 'suma de particiones') +
+            metric('Expectancy OOS', (WF.agg.exp >= 0 ? '+' : '') + WF.agg.exp.toFixed(3) + 'R',
+                   'total ' + WF.agg.totalR.toFixed(1) + 'R',
+                   WF.agg.exp >= 0.2 ? 'var(--green)' : WF.agg.exp >= 0 ? 'var(--text)' : 'var(--red)') +
+            metric('Tasa acierto OOS', (WF.agg.wr * 100).toFixed(1) + '%', '') +
+            metric('Retorno compuesto OOS', (WF.agg.compoundReturnPct >= 0 ? '+' : '') + WF.agg.compoundReturnPct.toFixed(1) + '%',
+                   'encadenado', WF.agg.compoundReturnPct >= 0 ? 'var(--green)' : 'var(--red)');
+    } else {
+        document.getElementById('wfMetrics').innerHTML = '';
+    }
+
+    document.getElementById('wfFolds').innerHTML = WF.folds.map(f => {
+        const isM = f.is, oosM = f.oos;
+        const valid = isM && oosM && oosM.n >= f.minTrades;
+        const ratio = (isM && oosM && Math.abs(isM.exp) > 0.01) ? oosM.exp / isM.exp : null;
+        const ratioColor = ratio == null ? 'var(--text-3)'
+                         : ratio >= 0.7 ? 'var(--green)'
+                         : ratio >= 0.3 ? 'var(--orange)'
+                         : 'var(--red)';
+        const ratioTxt = ratio == null ? '—' : ratio.toFixed(2);
+
+        return '<div class="wf-fold">' +
+            '<div class="head">' +
+                '<span>Partición ' + f.index + ' · ' + f.isStart + ' → ' + f.oosEnd + '</span>' +
+                '<span class="pill ' + (valid ? 'on' : 'off') + '">' + (valid ? 'válida' : 'insuficiente') + '</span>' +
+            '</div>' +
+            '<div class="body">' +
+                '<div><div class="lbl">N IS</div>' + (isM ? isM.n : '—') + '</div>' +
+                '<div><div class="lbl">Exp IS</div>' + (isM ? (isM.exp >= 0 ? '+' : '') + isM.exp.toFixed(2) + 'R' : '—') + '</div>' +
+                '<div><div class="lbl">N OOS</div>' + (oosM ? oosM.n : '—') + '</div>' +
+                '<div><div class="lbl">Exp OOS</div><span style="color:' + ratioColor + '">' +
+                    (oosM ? (oosM.exp >= 0 ? '+' : '') + oosM.exp.toFixed(2) + 'R' : '—') +
+                '</span></div>' +
+            '</div>' +
+            '<div style="margin-top:6px;font-size:10px;color:var(--text-3)">Consistencia OOS/IS: <b style="color:' + ratioColor + '">' + ratioTxt + '</b></div>' +
+        '</div>';
+    }).join('');
+
+    let verdict = '';
+    if (WF.validFolds < 2) {
+        verdict = '<b>Particiones insuficientes.</b> Aumente el histórico o reduzca el número de particiones para obtener al menos dos ventanas válidas.';
+    } else if (WF.consistency < 0.3) {
+        verdict = '<b>Consistencia baja (' + WF.consistency.toFixed(2) + ').</b> El comportamiento in-sample no se reproduce out-of-sample. Indica sobreajuste o régimen cambiante.';
+    } else if (WF.consistency < 0.7) {
+        verdict = '<b>Consistencia moderada (' + WF.consistency.toFixed(2) + ').</b> El edge se degrada fuera de muestra. Reduzca el número de parámetros o aumente el tamaño de la muestra.';
+    } else {
+        verdict = '<b>Consistencia alta (' + WF.consistency.toFixed(2) + ').</b> El comportamiento se mantiene fuera de muestra en la mayoría de particiones.';
+    }
+    document.getElementById('wfVerdict').innerHTML = verdict;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   EXPORT Y ENVÍO
+   ══════════════════════════════════════════════════════════════════════════ */
 function sendResultsToParent() {
     if (!LAST) return;
     notifyParent('bt_results', {
-        result: Object.assign({}, LAST, {
+        result: {
+            summary: {
+                n: LAST.n, wr: LAST.wr, exp: LAST.exp, pf: LAST.pf, sqn: LAST.sqn,
+                sharpe: LAST.sharpe, sortino: LAST.sortino, calmar: LAST.calmar,
+                maxDDPct: LAST.maxDDPct, cagr: LAST.cagr, dsr: LAST.dsr,
+                pValue: LAST.pValue, ciL: LAST.ciL, ciH: LAST.ciH,
+                finalEq: LAST.finalEq, totalR: LAST.totalR
+            },
+            bySetup: LAST.bySetup,
+            byRegime: LAST.byRegime,
+            bySymbol: LAST.bySymbol,
+            byExit: LAST.byExit,
+            curve: LAST.curve,
+            trades: LAST.trades,
+            walkForward: LAST_WF,
             savedAt: Date.now(),
             config: {
-                thresholds: CFG && CFG.thresholds,
-                slippageBps: parseFloat(document.getElementById('pSlip').value),
-                capital: parseFloat(document.getElementById('pCapital').value),
-                riskPct: parseFloat(document.getElementById('pRisk').value),
+                thresholds: readTHFromForm(),
+                setupsEnabled: readEnabled(),
+                execution: readCfgFromForm(),
                 meta: (CFG && CFG.meta) || {}
             }
-        })
+        }
     });
 }
 
 function exportCSV() {
     if (!LAST || !LAST.trades) return;
-    var hdr = ['entryDate', 'exitDate', 'symbol', 'setupId', 'quality', 'entryPrice', 'stopPrice', 't1', 't2', 'rMult', 'maeR', 'mfeR', 'barsHeld', 'exitReason', 'regime'];
-    var lines = [hdr.join(',')];
-    for (var i = 0; i < LAST.trades.length; i++) {
-        var t = LAST.trades[i];
-        lines.push(hdr.map(function(k) {
-            var v = t[k];
+    const hdr = ['entryDate', 'exitDate', 'symbol', 'setupId', 'quality', 'regime', 'rsAtEntry',
+                 'entryPrice', 'stopPrice', 'exitPrice', 'shares', 't1', 't2',
+                 'rMult', 'barsHeld', 'exitReason', 'stageReached', 'pnlDollar'];
+    const lines = [hdr.join(',')];
+    for (const t of LAST.trades) {
+        lines.push(hdr.map(k => {
+            let v = t[k];
             if (v == null) return '';
-            var s = String(v);
+            if (typeof v === 'number') v = v.toFixed(4);
+            const s = String(v);
             return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
         }).join(','));
     }
-    var blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
+    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.href = url;
     a.download = 'backtest_' + new Date().toISOString().slice(0, 10) + '.csv';
     a.click();
     URL.revokeObjectURL(url);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   INICIALIZACIÓN
+   ══════════════════════════════════════════════════════════════════════════ */
 function init() {
     try {
-        var raw = localStorage.getItem(CFG_KEY);
-        if (raw) { CFG = JSON.parse(raw); renderCfgSummary(CFG); }
-    } catch(_) {}
+        const raw = localStorage.getItem(CFG_KEY);
+        if (raw) {
+            CFG = JSON.parse(raw);
+            renderCfgSummary(CFG);
+            applyCfgToForm(CFG);
+        }
+    } catch (_) {}
 
-    var drop = document.getElementById('drop');
-    var input = document.getElementById('fileInput');
-    drop.addEventListener('dragover', function(e) { e.preventDefault(); drop.style.borderColor = '#32d4e0'; });
-    drop.addEventListener('dragleave', function() { drop.style.borderColor = ''; });
-    drop.addEventListener('drop', function(e) {
+    const drop = document.getElementById('drop');
+    const input = document.getElementById('fileInput');
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.borderColor = '#32d4e0'; });
+    drop.addEventListener('dragleave', () => { drop.style.borderColor = ''; });
+    drop.addEventListener('drop', e => {
         e.preventDefault(); drop.style.borderColor = '';
         handleFiles(e.dataTransfer.files);
     });
-    input.addEventListener('change', function(e) { handleFiles(e.target.files); });
+    input.addEventListener('change', e => handleFiles(e.target.files));
 
     if (IN_IFRAME) {
-        setMode('Esperando datos del principal…');
+        setMode('Esperando datos del sistema principal…');
         startAnnouncing();
     } else {
-        setMode('Modo standalone · sube CSVs');
+        setMode('Modo autónomo · cargar CSVs manualmente');
     }
 }
+
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
