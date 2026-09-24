@@ -258,7 +258,7 @@ window.addEventListener('message', function (ev) {
         }
         console.log('[bt] sectorMap recibido:', mOk, SECTOR_MAP);
     }
-    if (msg.data) {
+    if (msg.data && Object.keys(msg.data).length > 0) {
         DATASETS = {};
         let ok = 0;
         for (const sym in msg.data) {
@@ -1030,7 +1030,7 @@ function finalizeSetupBT(cfg) {
    TIER1 / TIER2 — scoring ponderado, alineado con producción
    ══════════════════════════════════════════════════════════════════════════ */
 
-const TIER1_CATEGORIES = ['regime', 'trend', 'structure'];
+const TIER1_CATEGORIES = ['trend', 'structure'];
 const TIER2_CATEGORIES = ['volume', 'rs', 'mtf', 'health'];
 
 function weightedQuality(checks) {
@@ -1356,13 +1356,29 @@ function pickSetup(d, i, c, ctx, enabled) {
 /* ══════════════════════════════════════════════════════════════════════════
    SIZING
    ══════════════════════════════════════════════════════════════════════════ */
-function sizePosition(equity, entry, stop, atrPct, openPositions, cfg) {
+function sizePosition(equity, entry, stop, atrPct, openPositions, cfg, regime) {
     const maxHeat = cfg.maxHeatPct / 100;
     const maxPosPct = cfg.maxPositionPct / 100;
     const baseRisk = cfg.riskPct / 100;
 
+    // ─── Multiplicador por régimen ───
+    let regimeMult = 1.00;
+    let regimeLabel = 'UNKNOWN';
+    if (regime && regime.label) {
+        regimeLabel = regime.label;
+        regimeMult =
+    regimeLabel === 'STRONG_ON'  ? 1.00 :
+    regimeLabel === 'ON'         ? 1.00 :
+    regimeLabel === 'NEUTRAL'    ? 0.50 :
+    regimeLabel === 'OFF'        ? 0.00 :
+    regimeLabel === 'STRONG_OFF' ? 0.00 : 1.00;
+    }
+    if (regimeMult <= 0) return 0;
+
+    // ─── Escalar por volatilidad ───
     const volScalar = Math.min(1, 2.5 / Math.max(atrPct, 0.5));
 
+    // ─── Heat actual ───
     let currentHeat = 0;
     for (let i = 0; i < openPositions.length; i++) {
         const p = openPositions[i];
@@ -1371,7 +1387,8 @@ function sizePosition(equity, entry, stop, atrPct, openPositions, cfg) {
     }
     if (currentHeat >= maxHeat) return 0;
 
-    const targetRisk = baseRisk * volScalar;
+    // ─── Riesgo objetivo, ya modulado por régimen ───
+    const targetRisk = baseRisk * volScalar * regimeMult;
     const heatRoom = maxHeat - currentHeat;
     const riskDollar = equity * Math.min(targetRisk, heatRoom);
 
@@ -1380,6 +1397,11 @@ function sizePosition(equity, entry, stop, atrPct, openPositions, cfg) {
 
     const sharesByRisk = Math.floor(riskDollar / riskPerShare);
     const sharesByNotional = Math.floor((equity * maxPosPct) / entry);
+
+    // ─── Guardar el multiplicador en un registro global para diagnóstico ───
+    if (!window.__btRegimeSizing) window.__btRegimeSizing = {};
+    window.__btRegimeSizing[regimeLabel] = (window.__btRegimeSizing[regimeLabel] || 0) + 1;
+
     return Math.max(0, Math.min(sharesByRisk, sharesByNotional));
 }
 
@@ -1695,43 +1717,64 @@ async function runPortfolioCore(cfg, TH, enabled, dateStart, dateEnd) {
 
         let openedThisBar = 0;
         for (let ci = 0; ci < candidates.length; ci++) {
-            if (openedThisBar >= cfg.maxEntriesPerBar) break;
-            if (portfolio.open.length >= cfg.maxPositions) break;
+    if (openedThisBar >= cfg.maxEntriesPerBar) break;
+    if (portfolio.open.length >= cfg.maxPositions) break;
 
-            const cand = candidates[ci];
-            if (portfolio.open.some(p => p.symbol === cand.sym)) continue;
+    const cand = candidates[ci];
+    if (portfolio.open.some(p => p.symbol === cand.sym)) continue;
 
-            const shares = sizePosition(
-                portfolio.equity, cand.setup.entry, cand.setup.stop,
-                cand.atrPct, portfolio.open, cfg
-            );
-            if (shares <= 0) {
-                window.__btDiag.byReject['size_zero'] = (window.__btDiag.byReject['size_zero'] || 0) + 1;
-                continue;
-            }
+    // ─── GUARD: la barra de entrada (i+1) debe existir ───
+    const symData = DATASETS[cand.sym];
+    if (!symData || cand.i + 1 >= symData.length) {
+        window.__btDiag.byReject['no_next_bar'] = (window.__btDiag.byReject['no_next_bar'] || 0) + 1;
+        continue;
+    }
+    const entryBar = symData[cand.i + 1];
+    // Verificar que la fecha de entrada es estrictamente posterior a la señal
+    if (!entryBar || !entryBar.datetime || entryBar.datetime <= dt) {
+        window.__btDiag.byReject['bad_entry_date'] = (window.__btDiag.byReject['bad_entry_date'] || 0) + 1;
+        continue;
+    }
+// ─── Límite por sector ETF ───
+const candSector = SECTOR_MAP[cand.sym];
+if (candSector) {
+    const openInSector = portfolio.open.filter(p => SECTOR_MAP[p.symbol] === candSector).length;
+    if (openInSector >= 99) {
+        window.__btDiag.byReject['sector_limit'] = (window.__btDiag.byReject['sector_limit'] || 0) + 1;
+        continue;
+    }
+}
+    const shares = sizePosition(
+    portfolio.equity, cand.setup.entry, cand.setup.stop,
+    cand.atrPct, portfolio.open, cfg, regime
+);
+    if (shares <= 0) {
+        window.__btDiag.byReject['size_zero'] = (window.__btDiag.byReject['size_zero'] || 0) + 1;
+        continue;
+    }
 
-            portfolio.open.push({
-    symbol: cand.sym,
-    entryIdx: cand.i + 1,
-    currentIdx: cand.i + 1,
-    entryDate: DATASETS[cand.sym][cand.i + 1].datetime,
-    entryPrice: cand.setup.entry,
-    stopPrice: cand.setup.stop,
-    initialStop: cand.setup.stop,
-    t1: cand.setup.t1,
-    t2: cand.setup.t2,
-    shares: shares,
-    setupId: cand.setup.id,
-    quality: cand.setup.quality,
-    stage: 0,
-    remaining: 1.0,
-    rAccum: 0,
-    regimeLabel: regime.label,
-    rsAtEntry: cand.rs
-});
-            openedThisBar++;
-            window.__btDiag.entries++;
-        }
+    portfolio.open.push({
+        symbol: cand.sym,
+        entryIdx: cand.i + 1,
+        currentIdx: cand.i + 1,
+        entryDate: entryBar.datetime,  // ← ya no puede ser undefined
+        entryPrice: cand.setup.entry,
+        stopPrice: cand.setup.stop,
+        initialStop: cand.setup.stop,
+        t1: cand.setup.t1,
+        t2: cand.setup.t2,
+        shares: shares,
+        setupId: cand.setup.id,
+        quality: cand.setup.quality,
+        stage: 0,
+        remaining: 1.0,
+        rAccum: 0,
+        regimeLabel: regime.label,
+        rsAtEntry: cand.rs
+    });
+    openedThisBar++;
+    window.__btDiag.entries++;
+}
 
         if (di % 200 === 0) {
             setStatus('Simulando… barra ' + di + '/' + dates.length);
