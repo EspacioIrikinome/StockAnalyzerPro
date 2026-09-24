@@ -937,6 +937,94 @@ const SECTOR_ETF_MAP = {
   AMT:'XLRE',PLD:'XLRE',SPG:'XLRE',O:'XLRE',CCI:'XLRE',
   GOOGL:'XLC',GOOG:'XLC',META:'XLC',DIS:'XLC',NFLX:'XLC',T:'XLC',VZ:'XLC',CMCSA:'XLC',TMUS:'XLC'
 };
+/* ═══════════════════════════════════════════════════════════════════════
+   Ampliación del SECTOR_ETF_MAP — añade mid-caps del S&P 500
+   (usa arrays para evitar problemas con claves que contienen puntos)
+   ═══════════════════════════════════════════════════════════════════════ */
+(function expandSectorMap() {
+    const groups = {
+        XLK: [
+            'KLAC','SNPS','CDNS','MRVL','ROP','FTNT','PANW','ANSS','MPWR','APH','MSI',
+            'GLW','HPQ','HPE','DELL','WDC','STX','NTAP','SMCI','ANET','JNPR','FFIV',
+            'AKAM','VRSN','EPAM','IT','ACN','CTSH','GDDY','GEN','ON','SWKS','QRVO',
+            'TER','KEYS','ZBRA','TRMB','TYL','PAYC','PTC','ADSK','BR','CDW','LDOS',
+            'J','LHX','TDY','DXC','HUBB','TDG'
+        ],
+        XLF: [
+            'SPGI','CB','MMC','AON','AJG','ICE','CME','NDAQ','CBOE','MCO','MSCI',
+            'FDS','USB','PNC','TFC','MTB','FITB','HBAN','RF','KEY','CFG','NTRS','STT',
+            'BK','ALLY','SYF','DFS','COF','AMP','BEN','TROW','IVZ','RJF','LPLA','FIS',
+            'FI','GPN','JKHY','AIZ','L','GL','CINF','WRB','TRV','ALL','PGR','AIG',
+            'MET','PRU','AFL','HIG','ACGL','MKL','CNA','EG','ERIE','BRO','WTW',
+            'APO','KKR','BX','ARES','HOOD','FISV','MKTX','TFSL','WAL','ZION'
+        ],
+        XLE: [
+            'HAL','BKR','DVN','FANG','PXD','HES','MRO','APA','OVV','CTRA','PBR',
+            'SHEL','BP','TTE','EQNR','KMI','WMB','OKE','ET','EPD','MPLX','TRGP',
+            'LNG','FSLR','ENPH','HESM','DINO','PBF','CHRD','MTDR','CIVI'
+        ],
+        XLV: [
+            'ABBV','TMO','ABT','DHR','BMY','AMGN','GILD','VRTX','REGN','BIIB',
+            'MRNA','ISRG','MDT','SYK','BSX','ZBH','BDX','BAX','EW','HOLX','ALGN',
+            'DXCM','IDXX','IQV','A','MTD','WAT','WST','PKI','RMD','STE','COO',
+            'TFX','CRL','LH','DGX','CI','CVS','HUM','CNC','MOH','ELV','HCA','UHS',
+            'MCK','COR','CAH','HSIC','PDCO','ZTS','RVTY','BIO','TECH','SOLV',
+            'GEHC','DVA','ENSG','HQY','PODD','MASI','INSP','NVCR','OMI'
+        ],
+        XLY: [
+            'HD','MCD','NKE','SBUX','LOW','TGT','TJX','BKNG','F','GM','ABNB','MAR',
+            'HLT','RCL','CCL','NCLH','DAL','UAL','AAL','LUV','EXPE','DHI','LEN','NVR',
+            'PHM','GRMN','DECK','LULU','ROST','BURL','ULTA','EBAY','ETSY','CVNA',
+            'KMX','ORLY','AZO','GPC','LKQ','APTV','BWA','LEA','MHK','WSM','TPR','RL',
+            'PVH','HAS','MAT','YUM','CMG','DPZ','QSR','DRI','DARDEN','WYNN','LVS',
+            'MGM','CZR','BBY','MTH','TMHC','CCS','TOL','KBH','GRBK','LGIH'
+        ],
+        XLP: [
+            'WMT','PG','KO','PEP','COST','PM','MO','CL','MDLZ','KMB','GIS','K','HSY',
+            'SYY','ADM','STZ','TAP','KHC','CAG','CPB','HRL','SJM','MKC','CHD','CLX',
+            'EL','KVUE','BG','TSN','KDP','MNST','CALM','FRPT','POST','INGR','DAR','LANC'
+        ],
+        XLI: [
+            'CAT','BA','GE','HON','UPS','RTX','LMT','DE','MMM','UNP','FDX','NOC','GD',
+            'EMR','ETN','ITW','PH','CMI','PCAR','ROK','DOV','IR','XYL','AME','FAST',
+            'WAB','GWW','SWK','SNA','TT','CARR','OTIS','JCI','PWR','URI','ADP','PAYX',
+            'CTAS','RSG','WM','VRSK','EFX','HII','TXT','AXON','GEV','CSX','NSC',
+            'ODFL','CHRW','JBHT','EXPD','DAL','SKYW','ALLE','AOS','NDSN','GGG','IEX',
+            'FLS','FTV','GNRC','HWM','MIDD','RRX','TTC','TTEK','WCC','DAY','CLH'
+        ],
+        XLB: [
+            'LIN','APD','FCX','NEM','SHW','DOW','DD','PPG','ECL','IFF','ALB','CE',
+            'EMN','AVY','AMCR','BALL','IP','PKG','SEE','SON','SW','MLM','VMC','NUE',
+            'STLD','RS','CLF','X','MOS','CF','LYB','CTVA','FMC','OLN','WLK','ASH',
+            'AVNT','CC','ESI','NEU','RPM','SLVM','SMG'
+        ],
+        XLU: [
+            'NEE','DUK','SO','D','AEP','EXC','SRE','XEL','PEG','ED','WEC','ES','AEE',
+            'DTE','PPL','FE','ETR','CMS','CNP','AES','ATO','NI','LNT','EVRG','PNW',
+            'NRG','VST','CEG','PEG','PNM','BKH','IDA','OGE','POR','AVA','NWE'
+        ],
+        XLRE: [
+            'AMT','PLD','SPG','O','CCI','EQIX','PSA','EXR','AVB','EQR','MAA','UDR',
+            'ESS','ARE','BXP','VTR','WELL','DLR','IRM','SBAC','CSGP','CBRE','INVH',
+            'KIM','REG','FRT','HST','DOC','VICI','CUBE','COLD','EGP','FR','REXR',
+            'STAG','TRNO','LXP','NNN','WPC','ADC','BRX','KRG','UE','PEAK','VNO','SLG'
+        ],
+        XLC: [
+            'CMCSA','TMUS','CHTR','EA','TTWO','WBD','PARA','FOX','FOXA','NWS','NWSA',
+            'MTCH','OMC','IPG','LYV','IAC','ZG','SPOT','PINS','SNAP','RDDT','FYBR','LBRDA'
+        ]
+    };
+    let added = 0;
+    for (const etf in groups) {
+        for (const sym of groups[etf]) {
+            if (!SECTOR_ETF_MAP[sym]) {
+                SECTOR_ETF_MAP[sym] = etf;
+                added++;
+            }
+        }
+    }
+    console.log('[sa] SECTOR_ETF_MAP ampliado con ' + added + ' tickers nuevos, total ' + Object.keys(SECTOR_ETF_MAP).length);
+})();
 const MACRO_EXPOSURE_MAP = {
     'GLD':'GOLD','IAU':'GOLD','NEM':'GOLD','AEM':'GOLD','GOLD':'GOLD','AU':'GOLD',
     'GFI':'GOLD','KGC':'GOLD','FNV':'GOLD','BTG':'GOLD','EGO':'GOLD','HMY':'GOLD',
@@ -6698,7 +6786,7 @@ function _btBuildPayload() {
         thresholds: getThresholds(),
         context: getContextConfig(),
         risk: getRiskConfig(),
-        setupsEnabled: { donchian: true, pullback: true, sma200: true, golden_cross: true, bb_breakout: true },
+        setupsEnabled: { donchian: true, pullback: true, sma200: false, golden_cross: false, bb_breakout: false },
         tier2Weights: getTier2Weights(),
         meta: {
             generatedAt: new Date().toISOString(),
@@ -6725,13 +6813,7 @@ function _btBuildPayload() {
         const symbolsSent = Object.keys(data).filter(function (s) { return s !== 'SPY'; });
     const sectors = _btCollectSectors(symbolsSent);
     const earnings = _btCollectEarnings(symbolsSent);
-    const sectorMap = {};
-    for (let i = 0; i < symbolsSent.length; i++) {
-        const s = symbolsSent[i];
-        const etf = SECTOR_ETF_MAP[s];
-        if (etf) sectorMap[s] = etf;
-    }
-
+   const sectorMap = SECTOR_ETF_MAP;
     return { cfg: cfg, data: data, sectors: sectors, earnings: earnings, sectorMap: sectorMap };
 }
 
@@ -6740,32 +6822,29 @@ function _btPushToFrame() {
     if (!frame || !frame.contentWindow) return;
 
     var payload = _btBuildPayload();
-    var symbolsSent = Object.keys(payload.data);
-    var sectorCount = Object.keys(payload.sectors).length;
-    var earningsCount = Object.keys(payload.earnings).length;
+    var symbolsInData = Object.keys(payload.data);
+    var hasSPY = !!payload.data['SPY'];
+    var enoughData = hasSPY && symbolsInData.length >= 2;
 
-    console.log('[sa] push al iframe:', symbolsSent,
-                '| sectores:', sectorCount,
-                '| earnings:', earningsCount,
-                '| tier2:', payload.cfg.tier2Weights);
+    console.log('[sa] push al iframe:', symbolsInData,
+                '| hasSPY:', hasSPY,
+                '| sectorMap:', Object.keys(payload.sectorMap || {}).length,
+                '| earnings:', Object.keys(payload.earnings || {}).length);
 
-    if (!payload.data['SPY']) {
-        console.warn('[sa] sin SPY, no se envía');
-        return;
-    }
-    if (symbolsSent.length < 2) {
-        console.warn('[sa] solo SPY, no se envía');
-        return;
-    }
+    // Siempre enviamos el sectorMap y los earnings.
+    // Solo enviamos data si hay SPY + al menos otro ticker.
+    // Si no hay data válida, mandamos data vacío para que el iframe
+    // NO resetee sus DATASETS cargados manualmente.
+    var dataToSend = enoughData ? payload.data : {};
 
-        try {
+    try {
         frame.contentWindow.postMessage({
             type: 'sa_bt_init',
             cfg: payload.cfg,
-            data: payload.data,
-            sectors: payload.sectors,
-            earnings: payload.earnings,
-            sectorMap: payload.sectorMap
+            data: dataToSend,
+            sectors: payload.sectors || {},
+            earnings: payload.earnings || {},
+            sectorMap: payload.sectorMap || {}
         }, '*');
     } catch (e) {
         console.error('[sa] postMessage error:', e);
