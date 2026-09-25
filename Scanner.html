@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Market Scanner · Motor Index</title>
+<style>
+:root{--bg:#000;--card:#1c1c1e;--elev:#2c2c2e;--border:#38383a;--text:#fff;--text-2:#8e8e93;--text-3:#636366;--green:#30d158;--red:#ff453a;--orange:#ff9f0a;--blue:#32d4e0;--purple:#bf5af2}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.45}
+.wrap{max-width:1400px;margin:0 auto;padding:20px}
+h1{font-size:22px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+h2{font-size:14px;font-weight:700;margin:0 0 8px}
+.sub{font-size:12px;color:var(--text-2);margin:0 0 16px}
+.card{background:var(--card);border-radius:14px;padding:16px;margin-bottom:12px}
+label{display:block;font-size:11px;color:var(--text-2);margin-bottom:4px;font-weight:500}
+input,select{width:100%;padding:10px 12px;background:var(--elev);border:1px solid transparent;color:var(--text);border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px;min-height:38px}
+button{padding:11px 16px;background:var(--elev);border:none;color:var(--text);border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;min-height:42px;transition:background .15s}
+button:hover{background:#3a3a3c}
+button.primary{background:var(--blue);color:#001417}
+button.primary:hover{background:#28bccc}
+button:disabled{opacity:.4;cursor:not-allowed}
+.drop{border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;font-size:13px;color:var(--text-2);cursor:pointer;margin-bottom:10px}
+.drop:hover{border-color:var(--blue);background:rgba(50,212,224,.05)}
+.row{display:grid;gap:10px}
+.row.c3{grid-template-columns:1fr 1fr 1fr}
+.row.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.status{font-size:12px;color:var(--text-2);margin-top:8px;min-height:18px}
+.progress{width:100%;height:4px;background:var(--elev);border-radius:2px;overflow:hidden;margin:10px 0}
+.progress-fill{height:100%;background:var(--blue);transition:width .2s;border-radius:2px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--elev);border-radius:10px;padding:11px}
+.stat .k{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:3px}
+.stat .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.chip-filter{padding:6px 12px;background:var(--elev);border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s}
+.chip-filter.active{background:rgba(50,212,224,.15);color:var(--blue);border-color:rgba(50,212,224,.3)}
+table{width:100%;font-size:12px;border-collapse:collapse}
+th{text-align:left;padding:8px;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-2);font-size:10px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+th.num{text-align:right}
+td{padding:8px;border-bottom:1px solid rgba(255,255,255,.03);font-variant-numeric:tabular-nums}
+td.num{text-align:right}
+tr.ready-optimal{border-left:3px solid var(--green)}
+tr.ready-acceptable{border-left:3px solid #a3e635}
+tr.waiting{border-left:3px solid var(--orange)}
+tr.expired{border-left:3px solid var(--text-3);opacity:.7}
+tr:hover{background:rgba(255,255,255,.02)}
+.sym{font-weight:700;font-size:13px;cursor:pointer}
+.sym:hover{color:var(--blue)}
+.tag{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.tag.ready{background:rgba(48,209,88,.18);color:var(--green)}
+.tag.ready-acc{background:rgba(163,230,53,.18);color:#a3e635}
+.tag.waiting{background:rgba(255,159,10,.15);color:var(--orange)}
+.tag.expired{background:rgba(142,142,147,.15);color:var(--text-2)}
+.tag.donchian{background:rgba(50,212,224,.15);color:var(--blue)}
+.tag.pullback{background:rgba(191,90,242,.15);color:var(--purple)}
+.tag.sma200{background:rgba(255,159,10,.15);color:var(--orange)}
+.tag.golden_cross{background:rgba(255,214,10,.15);color:#ffd60a}
+.tag.bb_breakout{background:rgba(255,69,58,.15);color:var(--red)}
+.tag.limit{background:rgba(50,212,224,.15);color:var(--blue);margin-left:3px}
+.rr{color:var(--green);font-weight:700}
+.rr.low{color:var(--orange)}
+.regime-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;letter-spacing:.04em}
+.regime-badge.risk-on{background:rgba(48,209,88,.15);color:var(--green)}
+.regime-badge.risk-off{background:rgba(255,69,58,.15);color:var(--red)}
+.regime-badge.neutral{background:rgba(255,159,10,.15);color:var(--orange)}
+.hint{font-size:11px;color:var(--text-2);padding:12px 14px;background:rgba(50,212,224,.06);border:1px solid rgba(50,212,224,.2);border-radius:9px;line-height:1.6;margin-top:12px}
+.hint b{color:var(--blue)}
+.hint.warn{background:rgba(255,159,10,.06);border-color:rgba(255,159,10,.25)}
+.hint.warn b{color:var(--orange)}
+.hint.err{background:rgba(255,69,58,.06);border-color:rgba(255,69,58,.25)}
+.hint.err b{color:var(--red)}
+.log{background:#0d0d0f;border-radius:10px;padding:12px;font-family:ui-monospace,monospace;font-size:11px;line-height:1.6;max-height:180px;overflow-y:auto;color:var(--text-2);white-space:pre-wrap}
+.log .ok{color:var(--green)}
+.log .err{color:var(--red)}
+.log .warn{color:var(--orange)}
+.log .info{color:var(--blue)}
+.expand-row{display:none;background:#0d0d0f}
+.expand-row.open{display:table-row}
+.expand-cell{padding:12px 16px !important;font-family:ui-monospace,monospace;font-size:11px}
+.check-item{display:flex;gap:6px;padding:2px 0}
+.check-item.ok .ci{color:var(--green)}
+.check-item.no{color:var(--text-3)}
+.check-item.no .ci{color:var(--text-3)}
+.check-item.soft{color:var(--orange)}
+.check-item.soft .ci{color:var(--orange)}
+@media(max-width:900px){.row.c3,.row.c4,.stats{grid-template-columns:1fr 1fr}.actions{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Market Scanner · Motor Index</h1>
+  <p class="sub">Escanea setups con <b>el mismo motor del index</b> · sin divergencias · acepta CSVs o datos del index vía postMessage</p>
+
+  <div class="card">
+    <h2>Datos</h2>
+    <p class="sub">Arrastra CSVs del S&P 500 (deben incluir SPY). O incrusta este HTML como iframe en el index para recibir datos en vivo.</p>
+    <div class="drop" id="drop" onclick="document.getElementById('fileInput').click()">
+      Arrastra CSVs aquí o pulsa para seleccionar
+    </div>
+    <input type="file" id="fileInput" accept=".csv" multiple style="display:none"/>
+    <div id="summary" class="status"></div>
+    <div class="progress"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="card">
+    <h2>Parámetros</h2>
+    <div class="row c4">
+      <div><label>Capital ($)</label><input type="number" id="pCapital" value="10000" step="100"/></div>
+      <div><label>Riesgo por operación (%)</label><input type="number" id="pRisk" value="1" step="0.1"/></div>
+      <div><label>Máx. notional por posición (%)</label><input type="number" id="pMaxNotional" value="20" step="1"/></div>
+      <div><label>R:R mínimo T1</label><input type="number" id="pMinRr" value="1.5" step="0.1"/></div>
+    </div>
+    <div class="row c4">
+      <div><label>Setup Quality mínimo</label><input type="number" id="pMinQ" value="65" step="1"/></div>
+      <div><label>Riesgo máx. en ATR</label><input type="number" id="pMaxRiskAtr" value="3.0" step="0.1"/></div>
+      <div><label>Riesgo mín. en ATR</label><input type="number" id="pMinRiskAtr" value="0.8" step="0.1"/></div>
+      <div><label>Filtro estados</label>
+        <select id="pStateFilter">
+          <option value="active">Solo activos (READY + WAITING)</option>
+          <option value="ready" selected>Solo READY</option>
+          <option value="all">Todos (incluye EXPIRED)</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="scanBtn" onclick="runScan()" disabled>▶ Escanear mercado</button>
+      <button onclick="clearAll()">Limpiar datos</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="card" id="regimeCard" style="display:none;">
+    <h2>Régimen de mercado</h2>
+    <div id="regimeInfo"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <h2>Resultados</h2>
+    <div class="stats" id="stats"></div>
+    <div class="filters">
+      <span class="chip-filter active" data-filter="ready" onclick="setFilter('ready')">READY</span>
+      <span class="chip-filter" data-filter="optimal" onclick="setFilter('optimal')">Óptimas</span>
+      <span class="chip-filter" data-filter="acceptable" onclick="setFilter('acceptable')">Aceptables</span>
+      <span class="chip-filter" data-filter="waiting" onclick="setFilter('waiting')">En formación</span>
+      <span class="chip-filter" data-filter="limit" onclick="setFilter('limit')">Órdenes límite</span>
+      <span class="chip-filter" data-filter="all" onclick="setFilter('all')">Todos</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="resultTable">
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Setup</th>
+            <th>Estado</th>
+            <th class="num">Precio</th>
+            <th class="num">Entrada</th>
+            <th class="num">Stop</th>
+            <th class="num">T1</th>
+            <th class="num">R:R</th>
+            <th class="num">ATR</th>
+            <th class="num">Q</th>
+            <th class="num">EQ</th>
+            <th class="num">RS</th>
+            <th class="num">MTF</th>
+          </tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+    </div>
+    <div class="hint">
+      <b>Estados idénticos al index.</b>
+      <b>READY ÓPTIMA</b> = setup confirmado + ejecución en zona óptima.
+      <b>READY ACEPTABLE</b> = setup confirmado + ejecución aceptable.
+      <b>EN FORMACIÓN</b> = setup válido pero pendiente (confirmación, soft filters, EQ extendida…).
+      <b>EXPIRADO</b> = setup fuera de su ventana operativa.
+      Pulsa una fila para ver los checks detallados.
+    </div>
+  </div>
+
+  <div class="card" id="logCard" style="display:none;">
+    <h2>Log</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="hint warn">
+    <b>Nota:</b> si un CSV tiene su última barra con más de 5 días de antigüedad, el scan avisará — los resultados pueden estar obsoletos. Los tickers sin suficientes barras (&lt;250) se omiten.
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   ESTADO
+   ══════════════════════════════════════════════════════════════════════════ */
+let DATASETS = {};
+let SPY = null;
+let ALL_RESULTS = [];
+let CURRENT_FILTER = 'ready';
+let scanning = false;
+let LAST_SCAN_DATE = null;
+let RECEIVED_FROM_INDEX = false;
+
+/* ══════════════════════════════════════════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════════════════════════════════════════ */
+const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INDICADORES (idénticos al index)
+   ══════════════════════════════════════════════════════════════════════════ */
+function sma(v,p){const o=new Array(v.length).fill(null);let s=0;for(let i=0;i<v.length;i++){s+=v[i];if(i>=p)s-=v[i-p];if(i>=p-1)o[i]=s/p;}return o;}
+function ema(v,p){const o=new Array(v.length).fill(null);if(v.length<p)return o;const k=2/(p+1);let s=0;for(let i=0;i<p;i++)s+=v[i];o[p-1]=s/p;for(let j=p;j<v.length;j++)o[j]=o[j-1]!=null?v[j]*k+o[j-1]*(1-k):null;return o;}
+function rsiC(v,p){p=p||14;const o=new Array(v.length).fill(null);if(v.length<p+1)return o;let g=0,l=0;for(let i=1;i<=p;i++){const d=v[i]-v[i-1];if(d>=0)g+=d;else l-=d;}let ag=g/p,al=l/p;o[p]=al===0?100:100-100/(1+ag/al);for(let j=p+1;j<v.length;j++){const d2=v[j]-v[j-1];ag=(ag*(p-1)+(d2>0?d2:0))/p;al=(al*(p-1)+(d2<0?-d2:0))/p;o[j]=al===0?100:100-100/(1+ag/al);}return o;}
+function atrC(d,p){p=p||14;const o=new Array(d.length).fill(null);if(d.length<p+1)return o;const tr=[0];for(let i=1;i<d.length;i++)tr.push(Math.max(d[i].high-d[i].low,Math.abs(d[i].high-d[i-1].close),Math.abs(d[i].low-d[i-1].close)));let s=0;for(let j=1;j<=p;j++)s+=tr[j];o[p]=s/p;for(let k=p+1;k<d.length;k++)o[k]=(o[k-1]*(p-1)+tr[k])/p;return o;}
+function adxC(d,p){p=p||14;const n=d.length;if(n<p*2+1)return{adx:new Array(n).fill(null),pDI:new Array(n).fill(0),mDI:new Array(n).fill(0)};const tr=new Array(n).fill(0),pdm=new Array(n).fill(0),mdm=new Array(n).fill(0);for(let i=1;i<n;i++){const h=d[i].high,l=d[i].low,pc=d[i-1].close;tr[i]=Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc));const up=h-d[i-1].high,dn=d[i-1].low-l;pdm[i]=(up>dn&&up>0)?up:0;mdm[i]=(dn>up&&dn>0)?dn:0;}const sTR=new Array(n).fill(0),sP=new Array(n).fill(0),sM=new Array(n).fill(0);for(let a=1;a<=p;a++){sTR[p]+=tr[a];sP[p]+=pdm[a];sM[p]+=mdm[a];}for(let b=p+1;b<n;b++){sTR[b]=sTR[b-1]-sTR[b-1]/p+tr[b];sP[b]=sP[b-1]-sP[b-1]/p+pdm[b];sM[b]=sM[b-1]-sM[b-1]/p+mdm[b];}const pDI=new Array(n).fill(0),mDI=new Array(n).fill(0);for(let c=p;c<n;c++){pDI[c]=sTR[c]>0?(sP[c]/sTR[c])*100:0;mDI[c]=sTR[c]>0?(sM[c]/sTR[c])*100:0;}const dx=new Array(n).fill(0);for(let e=p;e<n;e++){const sum=pDI[e]+mDI[e];dx[e]=sum>0?Math.abs(pDI[e]-mDI[e])/sum*100:0;}const adx=new Array(n).fill(null);let fs=0;for(let f=p;f<p*2&&f<n;f++)fs+=dx[f];if(p*2-1<n){adx[p*2-1]=fs/p;for(let g=p*2;g<n;g++)adx[g]=(adx[g-1]*(p-1)+dx[g])/p;}return{adx:adx,pDI:pDI,mDI:mDI};}
+function donHi(d,p){const o=new Array(d.length).fill(null);for(let i=p-1;i<d.length;i++){let m=-Infinity;for(let j=i-p+1;j<=i;j++)if(d[j].high>m)m=d[j].high;o[i]=m;}return o;}
+function donLo(d,p){const o=new Array(d.length).fill(null);for(let i=p-1;i<d.length;i++){let m=Infinity;for(let j=i-p+1;j<=i;j++)if(d[j].low<m)m=d[j].low;o[i]=m;}return o;}
+function boll(v,p,k){
+  p=p||20;k=k||2;
+  const middle=sma(v,p);
+  const upper=new Array(v.length).fill(null);
+  const lower=new Array(v.length).fill(null);
+  for(let i=p-1;i<v.length;i++){
+    let s=0;
+    for(let j=i-p+1;j<=i;j++){
+      const diff=v[j]-middle[i];
+      s+=diff*diff;
+    }
+    const sd=Math.sqrt(s/p);
+    upper[i]=middle[i]+k*sd;
+    lower[i]=middle[i]-k*sd;
+  }
+  return{upper:upper,middle:middle,lower:lower};
+}
+function macdCalc(values,fast,slow,sig){fast=fast||12;slow=slow||26;sig=sig||9;const ef=ema(values,fast),es=ema(values,slow);const ml=values.map((_,i)=>(ef[i]!=null&&es[i]!=null)?ef[i]-es[i]:null);const sl=new Array(values.length).fill(null);const fv=ml.findIndex(v=>v!=null);if(fv!==-1){const vm=ml.slice(fv);const esig=ema(vm,sig);for(let i=0;i<esig.length;i++)sl[fv+i]=esig[i];}const h=ml.map((v,i)=>(v!=null&&sl[i]!=null)?v-sl[i]:null);return{macd:ml,signal:sl,hist:h};}
+function volumePercentile(vols,lb){lb=lb||60;const rec=vols.slice(-lb).filter(v=>v>0).sort((a,b)=>a-b);if(rec.length<20)return null;const last=vols[vols.length-1];const rank=rec.filter(v=>v<=last).length;return rank/rec.length;}
+function computeRVOL(data,lb){lb=lb||20;if(data.length<lb+1)return null;const recent=data.slice(-lb-1,-1);const avg=recent.reduce((a,d)=>a+(d.volume||0),0)/recent.length;if(avg<=0)return null;return (data[data.length-1].volume||0)/avg;}
+
+/* ESTRUCTURA */
+function findSwings(d,lb,st){lb=lb||90;st=st||3;const n=d.length;const start=Math.max(st,n-lb);const end=n-st-1;const highs=[],lows=[];for(let i=start;i<=end;i++){let isH=true,isL=true;for(let j=1;j<=st;j++){if(d[i].high<=d[i-j].high||d[i].high<=d[i+j].high)isH=false;if(d[i].low>=d[i-j].low||d[i].low>=d[i+j].low)isL=false;}if(isH)highs.push({price:d[i].high,index:i});if(isL)lows.push({price:d[i].low,index:i});}return{highs,lows};}
+function recentSwingLow(d,st,lb){st=st||3;lb=lb||30;const{lows}=findSwings(d,lb+st,st);if(!lows.length)return null;const valid=lows.filter(l=>(d.length-1-l.index)>=st);if(!valid.length)return null;return valid[valid.length-1];}
+function isUptrendStructure(d,lb){lb=lb||60;const{highs,lows}=findSwings(d,lb,3);if(highs.length<2||lows.length<2)return false;const nH=Math.min(3,highs.length),nL=Math.min(3,lows.length);const rH=highs.slice(-nH),rL=lows.slice(-nL);let hh=0,hl=0;for(let i=1;i<rH.length;i++)if(rH[i].price>rH[i-1].price)hh++;for(let i=1;i<rL.length;i++)if(rL[i].price>rL[i-1].price)hl++;const hhN=Math.max(1,Math.ceil((rH.length-1)*0.5));const hlN=Math.max(1,Math.ceil((rL.length-1)*0.5));return hh>=hhN&&hl>=hlN;}
+function pullbackVolumeHealthy(d,pb,ib){pb=pb||3;ib=ib||10;const n=d.length;if(n<pb+ib+5)return false;const rec=d.slice(-pb);const imp=d.slice(-pb-ib,-pb);if(imp.length<5)return false;const avgR=rec.reduce((a,b)=>a+(b.volume||0),0)/rec.length;const avgI=imp.reduce((a,b)=>a+(b.volume||0),0)/imp.length;if(avgI<=0)return false;return avgR<avgI*0.75;}
+function strongClose(d,idx){const x=(idx==null)?d[d.length-1]:d[idx];const r=x.high-x.low;if(r<=0)return false;return(x.close-x.low)/r>=0.66;}
+function findResistances(d,price,lb){lb=lb||200;const{highs}=findSwings(d,lb,3);const raw=[];for(let i=0;i<highs.length;i++)if(highs[i].price>price*1.005)raw.push(highs[i].price);const slice=d.slice(-lb);let am=-Infinity;for(let i=0;i<slice.length;i++)if(slice[i].high>am)am=slice[i].high;if(isFinite(am)&&am>price*1.005)raw.push(am);raw.sort((a,b)=>a-b);const dedup=[];for(let i=0;i<raw.length;i++){const v=raw[i];if(!dedup.length||v>dedup[dedup.length-1]*1.015)dedup.push(v);}return dedup;}
+function computeStructuralStop(d,price,atr,emaRef){const buffer=0.5*atr;const stopMax=price-2.5*atr;const minDist=price-1.0*atr;const cands=[];const sw=recentSwingLow(d,3,30);if(sw){const s=sw.price-buffer;if(s<price&&s<=minDist&&s>=stopMax)cands.push({price:s,source:'swing'});}if(emaRef!=null&&isFinite(emaRef)){const s=emaRef-buffer;if(s<price&&s<=minDist&&s>=stopMax)cands.push({price:s,source:'ema'});}if(!cands.length)return{price:stopMax,source:'atr'};cands.sort((a,b)=>b.price-a.price);return cands[0];}
+function computeTargets(d,price,stop,atr){const risk=price-stop;if(risk<=0)return null;const res=findResistances(d,price,200);const minT1=price+1.5*risk;const maxT1=price+3.0*risk;let t1,t1s;const t1r=res.find(r=>r>=minT1&&r<=maxT1);if(t1r){t1=t1r;t1s='resistance';}else{t1=Math.min(price+2.0*atr,maxT1);if(t1<minT1)t1=minT1;t1s='atr';}const minT2=price+2.5*risk;const t2r=res.find(r=>r>=minT2);let t2,t2s;if(t2r){t2=t2r;t2s='resistance';}else{t2=price+3.0*atr;t2s='atr';}if(t2<=t1)t2=t1*1.02;return{t1,t2,t1Source:t1s,t2Source:t2s,risk};}
+
+/* RS (pesos 0.4/0.3/0.3 — idéntico al index) */
+function computeRsRating(closes,benchCloses){if(!closes.length||!benchCloses.length)return null;const perf=(arr,n)=>arr.length>n?(arr[arr.length-1]/arr[arr.length-1-n]-1)*100:null;const p3=perf(closes,63),p6=perf(closes,126),p12=perf(closes,252);const b3=perf(benchCloses,63),b6=perf(benchCloses,126),b12=perf(benchCloses,252);let w=0,wt=0;if(p3!=null&&b3!=null){w+=0.4*(p3-b3);wt+=0.4;}if(p6!=null&&b6!=null){w+=0.3*(p6-b6);wt+=0.3;}if(p12!=null&&b12!=null){w+=0.3*(p12-b12);wt+=0.3;}return wt>0?w/wt:null;}
+
+/* WEEKLY */
+function resampleWeekly(daily){if(!Array.isArray(daily)||!daily.length)return[];const weeks=new Map();for(let i=0;i<daily.length;i++){const b=daily[i];if(!b||!b.datetime)continue;const dt=new Date(b.datetime+'T12:00:00Z');if(!isFinite(dt.getTime()))continue;const dow=(dt.getUTCDay()+6)%7;const mon=new Date(dt);mon.setUTCDate(dt.getUTCDate()-dow);const key=mon.toISOString().slice(0,10);if(!weeks.has(key))weeks.set(key,{datetime:key,open:b.open,high:b.high,low:b.low,close:b.close,volume:b.volume||0});else{const w=weeks.get(key);if(b.high>w.high)w.high=b.high;if(b.low<w.low)w.low=b.low;w.close=b.close;w.volume+=(b.volume||0);}}return Array.from(weeks.values()).sort((a,b)=>a.datetime.localeCompare(b.datetime));}
+function analyzeWeekly(wd){if(!wd||wd.length<30)return{trend:null,rsi:null};const closes=wd.map(d=>d.close);const e10=ema(closes,10),e30=ema(closes,30),s30=sma(closes,30);const rsi=rsiC(closes,14);const last=closes.length-1;const price=closes[last];let trend='LATERAL';if(e10[last]!=null&&e30[last]!=null){if(price>e10[last]&&e10[last]>e30[last])trend='ALCISTA';else if(price<e10[last]&&e10[last]<e30[last])trend='BAJISTA';}else if(s30[last]!=null){trend=price>s30[last]?'ALCISTA':'BAJISTA';}return{trend,rsi:rsi[last]};}
+
+/* RÉGIMEN (idéntico a getMarketRegime del index) */
+function computeRegime(spy){
+  const closes=spy.map(d=>d.close);
+  const s50=sma(closes,50),s200=sma(closes,200);
+  const last=closes.length-1;
+  const s50n=s50[last],s200n=s200[last];
+  const s200p=s200[last-20];
+  const price=closes[last];
+  const distPct=((price-s200n)/s200n)*100;
+  const slopePct=s200p?((s200n-s200p)/s200p)*100:0;
+  let regime='NEUTRAL';
+  if(price>s200n&&s50n>s200n&&slopePct>0.5)regime='STRONG_RISK_ON';
+  else if(price>s200n&&slopePct>=0)regime='RISK_ON';
+  else if(price<s200n&&s50n<s200n&&slopePct<-0.5)regime='STRONG_RISK_OFF';
+  else if(price<s200n&&slopePct<=0)regime='RISK_OFF';
+  return {regime,price,sma50:s50n,sma200:s200n,distPct,slopePct};
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   TIER1 / TIER2 / WEIGHTED QUALITY (idéntico al index)
+   ══════════════════════════════════════════════════════════════════════════ */
+const TIER1_CATEGORIES = ['regime', 'trend', 'structure'];
+const TIER2_CATEGORIES = ['volume', 'rs', 'mtf', 'health'];
+const TIER2_WEIGHTS_DEFAULT = { volume:0.25, rs:0.30, mtf:0.25, health:0.20 };
+
+function getTier2Weights(){
+  try{const raw=localStorage.getItem('sa_tier2_weights');if(raw){const w=JSON.parse(raw);const sum=Object.values(w).reduce((a,b)=>a+b,0);if(Math.abs(sum-1)<0.01)return w;}}catch(_){}
+  return TIER2_WEIGHTS_DEFAULT;
+}
+
+function weightedQuality(checks){
+  const fails=[];
+  for(const c of checks) if(TIER1_CATEGORIES.includes(c.category) && !c.ok) fails.push(c.label);
+  if(fails.length>0) return {score:0,blocked:true,gate_fails:fails,tier1:'FAIL',tier2:null,breakdown:{}};
+  const weights=getTier2Weights();
+  const breakdown={};let ts=0,tw=0;
+  for(const cat of TIER2_CATEGORIES){
+    const cc=checks.filter(c=>c.category===cat);
+    if(!cc.length)continue;
+    const passed=cc.filter(c=>c.ok).length;
+    const ratio=passed/cc.length;
+    const w=weights[cat]||0;
+    breakdown[cat]={passed,total:cc.length,ratio:+ratio.toFixed(2),weight:w,contribution:+(ratio*w*100).toFixed(1)};
+    ts+=ratio*w;tw+=w;
+  }
+  const normalized=tw>0?Math.round((ts/tw)*100):0;
+  let present=0;
+  for(const cat of TIER2_CATEGORIES) if(checks.some(c=>c.category===cat)) present++;
+  const confidence=present/TIER2_CATEGORIES.length;
+  return {score:normalized,blocked:false,gate_fails:[],tier1:'PASS',tier2:normalized,breakdown,confidence:+confidence.toFixed(2),sample_quality:present>=4?'HIGH':present>=3?'MEDIUM':'LOW'};
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   REGIME / CONTEXT CHECKS
+   ══════════════════════════════════════════════════════════════════════════ */
+function regimeCheck(regime){
+  if(!regime)return[];
+  const bullish=regime.regime==='RISK_ON'||regime.regime==='STRONG_RISK_ON';
+  return [{label:'Régimen favorable',ok:bullish,detail:regime.regime.replace(/_/g,'-'),category:'regime'}];
+}
+function contextChecks(ctx,isLong){
+  isLong=isLong!==false;
+  const out=[];
+  if(ctx.rs!=null) out.push({label:'RS vs SPY favorable',ok:isLong?ctx.rs>=ctx.minRs:ctx.rs<=-ctx.minRs,detail:(ctx.rs>=0?'+':'')+ctx.rs.toFixed(2)+'%',category:'rs'});
+  if(ctx.weeklyTrend) out.push({label:'MTF semanal coherente',ok:isLong?ctx.weeklyTrend!=='BAJISTA':ctx.weeklyTrend!=='ALCISTA',detail:ctx.weeklyTrend,category:'mtf'});
+  return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ENTRY QUALITY (idéntico al index)
+   ══════════════════════════════════════════════════════════════════════════ */
+const EQ_OPTIMAL_BASE=80, EQ_ACCEPTABLE_BASE=60;
+const EQ_OPTIMAL_RISKOFF=88, EQ_ACCEPTABLE_RISKOFF=72;
+const EQ_OPTIMAL_RISKON_STRONG=75, EQ_SCORE_CAP=95;
+
+function computeEntryQuality(ctx,setupId,entry,stop,targets){
+  const atr=ctx?.atr,price=ctx?.price??entry;
+  if(!atr||!isFinite(atr)||atr<=0) return {score:0,state:'extended',label:'EXTENDIDA',note:'Sin ATR válido.',distanceAtr:null,rvol:ctx?.rvol??null,riskAtr:null,rr:null,targetZone:null};
+  const e20=ctx.e20,e50=ctx.e50,s200=ctx.s200;
+  const rvol=ctx.rvol;
+  const riskAtr=(entry-stop)/atr;
+  const rr=targets?(targets.t1-entry)/Math.max(entry-stop,1e-9):0;
+  let score=100;
+  const notes=[];
+  let distanceAtr=null;
+  let targetZone=null;
+
+  if(setupId==='pullback'){
+    const d20=e20!=null?(price-e20)/atr:null;
+    const d50=e50!=null?(price-e50)/atr:null;
+    const best=[d20,d50].filter(v=>v!=null&&v>=0).sort((a,b)=>a-b)[0];
+    distanceAtr=best??null;
+    const d=best==null?99:best;
+    if(d<=0.50)score+=0;
+    else if(d<=1.00)score-=8;
+    else if(d<=1.50)score-=22;
+    else if(d<=2.00)score-=42;
+    else score-=55;
+    if(d>1.25)notes.push('precio +'+d.toFixed(2)+' ATR sobre EMA20/50');
+    if(d>2.00){notes.push('demasiado alejada para pullback actual');const ref=e20!=null?e20:e50;if(ref!=null)targetZone=ref;}
+  } else if(setupId==='donchian'||setupId==='bb_breakout'){
+    let trigger=null;
+    if(setupId==='donchian'&&ctx.dh20&&ctx.dh20[ctx.last-1]!=null)trigger=ctx.dh20[ctx.last-1];
+    else if(setupId==='bb_breakout'&&ctx.bb&&ctx.bb.upper&&ctx.bb.upper[ctx.last-1]!=null)trigger=ctx.bb.upper[ctx.last-1];
+    if(trigger!=null&&trigger>0){
+      const ext=(price-trigger)/atr;
+      distanceAtr=ext;
+      if(ext>1.5){score-=35;notes.push('+'+ext.toFixed(2)+' ATR por encima del trigger');targetZone=trigger+0.3*atr;}
+      else if(ext>1.0){score-=20;notes.push('+'+ext.toFixed(2)+' ATR por encima del trigger');targetZone=trigger+0.5*atr;}
+      else if(ext>0.5){score-=8;}
+    }
+  } else if(setupId==='sma200'){
+    const d=s200!=null?(price-s200)/atr:null;
+    distanceAtr=d;
+    if(d!=null){
+      if(d>1.5){score-=30;notes.push('+'+d.toFixed(2)+' ATR sobre SMA200');targetZone=s200+0.5*atr;}
+      else if(d>1.0){score-=15;notes.push('+'+d.toFixed(2)+' ATR sobre SMA200');}
+      else if(d>0.5){score-=5;}
+    }
+  } else if(setupId==='golden_cross'){
+    const d20=e20!=null?(price-e20)/atr:null;
+    distanceAtr=d20;
+    if(d20!=null&&d20>1.5){score-=15;notes.push('+'+d20.toFixed(2)+' ATR sobre EMA20');}
+    else if(d20!=null&&d20>1.0){score-=6;}
+  }
+  if(rvol!=null&&isFinite(rvol)){
+    if(rvol<0.50)score-=5; else if(rvol<0.80)score-=2; else if(rvol>=1.50)score+=2;
+  }
+  if(riskAtr>2.50)score-=15; else if(riskAtr>2.00)score-=8; else if(riskAtr>=1.00&&riskAtr<=2.00)score+=2;
+  if(rr>=2.0)score+=2; else if(rr<1.7)score-=5;
+  score=Math.max(0,Math.min(EQ_SCORE_CAP,Math.round(score)));
+
+  let optT=EQ_OPTIMAL_BASE,accT=EQ_ACCEPTABLE_BASE;
+  const rn=ctx?.regime?.regime;
+  if(rn==='RISK_OFF'||rn==='STRONG_RISK_OFF'){optT=Math.min(99,EQ_OPTIMAL_BASE+(EQ_OPTIMAL_RISKOFF-EQ_OPTIMAL_BASE));accT=Math.min(95,EQ_ACCEPTABLE_BASE+(EQ_ACCEPTABLE_RISKOFF-EQ_ACCEPTABLE_BASE));}
+  else if(rn==='STRONG_RISK_ON'){optT=Math.max(50,EQ_OPTIMAL_BASE+(EQ_OPTIMAL_RISKON_STRONG-EQ_OPTIMAL_BASE));}
+  if(accT>=optT)accT=Math.max(30,optT-10);
+
+  let state='extended',label='EXTENDIDA';
+  if(score>=optT){state='optimal';label='ÓPTIMA';}
+  else if(score>=accT){state='acceptable';label='ACEPTABLE';}
+  if(!notes.length){
+    if(state==='optimal')notes.push('precio dentro de una zona de ejecución razonable');
+    else if(state==='acceptable')notes.push('entrada operable, pero conviene esperar confirmación o mejor precio');
+    else notes.push('el contexto puede ser bueno, pero la ejecución actual está extendida');
+  }
+  return {score,state,label,note:notes.join(' · '),distanceAtr,distancePct:e20!=null?((price-e20)/e20)*100:null,rvol,riskAtr,rr,targetZone};
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONFIRMACIÓN (idéntico al index)
+   ══════════════════════════════════════════════════════════════════════════ */
+function computeSetupConfirmation(ctx,setupId,primaryConfirmed){
+  const price=ctx?.price,last=ctx?.last,data=ctx?.data,atr=ctx?.atr;
+  if(!ctx||price==null||!data||!data.length)return{state:'none',label:'SIN CONFIRMACIÓN',icon:'○',note:'Datos insuficientes.'};
+  const bar=data[last]||data[data.length-1];
+  const prev=data[last-1]||null;
+  const green=!!(bar&&prev&&bar.close>prev.close);
+  const strong=strongClose(data,last);
+  const rvol=ctx.rvol,volPct=ctx.volPct;
+  const volumeOk=(rvol!=null&&rvol>=0.80)||(volPct!=null&&volPct>=0.75);
+  let confirmed=false,forming=false,note='';
+
+  if(setupId==='pullback'){
+    const near20=ctx.e20!=null&&atr>0&&(price-ctx.e20)/atr<=1.25;
+    const near50=ctx.e50!=null&&atr>0&&(price-ctx.e50)/atr<=1.25;
+    const r20=near20&&ctx.e20!=null&&price>ctx.e20;
+    const r50=near50&&ctx.e50!=null&&price>ctx.e50;
+    confirmed=primaryConfirmed&&green&&(r20||r50);
+    forming=primaryConfirmed&&(r20||r50)&&(green||strong);
+    note=confirmed?'Reclamación de media + cierre favorable.':forming?'La estructura existe; espera confirmación de cierre.':'Falta una confirmación de ejecución.';
+  } else if(setupId==='sma200'){
+    const above=ctx.s200!=null&&price>ctx.s200;
+    confirmed=primaryConfirmed&&above&&green&&strong;
+    forming=primaryConfirmed&&above&&(green||strong);
+    note=confirmed?'Rebote confirmado sobre SMA200.':forming?'Rebote en formación; falta cierre convincente.':'Falta confirmación sobre SMA200.';
+  } else if(setupId==='donchian'){
+    const trigger=ctx.dh20?.[last-1];
+    const above=trigger!=null&&price>trigger;
+    confirmed=primaryConfirmed&&above&&strong&&volumeOk;
+    forming=primaryConfirmed&&above;
+    note=confirmed?'Ruptura + cierre fuerte + participación.':forming?'Ruptura presente; confirma cierre/volumen.':'Falta confirmación de ruptura.';
+  } else if(setupId==='bb_breakout'){
+    const upper=ctx.bb?.upper?.[last];
+    const above=upper!=null&&price>upper;
+    confirmed=primaryConfirmed&&above&&strong&&volumeOk;
+    forming=primaryConfirmed&&above;
+    note=confirmed?'Breakout BB confirmado con cierre/participación.':forming?'Breakout presente; confirma cierre/volumen.':'Falta confirmación del breakout.';
+  } else if(setupId==='golden_cross'){
+    const macdBull=ctx.macd!=null&&ctx.macdSignal!=null&&ctx.macd>ctx.macdSignal;
+    const above20=ctx.e20!=null&&price>ctx.e20;
+    confirmed=primaryConfirmed&&above20&&macdBull&&green;
+    forming=primaryConfirmed&&above20&&(macdBull||green);
+    note=confirmed?'Precio sobre EMA20 + MACD favorable + cierre verde.':forming?'Cruce reciente; espera confirmación de momentum.':'Falta confirmación post-cruce.';
+  }
+  const weeklyBear=ctx.weeklyTrend==='BAJISTA';
+  const weeklyBull=ctx.weeklyTrend==='ALCISTA';
+  if(confirmed&&weeklyBear){confirmed=false;forming=true;note='Confirmación técnica presente, pero MTF semanal BAJISTA — esperar alineación.';}
+  else if(forming&&weeklyBear){note=note+' · MTF semanal BAJISTA penaliza la confirmación.';}
+  else if(confirmed&&weeklyBull){note=note+' · MTF semanal ALCISTA alineado.';}
+
+  if(confirmed)return{state:'confirmed',label:'CONFIRMADA',icon:'✓',note};
+  if(forming)return{state:'forming',label:'EN CONFIRMACIÓN',icon:'◐',note};
+  return{state:'none',label:'SIN CONFIRMACIÓN',icon:'○',note};
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LIFECYCLE (idéntico al index)
+   ══════════════════════════════════════════════════════════════════════════ */
+function computeSetupLifecycle(ctx,setupId,primaryConfirmed,confirmation,entryQuality){
+  const data=ctx?.data||[];
+  const last=ctx?.last??(data.length-1);
+  const price=ctx?.price,atr=ctx?.atr;
+  const e20=ctx?.e20,e50=ctx?.e50,s200=ctx?.s200;
+  const reasons=[];
+  let state='forming',age=null;
+  if(!data.length||price==null||!atr||!isFinite(atr)||atr<=0)return{state:'forming',label:'EN FORMACIÓN',age:null,expired:false,reason:'Datos insuficientes.'};
+  let eventIndex=null;
+  const markEvent=i=>{if(i>=0)eventIndex=eventIndex==null?i:Math.max(eventIndex,i);};
+
+  if(setupId==='pullback'){
+    for(let i=Math.max(0,last-8);i<=last;i++){
+      const n20=e20!=null&&data[i].low<=e20*1.005;
+      const n50=e50!=null&&data[i].low<=e50*1.005;
+      if(n20||n50)markEvent(i);
+    }
+    if(eventIndex!=null)age=last-eventIndex;
+    const distance=e20!=null&&e50!=null?Math.min((price-e20)/atr,(price-e50)/atr):null;
+    if(distance!=null&&distance>2.0)return{state:'expired',label:'EXPIRADO',age,expired:true,reason:'El precio se ha alejado demasiado de la zona de pullback.'};
+    if(age!=null&&age>5)return{state:'expired',label:'EXPIRADO',age,expired:true,reason:'El toque del pullback es demasiado antiguo.'};
+  } else if(setupId==='sma200'){
+    const s200Series=ctx.s200Series||sma(ctx.closes,200);
+    for(let i=Math.max(0,last-10);i<=last;i++){
+      const s200At=s200Series[i];
+      if(s200At!=null&&data[i].low<=s200At*1.005)markEvent(i);
+    }
+    if(eventIndex!=null)age=last-eventIndex;
+    const distance=s200!=null?(price-s200)/atr:null;
+    if(distance!=null&&distance>2.0)return{state:'expired',label:'EXPIRADO',age,expired:true,reason:'Precio alejado de SMA200.'};
+    if(age!=null&&age>7)return{state:'expired',label:'EXPIRADO',age,expired:true,reason:'El test de SMA200 es demasiado antiguo.'};
+  } else if(setupId==='donchian'){
+    const trigger=ctx.dh20?.[last-1];
+    if(trigger!=null){
+      for(let i=Math.max(0,last-5);i<=last;i++)if(data[i].close>trigger)markEvent(i);
+      if(eventIndex!=null)age=last-eventIndex;
+      if(price<trigger&&age!=null&&age>3)return{state:'expired',label:'EXPIRADO',age,expired:true,reason:'El breakout perdió continuidad.'};
+    }
+  } else if(setupId==='bb_breakout'){
+    const upper=ctx.bb?.upper?.[last-1];
+    if(upper!=null){
+      for(let i=Math.max(0,last-5);i<=last;i++)if(data[i].close>upper)markEvent(i);
+      if(eventIndex!=null)age=last-eventIndex;
+      if(price<upper&&age!=null&&age>3)return{state:'expired',label:'EXPIRADO',age,expired:true,reason:'El breakout de Bollinger perdió continuidad.'};
+    }
+  } else if(setupId==='golden_cross'){
+    const e20s=ctx.ema20Series,e50s=ctx.ema50Series;
+    if(e20s&&e50s){
+      for(let i=Math.max(1,last-10);i<=last;i++){
+        const pE20=e20s[i-1],pE50=e50s[i-1];
+        const cE20=e20s[i],cE50=e50s[i];
+        if(pE20!=null&&pE50!=null&&cE20!=null&&cE50!=null&&pE20<=pE50&&cE20>cE50)markEvent(i);
+      }
+    }
+    if(eventIndex!=null)age=last-eventIndex;
+    if(age!=null&&age>10)return{state:'expired',label:'EXPIRADO',age,expired:true,reason:'El golden cross dejó de ser reciente.'};
+  }
+
+  if(!primaryConfirmed)return{state:'forming',label:'EN FORMACIÓN',age,expired:false,reason:'El patrón aún no cumple su condición primaria.'};
+  if(confirmation?.state==='confirmed'){state='confirmed';reasons.push('La tesis del setup está confirmada.');}
+  else{state='valid';reasons.push(confirmation?.state==='forming'?'Setup válido esperando confirmación.':'Setup válido sin confirmación suficiente.');}
+  if(entryQuality?.state==='extended')reasons.push('La tesis puede ser válida, pero la entrada actual está extendida.');
+  else if(entryQuality?.state==='acceptable')reasons.push('La ejecución es operable pero no está en zona óptima.');
+  else if(entryQuality?.state==='optimal')reasons.push('La ejecución está dentro de una zona razonable.');
+  return{state,label:state==='confirmed'?'CONFIRMADO':'VÁLIDO',age,expired:false,reason:reasons.join(' ')};
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FINALIZE SETUP (idéntico al index)
+   ══════════════════════════════════════════════════════════════════════════ */
+function makeExitPlan(){return{partials:'50% en T1 → stop a BE · 25% en T2',trailing:'Chandelier 22/3 · EMA20 · Swing low 10',timeStop:'20 sesiones si no toca T1',invalidation:'Cierre < stop, o RSI<40 + MACD bajista'};}
+
+function finalizeSetup(o,TH){
+  const{id,name,desc,primaryConfirmed,checks,entry,stop,stopSource,atr,data,regime,momentumSetup,ctx}=o;
+  const risk=entry-stop;
+  if(!isFinite(risk)||risk<=0)return null;
+  const riskInAtr=risk/atr;
+  if(riskInAtr>TH.maxRiskAtr)return null;
+  if(riskInAtr<TH.minRiskAtr)return null;
+  if(momentumSetup&&(regime?.regime==='RISK_OFF'||regime?.regime==='STRONG_RISK_OFF'))return null;
+
+  const softFilters=[];
+  if(ctx){
+    if(ctx.rs!=null&&ctx.rs<TH.minRs)softFilters.push('RS '+ctx.rs.toFixed(1)+'% < '+TH.minRs+'%');
+    if(ctx.weeklyTrend==='BAJISTA')softFilters.push('MTF semanal BAJISTA');
+    if(ctx.daysEarnings!=null&&ctx.daysEarnings<=TH.minDaysEarnings){
+      if(ctx.daysEarnings<=1)return null;
+      softFilters.push('Earnings en '+ctx.daysEarnings+'d');
+    }
+  }
+  if(data?.length){
+    const lastBar=data[data.length-1];
+    const dollarVol=lastBar.close*(lastBar.volume||0);
+    if(dollarVol<TH.minDollarVolume)softFilters.push('Liquidez $'+(dollarVol/1e6).toFixed(1)+'M');
+  }
+
+  const targets=computeTargets(data,entry,stop,atr);
+  if(!targets)return null;
+  const rrT1=(targets.t1-entry)/risk;
+  if(rrT1<TH.minRrT1)return null;
+
+  if(id==='donchian'||id==='bb_breakout'){
+    const slice20=data.slice(-20);
+    const rH=slice20.reduce((m,d)=>Math.max(m,d.high),-Infinity);
+    const rL=slice20.reduce((m,d)=>Math.min(m,d.low),Infinity);
+    const measured=entry+(rH-rL);
+    if(isFinite(measured)&&measured>targets.t2){targets.t2=measured;targets.t2Source='measured';}
+  }
+
+  const quality=weightedQuality(checks);
+  const entryQuality=computeEntryQuality(ctx,id,entry,stop,targets);
+  const confirmation=computeSetupConfirmation(ctx,id,primaryConfirmed);
+  const lifecycle=computeSetupLifecycle(ctx,id,primaryConfirmed,confirmation,entryQuality);
+
+  let operationalEntry=entry,entryType='market',finalStop=stop,finalStopSource=stopSource,finalTargets=targets;
+
+  if(entryQuality.state==='extended'&&entryQuality.targetZone!=null&&isFinite(entryQuality.targetZone)&&entryQuality.targetZone>0&&entryQuality.targetZone<entry){
+    const refEntry=entryQuality.targetZone;
+    const refStopObj=computeStructuralStop(data,refEntry,atr,null);
+    const refTargets=computeTargets(data,refEntry,refStopObj.price,atr);
+    const refRisk=refEntry-refStopObj.price;
+    const refRiskAtr=refRisk/atr;
+    const refRr=refTargets?(refTargets.t1-refEntry)/refRisk:0;
+    if(refTargets&&refStopObj.price<refEntry&&refRiskAtr<=TH.maxRiskAtr&&refRiskAtr>=TH.minRiskAtr&&refRr>=TH.minRrT1){
+      operationalEntry=refEntry;finalStop=refStopObj.price;finalStopSource=refStopObj.source;finalTargets=refTargets;entryType='limit';
+    }
+  }
+
+  const finalRisk=operationalEntry-finalStop;
+  const finalRiskInAtr=finalRisk/atr;
+  const finalRrT1=(finalTargets.t1-operationalEntry)/finalRisk;
+  const finalRrT2=(finalTargets.t2-operationalEntry)/finalRisk;
+
+  if(lifecycle.expired){
+    return{id,name,desc,status:'EXPIRED',quality,entryQuality,entry:operationalEntry,entryType:'market',currentPrice:ctx?.price??operationalEntry,stop:finalStop,stopSource:finalStopSource,t1:finalTargets.t1,t1Source:finalTargets.t1Source,t2:finalTargets.t2,t2Source:finalTargets.t2Source,risk:finalRisk,riskInAtr:finalRiskInAtr,rrT1:finalRrT1,rrT2:finalRrT2,checks,softFilters,confirmation,lifecycle,decision:{state:'EXPIRED',label:'EXPIRADO',reason:lifecycle.reason},exitPlan:makeExitPlan()};
+  }
+
+  let status='WAITING',decisionState='WAITING',decisionLabel='ESPERAR',decisionReason='';
+
+  if(quality.blocked){decisionReason='⛔ Gates Tier1 fallidos: '+quality.gate_fails.join(' · ');}
+  else if(softFilters.length){decisionReason='Contexto pendiente: '+softFilters.join(' · ');}
+  else if(!primaryConfirmed){decisionReason='El setup aún no cumple su condición primaria.';}
+  else if(quality.score<TH.minSetupQuality){decisionReason='Score Tier2 '+quality.score+'/100 por debajo del umbral ('+TH.minSetupQuality+').';}
+  else if(quality.confidence<0.75){decisionReason='Score '+quality.score+'/100, pero confianza '+(quality.confidence*100).toFixed(0)+'% — faltan datos.';}
+  else if(confirmation.state!=='confirmed'){decisionReason=confirmation.note||'Setup válido esperando confirmación.';}
+  else if(entryQuality.state==='extended'&&entryType==='market'){decisionReason=entryQuality.note||'Setup confirmado, pero ejecución extendida.';}
+  else{
+    status='READY';
+    decisionState=entryQuality.state==='optimal'?'READY_OPTIMAL':'READY_ACCEPTABLE';
+    if(entryType==='limit'){
+      decisionLabel=entryQuality.state==='optimal'?'ORDEN LÍMITE ÓPTIMA':'ORDEN LÍMITE ACEPTABLE';
+      decisionReason='Setup confirmado. Entrada límite en $'+operationalEntry.toFixed(2)+' (retroceso desde $'+(ctx?.price??entry).toFixed(2)+').';
+    }else{
+      decisionLabel=entryQuality.state==='optimal'?'ENTRADA ÓPTIMA':'ENTRADA ACEPTABLE';
+      decisionReason=entryQuality.note||'Setup confirmado y ejecutable.';
+    }
+  }
+
+  return{id,name,desc,status,quality,entryQuality,entry:operationalEntry,entryType,currentPrice:ctx?.price??operationalEntry,stop:finalStop,stopSource:finalStopSource,t1:finalTargets.t1,t1Source:finalTargets.t1Source,t2:finalTargets.t2,t2Source:finalTargets.t2Source,risk:finalRisk,riskInAtr:finalRiskInAtr,rrT1:finalRrT1,rrT2:finalRrT2,checks,softFilters,confirmation,lifecycle,decision:{state:decisionState,label:decisionLabel,reason:decisionReason},exitPlan:makeExitPlan()};
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SETUPS (idénticos al index)
+   ══════════════════════════════════════════════════════════════════════════ */
+function buildCtx(data,tech,regime){
+  const n=data.length,last=n-1;
+  const closes=data.map(d=>d.close);
+  const volumes=data.map(d=>d.volume||0);
+  const e20A=ema(closes,20),e50A=ema(closes,50),e200A=ema(closes,200);
+  const s200A=sma(closes,200);
+  const rsiA=rsiC(closes,14);
+  const adxO=adxC(data,14);
+  const dh20=donHi(data,20),dl10=donLo(data,10);
+  const bb=boll(closes,20,2);
+  const macdO=macdCalc(closes,12,26,9);
+  return {data,closes,volumes,last,price:tech.price,atr:tech.atr,e20:e20A[last],e50:e50A[last],e200:e200A[last],s200:s200A[last],s200Series:s200A,r:rsiA[last],adx:adxO.adx[last],plusDI:adxO.pDI[last],minusDI:adxO.mDI[last],macd:macdO.macd[last],macdSignal:macdO.signal[last],dh20,dl10,bb,volPct:volumePercentile(volumes,60),regime,rs:tech.rsRating,weeklyTrend:tech.weeklyTrend,daysEarnings:tech.daysEarnings,rvol:tech.rvol,ema20Series:e20A,ema50Series:e50A};
+}
+
+function setupDonchian(ctx,TH){
+  const{data,last,price,atr,e20,e50,e200,adx,plusDI,minusDI,r,dh20,volPct,regime}=ctx;
+  const dhPrev=dh20[last-1];
+  if(dhPrev==null)return null;
+  if(!(data[last].close>dhPrev))return null;
+  if(!(e50>e200))return null;
+  const checks=[
+    {label:'Cierre > Donchian High 20',ok:true,detail:'$'+dhPrev.toFixed(2),category:'trend'},
+    {label:'EMA50 > EMA200',ok:e50>e200,detail:'',category:'trend'},
+    {label:'Precio > EMA20',ok:price>e20,detail:'',category:'trend'},
+    {label:'Estructura HH/HL',ok:isUptrendStructure(data,60),detail:'',category:'structure'},
+    {label:'ADX > 20',ok:adx!=null&&adx>20,detail:adx!=null?adx.toFixed(1):'—',category:'strength'},
+    {label:'+DI > −DI',ok:plusDI>minusDI,detail:'',category:'strength'},
+    {label:'Volumen P80 propio',ok:volPct!=null&&volPct>=0.8,detail:volPct!=null?'P'+Math.round(volPct*100):'—',category:'volume'},
+    {label:'RSI 50-80',ok:r!=null&&r>=50&&r<=80,detail:r!=null?r.toFixed(1):'—',category:'momentum'},
+    ...regimeCheck(regime),
+    ...contextChecks(ctx,true)
+  ];
+  const stopObj=computeStructuralStop(data,price,atr,e20);
+  return finalizeSetup({id:'donchian',name:'Ruptura Donchian 20',desc:'Cierre sobre máximo de 20 sesiones con volumen y estructura',primaryConfirmed:true,momentumSetup:true,checks,entry:price,stop:stopObj.price,stopSource:stopObj.source,atr,data,regime,ctx},TH);
+}
+
+function setupPullback(ctx,TH){
+  const{data,last,price,atr,e20,e50,e200,adx,r,regime}=ctx;
+  const stack=e20>e50&&e50>e200;
+  if(!stack)return null;
+  let touched=false;
+  for(let i=Math.max(0,last-4);i<=last;i++){
+    const ref=(e20!=null&&data[i].low<=e20*1.005)?e20:(e50!=null&&data[i].low<=e50*1.005)?e50:null;
+    if(ref!=null&&data[i].close>=ref*0.995){touched=true;break;}
+  }
+  const structureOk=isUptrendStructure(data,60);
+  const volHealthy=pullbackVolumeHealthy(data);
+  const d20=e20!=null?(price-e20)/atr:Infinity;
+  const d50=e50!=null?(price-e50)/atr:Infinity;
+  const minDist=Math.min(d20,d50);
+  const checks=[
+    {label:'EMA20 > EMA50 > EMA200',ok:true,detail:'',category:'trend'},
+    {label:'Toque EMA20/50 (≤5 sesiones)',ok:touched,detail:'',category:'timing'},
+    {label:'Precio > EMA20',ok:price>e20,detail:e20!=null?'$'+e20.toFixed(2):'—',category:'trend'},
+    {label:'Distancia a EMA20/50 ≤ 1.25 ATR',ok:minDist<=1.25,detail:minDist.toFixed(2)+' ATR',category:'timing'},
+    {label:'Estructura HH/HL',ok:structureOk,detail:'',category:'structure'},
+    {label:'Volumen decreciente en pullback',ok:volHealthy,detail:'',category:'health'},
+    {label:'RSI 40-65',ok:r!=null&&r>=40&&r<=65,detail:r!=null?r.toFixed(1):'—',category:'momentum'},
+    {label:'ADX > 20',ok:adx!=null&&adx>20,detail:adx!=null?adx.toFixed(1):'—',category:'strength'},
+    ...regimeCheck(regime),
+    ...contextChecks(ctx,true)
+  ];
+  const stopObj=computeStructuralStop(data,price,atr,e50);
+  return finalizeSetup({id:'pullback',name:'Pullback a EMA20/50',desc:'Retroceso a media en tendencia alcista',primaryConfirmed:touched&&structureOk,momentumSetup:false,checks,entry:price,stop:stopObj.price,stopSource:stopObj.source,atr,data,regime,ctx},TH);
+}
+
+function setupSma200(ctx,TH){
+  const{data,last,price,atr,s200,s200Series,r,regime}=ctx;
+  if(s200==null)return null;
+  if(!(price>s200))return null;
+  const s200Arr=s200Series||sma(ctx.closes,200);
+  let touched=false;
+  for(let i=Math.max(0,last-6);i<=last;i++){
+    const s200At=s200Arr[i];
+    if(s200At!=null&&data[i].low<=s200At*1.005){touched=true;break;}
+  }
+  if(!touched)return null;
+  const greenDay=data[last].close>data[last-1].close;
+  const structureOk=isUptrendStructure(data,90);
+  const volHealthy=pullbackVolumeHealthy(data);
+  const checks=[
+    {label:'Precio > SMA200',ok:true,detail:'$'+s200.toFixed(2),category:'trend'},
+    {label:'Toque SMA200 (≤7 sesiones)',ok:true,detail:'',category:'timing'},
+    {label:'Cierre verde',ok:greenDay,detail:'',category:'momentum'},
+    {label:'RSI < 50',ok:r!=null&&r<50,detail:r!=null?r.toFixed(1):'—',category:'momentum'},
+    {label:'Estructura HH/HL',ok:structureOk,detail:'',category:'structure'},
+    {label:'Volumen decreciente en pullback',ok:volHealthy,detail:'',category:'health'},
+    ...regimeCheck(regime),
+    ...contextChecks(ctx,true)
+  ];
+  const stopObj=computeStructuralStop(data,price,atr,s200);
+  return finalizeSetup({id:'sma200',name:'Rebote en SMA200',desc:'Retroceso a la media de 200 con tendencia intacta',primaryConfirmed:touched&&greenDay,momentumSetup:false,checks,entry:price,stop:stopObj.price,stopSource:stopObj.source,atr,data,regime,ctx},TH);
+}
+
+function setupGoldenCross(ctx,TH){
+  const{data,last,price,atr,e50,e200,adx,volPct,regime}=ctx;
+  const closes=data.map(d=>d.close);
+  const e20s=ema(closes,20),e50s=ema(closes,50);
+  let crossIdx=-1;
+  for(let i=last;i>=Math.max(1,last-2);i--){
+    if(e20s[i]!=null&&e50s[i]!=null&&e20s[i-1]!=null&&e50s[i-1]!=null){
+      if(e20s[i]>e50s[i]&&e20s[i-1]<=e50s[i-1]){crossIdx=i;break;}
+    }
+  }
+  if(crossIdx===-1)return null;
+  if(!(e50>e200))return null;
+  const adxO=adxC(data,14);
+  const adxPrev=adxO.adx[last-5];
+  const adxRising=adx!=null&&adxPrev!=null&&adx>adxPrev;
+  const checks=[
+    {label:'Cruce EMA20/50 (≤3 ses.)',ok:true,detail:'',category:'trend'},
+    {label:'EMA50 > EMA200',ok:true,detail:'',category:'trend'},
+    {label:'ADX > 20 y subiendo',ok:adx!=null&&adx>20&&adxRising,detail:adx!=null?adx.toFixed(1):'—',category:'strength'},
+    {label:'Volumen P75 propio',ok:volPct!=null&&volPct>=0.75,detail:volPct!=null?'P'+Math.round(volPct*100):'—',category:'volume'},
+    {label:'MACD > Signal',ok:ctx.macd!=null&&ctx.macdSignal!=null&&ctx.macd>ctx.macdSignal,detail:'',category:'momentum'},
+    ...regimeCheck(regime),
+    ...contextChecks(ctx,true)
+  ];
+  const stopObj=computeStructuralStop(data,price,atr,null);
+  return finalizeSetup({id:'golden_cross',name:'Cruce dorado EMA20/50',desc:'Cruce reciente con confirmación de fuerza',primaryConfirmed:true,momentumSetup:true,checks,entry:price,stop:stopObj.price,stopSource:stopObj.source,atr,data,regime,ctx},TH);
+}
+
+function setupBbBreakout(ctx,TH){
+  const{data,last,price,atr,adx,r,bb,volPct,regime}=ctx;
+  const closes=data.map(d=>d.close);
+  const bbUp=bb.upper[last],bbMid=bb.middle[last];
+  if(bbUp==null)return null;
+  if(!(closes[last]>bbUp))return null;
+  const checks=[
+    {label:'Cierre > BB superior',ok:true,detail:'$'+bbUp.toFixed(2),category:'trend'},
+    {label:'Volumen P85 propio',ok:volPct!=null&&volPct>=0.85,detail:volPct!=null?'P'+Math.round(volPct*100):'—',category:'volume'},
+    {label:'ADX > 20',ok:adx!=null&&adx>20,detail:adx!=null?adx.toFixed(1):'—',category:'strength'},
+    {label:'RSI 55-80',ok:r!=null&&r>=55&&r<=80,detail:r!=null?r.toFixed(1):'—',category:'momentum'},
+    {label:'Estructura HH/HL',ok:isUptrendStructure(data,60),detail:'',category:'structure'},
+    ...regimeCheck(regime),
+    ...contextChecks(ctx,true)
+  ];
+  const stopObj=computeStructuralStop(data,price,atr,null);
+  if(bbMid!=null&&bbMid<price&&bbMid>stopObj.price){
+    return finalizeSetup({id:'bb_breakout',name:'Ruptura Bollinger + Volumen',desc:'Expansión de volatilidad confirmada',primaryConfirmed:true,momentumSetup:true,checks,entry:price,stop:bbMid,stopSource:'ema',atr,data,regime,ctx},TH);
+  }
+  return finalizeSetup({id:'bb_breakout',name:'Ruptura Bollinger + Volumen',desc:'Expansión de volatilidad confirmada',primaryConfirmed:true,momentumSetup:true,checks,entry:price,stop:stopObj.price,stopSource:stopObj.source,atr,data,regime,ctx},TH);
+}
+
+function computeEntries(data,tech,regime,TH){
+  if(!tech.atr||!isFinite(tech.atr))return[];
+  if(data.length<250)return[];
+  const ctx=buildCtx(data,tech,regime);
+  const setups=[setupDonchian(ctx,TH),setupPullback(ctx,TH),setupSma200(ctx,TH),setupGoldenCross(ctx,TH),setupBbBreakout(ctx,TH)].filter(Boolean);
+  setups.sort((a,b)=>{
+    if(a.status!==b.status){
+      if(a.status==='READY')return -1;
+      if(b.status==='READY')return 1;
+      if(a.status==='EXPIRED')return 1;
+      if(b.status==='EXPIRED')return -1;
+    }
+    const aEq=a.entryQuality?.score??0;
+    const bEq=b.entryQuality?.score??0;
+    if(bEq!==aEq)return bEq-aEq;
+    const aQ=typeof a.quality==='object'&&a.quality!==null?(a.quality.score??0):(a.quality??0);
+    const bQ=typeof b.quality==='object'&&b.quality!==null?(b.quality.score??0):(b.quality??0);
+    return bQ-aQ;
+  });
+  return setups;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CSV PARSER
+   ══════════════════════════════════════════════════════════════════════════ */
+function parseCSVLine(line){const out=[];let cur='',q=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(q&&line[i+1]==='"'){cur+='"';i++;}else q=!q;}else if(ch===','&&!q){out.push(cur);cur='';}else cur+=ch;}out.push(cur);return out;}
+function parseCSV(text){
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2)return[];
+  const hdr=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/"/g,''));
+  function find(){for(let a=0;a<arguments.length;a++){const i=hdr.indexOf(arguments[a]);if(i!==-1)return i;}for(let b=0;b<arguments.length;b++)for(let j=0;j<hdr.length;j++)if(hdr[j].indexOf(arguments[b])!==-1)return j;return -1;}
+  const iD=find('datetime','date','timestamp','time');
+  const iO=find('open'),iH=find('high'),iL=find('low');
+  const iC=find('adj close','adj_close','adjusted close','close');
+  const iV=find('volume','vol');
+  if(iD===-1||iC===-1)return[];
+  const out=[];
+  for(let i=1;i<lines.length;i++){
+    const c=parseCSVLine(lines[i]);
+    if(c.length<=Math.max(iD,iC))continue;
+    const close=parseFloat(c[iC]);
+    if(!isFinite(close))continue;
+    const raw=c[iD].trim();
+    const dt=raw.length>=10?raw.slice(0,10):raw;
+    out.push({datetime:dt,open:iO>=0&&isFinite(parseFloat(c[iO]))?parseFloat(c[iO]):close,high:iH>=0&&isFinite(parseFloat(c[iH]))?parseFloat(c[iH]):close,low:iL>=0&&isFinite(parseFloat(c[iL]))?parseFloat(c[iL]):close,close,volume:iV>=0&&isFinite(parseFloat(c[iV]))?parseFloat(c[iV]):0});
+  }
+  out.sort((a,b)=>a.datetime.localeCompare(b.datetime));
+  return out;
+}
+
+async function handleFiles(files){
+  const list=Array.prototype.slice.call(files);
+  if(!list.length)return;
+  const BATCH=50;let ok=0,total=list.length;
+  setStatus('Cargando 0/'+total+'…');
+  for(let i=0;i<list.length;i+=BATCH){
+    const batch=list.slice(i,i+BATCH);
+    const results=await Promise.all(batch.map(f=>new Promise(resolve=>{
+      const r=new FileReader();
+      r.onload=e=>{
+        const sym=f.name.replace(/\.csv$/i,'').toUpperCase().replace(/[^A-Z0-9.\-]/g,'');
+        const bars=parseCSV(e.target.result||'');
+        resolve({sym,bars});
+      };
+      r.onerror=()=>resolve({sym:null,bars:[]});
+      r.readAsText(f);
+    })));
+    for(const{sym,bars}of results){if(sym&&bars.length>=250){DATASETS[sym]=bars;ok++;}}
+    setStatus('Cargando '+(i+batch.length)+'/'+total+'…');
+    await new Promise(r=>setTimeout(r,20));
+  }
+  SPY=DATASETS['SPY']||null;
+  setStatus(ok+' / '+total+' cargados · SPY '+(SPY?'✓':'✗'));
+  document.getElementById('scanBtn').disabled=!(SPY&&ok>5);
+  log('Cargados '+ok+' tickers'+(SPY?' (SPY ok)':' — FALTA SPY'),ok&&SPY?'ok':'err');
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SCAN
+   ══════════════════════════════════════════════════════════════════════════ */
+function log(msg,cls){
+  const el=document.getElementById('log');if(!el)return;
+  document.getElementById('logCard').style.display='block';
+  const d=document.createElement('div');
+  if(cls)d.className=cls;
+  d.textContent=msg;
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
+}
+function setStatus(t){document.getElementById('status').textContent=t||'';}
+function updateProgress(p){document.getElementById('progressFill').style.width=p+'%';}
+
+async function runScan(){
+  if(scanning)return;
+  if(!SPY){log('Falta SPY','err');return;}
+  scanning=true;
+  document.getElementById('scanBtn').disabled=true;
+  document.getElementById('log').innerHTML='';
+  log('═══ Inicio del scan (motor index) ═══','info');
+
+  const TH={
+    minSetupQuality:parseFloat(document.getElementById('pMinQ').value)||65,
+    minRrT1:parseFloat(document.getElementById('pMinRr').value)||1.5,
+    maxRiskAtr:parseFloat(document.getElementById('pMaxRiskAtr').value)||3.0,
+    minRiskAtr:parseFloat(document.getElementById('pMinRiskAtr').value)||0.8,
+    minRs:parseFloat(localStorage.getItem('sa_min_rs_pct'))||0,
+    minDaysEarnings:parseFloat(localStorage.getItem('sa_min_days_earnings'))||5,
+    minDollarVolume:parseFloat(localStorage.getItem('sa_min_dollar_volume'))||5000000
+  };
+
+  // 1. Régimen SPY
+  const regime=computeRegime(SPY);
+  log('Régimen: '+regime.regime+' (dist SMA200 '+(regime.distPct>=0?'+':'')+regime.distPct.toFixed(2)+'% · slope '+(regime.slopePct>=0?'+':'')+regime.slopePct.toFixed(2)+'%)','info');
+  renderRegime(regime);
+
+  // 2. Fecha de referencia
+  LAST_SCAN_DATE=SPY[SPY.length-1].datetime;
+  const daysSince=Math.round((Date.now()-new Date(LAST_SCAN_DATE).getTime())/86400000);
+  if(daysSince>5)log('⚠ Última barra del CSV: '+LAST_SCAN_DATE+' ('+daysSince+' días) — resultados potencialmente obsoletos','warn');
+  else log('Última barra: '+LAST_SCAN_DATE,'info');
+
+  // 3. RS vs SPY (pesos 0.4/0.3/0.3)
+  const spyCloses=SPY.map(d=>d.close);
+  const symbols=Object.keys(DATASETS).filter(s=>s!=='SPY'&&DATASETS[s].length>=250);
+  log('Preparando '+symbols.length+' símbolos...','info');
+  updateProgress(10);
+
+  // 4. Weekly para todos
+  const weeklyMap={};
+  for(let i=0;i<symbols.length;i++){
+    const sym=symbols[i];
+    const w=resampleWeekly(DATASETS[sym]);
+    if(w.length>=30)weeklyMap[sym]=analyzeWeekly(w);
+  }
+  updateProgress(25);
+
+  // 5. Escanear
+  const results=[];
+  let scanned=0,failed=0,noSetup=0,expired=0;
+  const minQ=TH.minSetupQuality;
+  for(let i=0;i<symbols.length;i++){
+    const sym=symbols[i];
+    const d=DATASETS[sym];
+    const idx=d.length-1;
+    if(idx<250){failed++;continue;}
+    const closes=d.map(x=>x.close);
+    const tech={
+      price:d[idx].close,
+      atr:atrC(d,14)[idx],
+      rsRating:computeRsRating(closes,spyCloses),
+      weeklyTrend:weeklyMap[sym]?.trend||null,
+      weeklyRsi:weeklyMap[sym]?.rsi||null,
+      rvol:computeRVOL(d,20),
+      daysEarnings:null
+    };
+    if(tech.rsRating==null||tech.atr==null){failed++;continue;}
+
+    const entries=computeEntries(d,tech,regime,TH);
+
+    // Filtro: algún setup no-EXPIRED
+    const activeSetups=entries.filter(e=>e.status!=='EXPIRED');
+    if(!activeSetups.length){if(entries.length)expired++;else noSetup++;continue;}
+
+    // El "top" es entries[0] (ya ordenado)
+    const top=entries[0];
+    results.push({
+      symbol:sym,
+      top,
+      allSetups:entries,
+      price:tech.price,
+      rs:tech.rsRating,
+      weekly:tech.weeklyTrend
+    });
+    scanned++;
+
+    if(scanned%20===0){updateProgress(25+Math.round((i/symbols.length)*70));await new Promise(r=>setTimeout(r,0));}
+  }
+  updateProgress(100);
+
+  ALL_RESULTS=results;
+  results.sort((a,b)=>{
+    const order={READY_OPTIMAL:0,READY_ACCEPTABLE:1,WAITING:2,EXPIRED:3};
+    const ao=order[a.top.decision.state]??4;
+    const bo=order[b.top.decision.state]??4;
+    if(ao!==bo)return ao-bo;
+    return (b.top.entryQuality?.score||0)-(a.top.entryQuality?.score||0);
+  });
+
+  const readyCount=results.filter(r=>r.top.status==='READY').length;
+  log('Escaneados: '+symbols.length+' · Con setups activos: '+results.length+' · READY: '+readyCount+' · Solo expirados: '+expired+' · Sin setup: '+noSetup,readyCount>0?'ok':'');
+
+  renderResults();
+  scanning=false;
+  document.getElementById('scanBtn').disabled=false;
+}
+
+function renderRegime(regime){
+  document.getElementById('regimeCard').style.display='block';
+  const cls=regime.regime.includes('ON')?'risk-on':regime.regime.includes('OFF')?'risk-off':'neutral';
+  const label={STRONG_RISK_ON:'RISK-ON+',RISK_ON:'RISK-ON',NEUTRAL:'NEUTRAL',RISK_OFF:'RISK-OFF',STRONG_RISK_OFF:'RISK-OFF+'}[regime.regime]||regime.regime;
+  document.getElementById('regimeInfo').innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span class="regime-badge ${cls}">● ${label}</span>
+      <span style="font-size:12px;color:var(--text-2);">
+        SPY $${regime.price.toFixed(2)} · SMA50 $${regime.sma50.toFixed(2)} · SMA200 $${regime.sma200.toFixed(2)}
+        · distancia ${regime.distPct>=0?'+':''}${regime.distPct.toFixed(2)}%
+        · pendiente SMA200 20d ${regime.slopePct>=0?'+':''}${regime.slopePct.toFixed(2)}%
+      </span>
+    </div>
+  `;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RENDER
+   ══════════════════════════════════════════════════════════════════════════ */
+function setFilter(f){
+  CURRENT_FILTER=f;
+  document.querySelectorAll('.chip-filter').forEach(c=>c.classList.toggle('active',c.dataset.filter===f));
+  renderResults();
+}
+
+function renderResults(){
+  document.getElementById('resultCard').style.display='block';
+  let list=ALL_RESULTS.slice();
+  if(CURRENT_FILTER==='ready')list=list.filter(r=>r.top.status==='READY');
+  else if(CURRENT_FILTER==='optimal')list=list.filter(r=>r.top.decision.state==='READY_OPTIMAL');
+  else if(CURRENT_FILTER==='acceptable')list=list.filter(r=>r.top.decision.state==='READY_ACCEPTABLE');
+  else if(CURRENT_FILTER==='waiting')list=list.filter(r=>r.top.status==='WAITING');
+  else if(CURRENT_FILTER==='limit')list=list.filter(r=>r.top.entryType==='limit');
+
+  const readyOpt=ALL_RESULTS.filter(r=>r.top.decision.state==='READY_OPTIMAL').length;
+  const readyAcc=ALL_RESULTS.filter(r=>r.top.decision.state==='READY_ACCEPTABLE').length;
+  const waiting=ALL_RESULTS.filter(r=>r.top.status==='WAITING').length;
+  const limits=ALL_RESULTS.filter(r=>r.top.entryType==='limit'&&r.top.status==='READY').length;
+
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="k">Total activos</div><div class="v">${ALL_RESULTS.length}</div></div>
+    <div class="stat"><div class="k">READY</div><div class="v" style="color:var(--green)">${readyOpt+readyAcc}</div></div>
+    <div class="stat"><div class="k">Óptimas</div><div class="v" style="color:var(--green)">${readyOpt}</div></div>
+    <div class="stat"><div class="k">Aceptables</div><div class="v" style="color:#a3e635">${readyAcc}</div></div>
+    <div class="stat"><div class="k">Formación</div><div class="v" style="color:var(--orange)">${waiting}</div></div>
+  `;
+
+  const tbody=document.getElementById('resultBody');
+  if(!list.length){
+    tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:24px;color:var(--text-3);">Sin resultados con este filtro</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML=list.map((r,idx)=>{
+    const t=r.top;
+    const st=t.decision.state;
+    let rowCls='waiting',tagCls='waiting',tagTxt='WAITING';
+    if(st==='READY_OPTIMAL'){rowCls='ready-optimal';tagCls='ready';tagTxt='READY ÓPTIMA';}
+    else if(st==='READY_ACCEPTABLE'){rowCls='ready-acceptable';tagCls='ready-acc';tagTxt='READY ACEPT.';}
+    else if(st==='EXPIRED'){rowCls='expired';tagCls='expired';tagTxt='EXPIRADO';}
+    const rrCls=t.rrT1<1.8?'low':'';
+    const limitTag=t.entryType==='limit'?'<span class="tag limit">LÍMITE</span>':'';
+    return `<tr class="${rowCls}" data-idx="${idx}">
+      <td><span class="sym" onclick="sendToIndex('${r.symbol}')" title="Ver en index">${r.symbol}</span></td>
+      <td><span class="tag ${t.id}">${t.id}</span>${limitTag}</td>
+      <td><span class="tag ${tagCls}" title="${escapeHtml(t.decision.reason||'')}">${tagTxt}</span></td>
+      <td class="num">$${t.currentPrice.toFixed(2)}</td>
+      <td class="num">$${t.entry.toFixed(2)}</td>
+      <td class="num">$${t.stop.toFixed(2)}</td>
+      <td class="num">$${t.t1.toFixed(2)}</td>
+      <td class="num"><span class="rr ${rrCls}">${t.rrT1.toFixed(1)}R</span></td>
+      <td class="num">${t.riskInAtr.toFixed(2)}</td>
+      <td class="num">${typeof t.quality==='object'?t.quality.score:t.quality}</td>
+      <td class="num">${t.entryQuality?.score??'—'}</td>
+      <td class="num">${r.rs!=null?(r.rs>=0?'+':'')+r.rs.toFixed(1)+'%':'—'}</td>
+      <td class="num" style="font-size:11px;">${r.weekly||'—'}</td>
+    </tr>
+    <tr class="expand-row" data-expand="${idx}">
+      <td colspan="13" class="expand-cell">${renderDetail(t)}</td>
+    </tr>`;
+  }).join('');
+
+  tbody.querySelectorAll('tr[data-idx]').forEach(tr=>{
+    tr.addEventListener('click',e=>{
+      if(e.target.classList.contains('sym'))return;
+      const idx=tr.dataset.idx;
+      const exp=tbody.querySelector(`tr[data-expand="${idx}"]`);
+      if(exp)exp.classList.toggle('open');
+    });
+  });
+}
+
+function renderDetail(t){
+  const q=t.quality;
+  const qTxt=typeof q==='object'?(q.blocked?'⛔ GATES: '+q.gate_fails.join(' · '):'Score '+q.score+'/100 · conf '+((q.confidence||0)*100).toFixed(0)+'%'):'Q '+q;
+  const checks=(t.checks||[]).map(c=>`<div class="check-item ${c.ok?'ok':(c.soft?'soft':'no')}"><span class="ci">${c.ok?'✓':(c.soft?'⚠':'○')}</span><span>${escapeHtml(c.label)}</span>${c.detail?`<span style="color:var(--text-2);margin-left:6px;">${escapeHtml(c.detail)}</span>`:''}</div>`).join('');
+  const soft=t.softFilters&&t.softFilters.length?`<div style="color:var(--orange);margin-top:6px;">⚠ Soft filters: ${t.softFilters.map(escapeHtml).join(' · ')}</div>`:'';
+  return `
+    <div style="color:var(--text-2);margin-bottom:6px;"><b style="color:var(--text);">${escapeHtml(t.name)}</b> — ${escapeHtml(t.decision.label)}</div>
+    <div style="color:var(--text-2);margin-bottom:8px;font-size:10.5px;">${escapeHtml(t.decision.reason||'')}</div>
+    <div style="color:var(--blue);margin-bottom:6px;">${qTxt}</div>
+    ${checks}
+    ${soft}
+    <div style="margin-top:8px;color:var(--text-3);font-size:10px;">
+      Confirmación: ${t.confirmation?.label||'—'} · Ciclo: ${t.lifecycle?.label||'—'} · Stop: ${t.stopSource} · T1: ${t.t1Source} · T2: $${t.t2.toFixed(2)} (${t.rrT2.toFixed(1)}R)
+    </div>
+  `;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INTERACCIÓN CON INDEX (postMessage)
+   ══════════════════════════════════════════════════════════════════════════ */
+function sendToIndex(symbol){
+  try{
+    if(window.parent&&window.parent!==window){
+      window.parent.postMessage({type:'scanner_open_symbol',symbol},'*');
+      log('→ Enviado al index: '+symbol,'info');
+    }else{
+      log('No hay parent (abierto como página). Símbolo: '+symbol,'info');
+    }
+  }catch(e){log('Error enviando: '+e.message,'err');}
+}
+
+window.addEventListener('message',(ev)=>{
+  const msg=ev.data;
+  if(!msg||typeof msg!=='object')return;
+  if(msg.type==='sa_scanner_init'){
+    RECEIVED_FROM_INDEX=true;
+    const {data,earnings}=msg;
+    let loaded=0;
+    DATASETS={};
+    if(data&&typeof data==='object'){
+      for(const sym in data){
+        if(Array.isArray(data[sym])&&data[sym].length>=250){
+          DATASETS[sym.toUpperCase()]=data[sym];
+          loaded++;
+        }
+      }
+    }
+    SPY=DATASETS['SPY']||null;
+    // Earnings: guardar en localStorage igual que hace el index
+    if(earnings&&typeof earnings==='object'){
+      for(const s in earnings){
+        try{localStorage.setItem('sa_earnings_'+s.toUpperCase(),JSON.stringify({time:Date.now(),date:earnings[s]}));}catch(_){}
+      }
+    }
+    document.getElementById('summary').textContent=`Recibidos ${loaded} tickers desde el index · SPY ${SPY?'✓':'✗'}`;
+    document.getElementById('scanBtn').disabled=!(SPY&&loaded>3);
+    log('Datos recibidos desde index: '+loaded+' tickers','ok');
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════════════════════════════════ */
+function clearAll(){
+  DATASETS={};SPY=null;ALL_RESULTS=[];CURRENT_FILTER='ready';
+  document.getElementById('resultCard').style.display='none';
+  document.getElementById('regimeCard').style.display='none';
+  document.getElementById('logCard').style.display='none';
+  document.getElementById('scanBtn').disabled=true;
+  setStatus('');updateProgress(0);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const drop=document.getElementById('drop');
+  const input=document.getElementById('fileInput');
+  drop.addEventListener('dragover',e=>{e.preventDefault();drop.style.borderColor='#32d4e0';});
+  drop.addEventListener('dragleave',()=>{drop.style.borderColor='';});
+  drop.addEventListener('drop',e=>{e.preventDefault();drop.style.borderColor='';handleFiles(e.dataTransfer.files);});
+  input.addEventListener('change',e=>handleFiles(e.target.files));
+  setStatus('Esperando CSVs o datos del index…');
+  // Avisar al index de que estamos listos (si estamos embebidos)
+  try{if(window.parent&&window.parent!==window)window.parent.postMessage({type:'scanner_ready'},'*');}catch(_){}
+});
+</script>
+</body>
+</html>
