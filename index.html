@@ -346,6 +346,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .pos-trailing{background:rgba(50,212,224,.08);border-radius:6px;padding:6px 9px;font-size:10px;margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
 .pos-trailing .k{color:var(--text-2);font-weight:500}
 .pos-trailing .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;color:var(--text)}
+.pos-spread-row{grid-column:1/-1;background:rgba(50,212,224,.06);border-radius:6px;padding:6px 9px;font-size:10px;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;color:var(--text-2);line-height:1.5}
+.pos-spread-row b{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
 .pos-expand-btn{background:transparent;color:var(--text-3);padding:4px 8px;margin:0;width:auto;font-size:11px;min-height:auto;border-radius:6px}
 .pos-expand-btn:hover{background:rgba(255,255,255,.05);color:var(--text)}
 .pos-orig-setup{background:rgba(50,212,224,.06);border-radius:6px;padding:6px 9px;font-size:10px;margin-top:6px;color:var(--text-2);line-height:1.5}
@@ -617,6 +619,7 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <div class="chart-stat">Score <b id="csScore">—</b></div>
 <div class="chart-stat">RVOL <b id="csRvol">—</b></div>
 <div class="chart-stat">RS SPY <b id="csRs">—</b></div>
+<div class="chart-stat">Spread <b id="csSpread">—</b></div>
 </div>
 <div class="entries-panel" id="entriesPanel" style="display:none;">
 <div class="entries-title">Setups de entrada y salida</div>
@@ -2207,7 +2210,38 @@ function makeExitPlan(risk) {
         invalidation: 'Cierre < stop, o RSI<40 + MACD bajista'
     };
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   SPREAD BID-ASK — estimación sin API (paper test)
+   Fórmula empírica: base por dollar volume × factor por volatilidad (ATR%).
+   ══════════════════════════════════════════════════════════════════════════ */
+function estimateSpreadBps(price, avgVolume, atr) {
+    if (!isFinite(price) || price <= 0) return null;
+    const dollarVol = price * (avgVolume || 0);
+    if (dollarVol <= 0) return null;
 
+    const volM = dollarVol / 1e6;   // millones USD negociados
+    let baseBps;
+    if (volM >= 1000)      baseBps = 1.0;
+    else if (volM >= 100)  baseBps = 1.0 + (1000 - volM) / 900 * 1.5;
+    else if (volM >= 10)   baseBps = 2.5 + (100 - volM) / 90 * 4.5;
+    else if (volM >= 1)    baseBps = 7.0 + (10 - volM) / 9 * 12;
+    else                   baseBps = 19 + Math.min(80, (1 - volM) * 60);
+
+    const atrPct = (isFinite(atr) && atr > 0) ? (atr / price) * 100 : 2;
+    const volFactor = Math.max(0.7, Math.min(2.0, atrPct / 2));
+    return Math.max(0.5, Math.min(150, baseBps * volFactor));
+}
+
+function estimateSpread(price, avgVolume, atr) {
+    const bps = estimateSpreadBps(price, avgVolume, atr);
+    if (bps == null) return null;
+    return {
+        bps:    +bps.toFixed(2),
+        abs:    +(price * bps / 10000).toFixed(4),
+        pct:    +(bps / 100).toFixed(4),
+        source: 'estimated'
+    };
+}
 function computeTechnicalScore(tech, price, structureOk = null) {
     const parts = { trend: 0, momentum: 0, strength: 0, participation: 0, structure: 0 };
     if (tech.ema20 != null && tech.ema50 != null && tech.ema200 != null) {
@@ -2341,7 +2375,8 @@ function buildCtx(data, tech, regime) {
         rvol: tech.rvol,
         ema20Series: ema20Arr,
         ema50Series: ema50Arr,
-        micro: analyzeMicrostructure(data)
+        micro: analyzeMicrostructure(data),
+        spread: tech.spread                                          // ← NUEVO
     };
 }
 function getContextConfig() {
@@ -2707,6 +2742,22 @@ function computeEntryQuality(ctx, setupId, entry, stop, targets) {
             score -= 3; microNotes.push(`gap alcista ${m.gap.pct.toFixed(1)}% sin rellenar`);
         }
         if (microNotes.length) notes.push(...microNotes);
+    }
+
+    // ─── Penalización por spread bid-ask estimado ───────────────────────
+    if (ctx?.spread?.bps != null && isFinite(ctx.spread.bps)) {
+        const spreadAbs = price * ctx.spread.bps / 10000;
+        const riskAbs   = Math.max(entry - stop, 1e-9);
+        const spreadToRisk = spreadAbs / riskAbs;
+        if (spreadToRisk > 0.20) {
+            score -= 18;
+            notes.push(`spread ${ctx.spread.bps.toFixed(1)} bps (~${(spreadToRisk*100).toFixed(0)}% del riesgo)`);
+        } else if (spreadToRisk > 0.12) {
+            score -= 10;
+            notes.push(`spread ${ctx.spread.bps.toFixed(1)} bps eleva el coste de ejecución`);
+        } else if (spreadToRisk > 0.06) {
+            score -= 4;
+        }
     }
 
     score = Math.max(0, Math.min(EQ_SCORE_CAP, Math.round(score)));
@@ -3413,6 +3464,14 @@ function renderContextBadges(symbol, prependBadges = '') {
             const cls = live.obvSlope > 0 ? 'rs-strong' : 'rs-weak';
             badges.push(`<span class="ctx-badge ${cls}" title="Pendiente OBV 20d">OBV ${live.obvSlope > 0 ? '↑' : '↓'}</span>`);
         }
+        if (live.spread != null) {                                    // ← NUEVO
+            const sp = live.spread;
+            const cls = sp.bps <= 3 ? 'rs-strong'
+                      : sp.bps <= 10 ? 'rs-neutral'
+                      : sp.bps <= 25 ? 'warn'
+                      : 'earnings';
+            badges.push(`<span class="ctx-badge ${cls}" title="Bid-ask estimado por liquidez y volatilidad">Spread ~${sp.bps.toFixed(1)} bps</span>`);
+        }
     }
     if (!badges.length && !prependBadges) return '';
     return `<div class="ctx-badges">${prependBadges}${badges.join('')}</div>`;
@@ -3742,7 +3801,7 @@ function renderRecommendation(symbol, entries, accountSize) {
             ${canOpen ? `
                 <button class="${openBtnClass}"
                     onclick="event.stopPropagation(); openPositionFromSetup('${escapeHtml(symbol)}', 0)">
-                    <span class="opb-icon">⚡</span>
+                    
                     <span>${openBtnLabel}</span>
                 </button>` : ''}
         </div>
@@ -4283,6 +4342,51 @@ function computeTrailingStops(position) {
     if (swing) result.swing10 = swing.price - 0.5 * atr;
     return result;
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   SPREAD EN POSICIÓN ABIERTA
+   Calcula el coste real de entrar/salir y el P&L/R realistas
+   (venta al bid = mid − spread/2, compra al ask = mid + spread/2)
+   ══════════════════════════════════════════════════════════════════════════ */
+function computePositionSpreadCosts(position, live) {
+    if (!live) return null;
+    const sp = live.spread;
+    const price = live.price ?? position.entry;
+    if (!sp || !isFinite(sp.bps) || sp.bps <= 0) return null;
+
+    const halfSpreadAbs = price * sp.bps / 20000;         // mitad del spread en $/€
+    const exitRealistic = price - halfSpreadAbs;          // venta al bid
+    const entryRealistic = position.entry + halfSpreadAbs; // compra al ask (estimado)
+
+    const riskPerShare = position.stopInitial
+        ? (position.entry - position.stopInitial)
+        : (live.atr ? 2 * live.atr : null);
+
+    const pnlPctReal    = ((exitRealistic - position.entry) / position.entry) * 100;
+    const pnlDollarReal = (exitRealistic - position.entry) * position.shares;
+    const rReal = (riskPerShare && riskPerShare > 0)
+        ? (exitRealistic - position.entry) / riskPerShare
+        : null;
+
+    const costPerShare = halfSpreadAbs * 2;               // ida + vuelta
+    const costTotal    = costPerShare * position.shares;
+    const costPctOfRisk = (riskPerShare && riskPerShare > 0)
+        ? (costPerShare / riskPerShare) * 100
+        : null;
+
+    return {
+        bps: sp.bps,
+        halfSpreadAbs,
+        exitRealistic,
+        entryRealistic,
+        pnlPctReal,
+        pnlDollarReal,
+        rReal,
+        costPerShare,
+        costTotal,
+        costPctOfRisk,
+        drag: (riskPerShare && riskPerShare > 0) ? halfSpreadAbs / riskPerShare : null
+    };
+}
 function computeRMultiple(position) {
     const live = lastSymbolsData?.[position.symbol];
     const price = live?.price ?? position.entry;
@@ -4459,6 +4563,8 @@ function renderManualPositions() {
         const score = live?.score ?? null;
         const trailing = computeTrailingStops(p);
         const isExpanded = expandedPositionId === p.id;
+        const spreadCosts = computePositionSpreadCosts(p, live);
+
         let state = "warn", statusText = "Sin análisis", statusDetail = "Analiza el ticker";
         if (live) {
             if (liveStop && price <= liveStop) { state = "danger"; statusText = "STOP TÉCNICO"; statusDetail = `≤ ${fmtMoney(liveStop)}`; }
@@ -4478,6 +4584,27 @@ function renderManualPositions() {
                 ${trailing.ema20 ? `<span class="k">EMA20 trailing</span><span class="v">${fmtMoney(trailing.ema20)}</span>` : ''}
                 ${trailing.swing10 ? `<span class="k">Swing low 10</span><span class="v">${fmtMoney(trailing.swing10)}</span>` : ''}
             </div>` : '';
+
+        let spreadHtml = '';
+        if (spreadCosts) {
+            const dragPct = spreadCosts.costPctOfRisk != null ? spreadCosts.costPctOfRisk : null;
+            const dragColor = dragPct == null ? 'var(--text-2)'
+                            : dragPct > 15 ? 'var(--red)'
+                            : dragPct > 8  ? 'var(--orange)'
+                            : 'var(--green)';
+            const bpsColor = spreadCosts.bps <= 3 ? 'var(--green)'
+                           : spreadCosts.bps <= 10 ? 'var(--text)'
+                           : spreadCosts.bps <= 25 ? 'var(--orange)'
+                           : 'var(--red)';
+            spreadHtml = `
+                <div class="pos-spread-row">
+                    <span>Spread <b style="color:${bpsColor};">~${spreadCosts.bps.toFixed(1)} bps</b></span>
+                    <span>Salida realista <b>${fmtMoney(spreadCosts.exitRealistic)}</b></span>
+                    <span>Coste ida+vuelta <b>${fmtMoney(spreadCosts.costTotal)}</b></span>
+                    ${dragPct != null ? `<span>Consume <b style="color:${dragColor};">${dragPct.toFixed(1)}%</b> del riesgo</span>` : ''}
+                </div>`;
+        }
+
         let setupHint = '';
         if (p.setupName) {
             const eqTxt = p.entryQualityScore != null ? ` · Entrada ${p.entryQualityScore}${p.entryQualityState ? ' ('+p.entryQualityState+')' : ''}` : '';
@@ -4504,6 +4631,7 @@ function renderManualPositions() {
                     ${rMult != null ? `<span class="pos-r-badge ${rClass}">${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R<small>múltiplo</small></span>` : ''}
                     ${initialStop ? `<span>Stop: <b style="color:${state==='danger'?'var(--red)':'var(--text)'}">${fmtMoney(initialStop)}</b></span>` : ''}
                 </div>
+                ${spreadHtml}
                 ${trailingHtml}
                 ${setupHint}
                 <div class="pos-status">
@@ -5149,12 +5277,12 @@ function renderPriceChart(symbol) {
                         visibleWindow === 365 ? '1 año' : `${visibleWindow} días`;
     const live = lastSymbolsData?.[symbol];
     let channelInfo = '';
-if (seriesVisibility.channel && channel) {
-    const validTxt = channel.isValid ? '✓' : '○';
-    channelInfo = ` · <span style="color:#bf5af2;">Canal ${validTxt} ${channel.tipo} ${channel.slopePct >= 0 ? '+' : ''}${channel.slopePct.toFixed(1)}% · ${channel.touchesUpper}↑ ${channel.touchesLower}↓ · pos ${channel.posInChannel.toFixed(0)}%</span>`;
-}
-document.getElementById("chartPeriod").innerHTML =
-    `${periodLabel} · ${data.length} sesiones · Score ${live?.score ?? '—'} · ${live?.trend ?? ''}${channelInfo}`;
+    if (seriesVisibility.channel && channel) {
+        const validTxt = channel.isValid ? '✓' : '○';
+        channelInfo = ` · <span style="color:#bf5af2;">Canal ${validTxt} ${channel.tipo} ${channel.slopePct >= 0 ? '+' : ''}${channel.slopePct.toFixed(1)}% · ${channel.touchesUpper}↑ ${channel.touchesLower}↓ · pos ${channel.posInChannel.toFixed(0)}%</span>`;
+    }
+    document.getElementById("chartPeriod").innerHTML =
+        `${periodLabel} · ${data.length} sesiones · Score ${live?.score ?? '—'} · ${live?.trend ?? ''}${channelInfo}`;
     const atr = atrFull[atrFull.length - 1];
     const lastEma20 = ema20[ema20.length - 1];
     const lastEma50 = ema50[ema50.length - 1];
@@ -5171,6 +5299,18 @@ document.getElementById("chartPeriod").innerHTML =
     document.getElementById("csScore").textContent = live?.score ?? '—';
     document.getElementById("csRvol").textContent = live?.rvol != null ? `${live.rvol.toFixed(2)}×` : '—';
     document.getElementById("csRs").textContent = live?.rsRating != null ? `${live.rsRating >= 0 ? '+' : ''}${live.rsRating.toFixed(1)}%` : '—';
+    // ← NUEVO: spread estimado
+    const csSpreadEl = document.getElementById("csSpread");
+    if (csSpreadEl) {
+        const sp = live?.spread;
+        csSpreadEl.textContent = sp ? `${sp.bps.toFixed(1)} bps` : '—';
+        csSpreadEl.style.color = !sp ? ''
+            : sp.bps <= 3 ? 'var(--green)'
+            : sp.bps <= 10 ? 'var(--text)'
+            : sp.bps <= 25 ? 'var(--orange)'
+            : 'var(--red)';
+    }
+
     const datasets = [];
     if (chartStyle === 'candles') {
         const N = data.length;
@@ -5223,26 +5363,26 @@ document.getElementById("chartPeriod").innerHTML =
         pushPoint('Donchian Low 10d', dlSeries, '#1a8a99', 4, [4, 3], 1.2);
     }
     if (seriesVisibility.channel && channel) {
-    const upPts  = buildPointSeries(channel.upper,  dates);
-    const midPts = buildPointSeries(channel.middle, dates);
-    const loPts  = buildPointSeries(channel.lower,  dates);
-    if (upPts.length > 1 && loPts.length > 1 && midPts.length > 1) {
-        const col   = "#bf5af2";
-        const fillC = 'rgba(191,90,242,0.10)';
-        datasets.push({ type: 'line', label: `Canal Sup`, data: upPts,
-            borderColor: col, borderWidth: 2, borderDash: [6, 4],
-            pointRadius: 0, fill: false, order: 5, yAxisID: 'y',
-            parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
-        datasets.push({ type: 'line', label: `Canal Inf`, data: loPts,
-            borderColor: col, backgroundColor: fillC, borderWidth: 2, borderDash: [6, 4],
-            pointRadius: 0, fill: '-1', order: 5, yAxisID: 'y',
-            parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
-        datasets.push({ type: 'line', label: `Canal Medio`, data: midPts,
-            borderColor: 'rgba(191,90,242,0.75)', borderWidth: 1, borderDash: [3, 3],
-            pointRadius: 0, fill: false, order: 6, yAxisID: 'y',
-            parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
+        const upPts  = buildPointSeries(channel.upper,  dates);
+        const midPts = buildPointSeries(channel.middle, dates);
+        const loPts  = buildPointSeries(channel.lower,  dates);
+        if (upPts.length > 1 && loPts.length > 1 && midPts.length > 1) {
+            const col   = "#bf5af2";
+            const fillC = 'rgba(191,90,242,0.10)';
+            datasets.push({ type: 'line', label: `Canal Sup`, data: upPts,
+                borderColor: col, borderWidth: 2, borderDash: [6, 4],
+                pointRadius: 0, fill: false, order: 5, yAxisID: 'y',
+                parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
+            datasets.push({ type: 'line', label: `Canal Inf`, data: loPts,
+                borderColor: col, backgroundColor: fillC, borderWidth: 2, borderDash: [6, 4],
+                pointRadius: 0, fill: '-1', order: 5, yAxisID: 'y',
+                parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
+            datasets.push({ type: 'line', label: `Canal Medio`, data: midPts,
+                borderColor: 'rgba(191,90,242,0.75)', borderWidth: 1, borderDash: [3, 3],
+                pointRadius: 0, fill: false, order: 6, yAxisID: 'y',
+                parsing: { xAxisKey: 'x', yAxisKey: 'y' } });
+        }
     }
-}
     let priceMin = Infinity, priceMax = -Infinity;
     for (const d of data) {
         if (d.low < priceMin) priceMin = d.low;
@@ -6111,6 +6251,8 @@ async function fetchAllData(symbol, key, outputsize, forceRefresh = false) {
     return out;
 }
 
+
+
 function analyzeTechnicals(data) {
     const n = data.length;
     const closes = data.map(d => d.close);
@@ -6159,6 +6301,7 @@ function analyzeTechnicals(data) {
     tech.rsiStatus = classifyRsi(tech.rsi);
     tech.stop = tech.atr ? tech.price - 2 * tech.atr : null;
     tech.target2R = tech.stop ? tech.price + 2 * (tech.price - tech.stop) : null;
+    tech.spread = estimateSpread(tech.price, avgVolume, tech.atr);   // ← NUEVO
     return tech;
 }
 function analyzeWeekly(weeklyData) {
