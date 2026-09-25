@@ -465,7 +465,13 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .perf-bar{background:var(--text-3);border-radius:3px 3px 0 0;min-height:2px}
 .perf-bar.neg{background:var(--red)}
 .perf-bar-label{font-size:8.5px;color:var(--text-3);font-weight:600}
-
+.open-pos-btn{width:100%;margin-top:12px;padding:12px 14px;background:rgba(48,209,88,.15);color:var(--green);font-weight:700;font-size:13px;border:1px solid rgba(48,209,88,.35);border-radius:10px;cursor:pointer;min-height:44px;font-family:inherit;transition:background .15s,transform .1s,border-color .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.open-pos-btn:hover{background:rgba(48,209,88,.25);border-color:rgba(48,209,88,.55)}
+.open-pos-btn:active{transform:scale(.98);opacity:.85}
+.open-pos-btn:disabled{opacity:.35;cursor:not-allowed}
+.open-pos-btn .opb-icon{font-size:15px;line-height:1}
+.open-pos-btn.limit{background:rgba(50,212,224,.15);color:#32d4e0;border-color:rgba(50,212,224,.35)}
+.open-pos-btn.limit:hover{background:rgba(50,212,224,.25);border-color:rgba(50,212,224,.55)}
 @media (max-width:520px){.perf-grid{grid-template-columns:repeat(2,1fr)}.perf-cell .v{font-size:16px}}
 </style>
 </head>
@@ -772,6 +778,19 @@ Gratis en <b style="display:inline; color:var(--text);">aistudio.google.com</b> 
 <button onclick="saveRiskConfig()">Guardar</button>
 </div>
 <div class="card">
+<div class="card">
+    <div class="card-title">Moneda de visualización</div>
+    <div class="card-sub">Convierte los precios mostrados a euros</div>
+    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
+        <input id="currencySwitch" type="checkbox"
+            style="width:auto; margin:0; min-height:auto; -webkit-appearance:auto; appearance:auto;"
+            onchange="toggleCurrencyMode(this.checked)"/>
+        <span>Mostrar precios en <b>€ EUR</b></span>
+    </label>
+    <div class="small" id="currencyRateInfo" style="margin-top:8px; opacity:0.7; font-size:10px;"></div>
+    <button onclick="refreshEurUsdRate(true).then(()=>{renderAllMoney();updateCurrencyRateInfo();})"
+            style="margin-top:10px; font-size:12px;">↻ Actualizar tipo EUR/USD</button>
+</div>
 <div class="card-title">Filtros de contexto</div>
 <div class="card-sub">RS, MTF, earnings, liquidez (soft filters V4.1)</div>
 <label>RS mínimo vs SPY (%, 3M ponderado)</label>
@@ -916,6 +935,115 @@ function getThresholds() {
     if (out.eqAcceptableBase >= out.eqOptimalBase) out.eqAcceptableBase = Math.max(30, out.eqOptimalBase - 10);
     if (out.minRiskAtr >= out.maxRiskAtr) out.minRiskAtr = Math.max(0.1, out.maxRiskAtr - 0.5);
     return out;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MONEDA (USD ↔ EUR)
+   ══════════════════════════════════════════════════════════════════════════ */
+const CURRENCY_KEY = 'sa_currency_mode';
+const EURUSD_CACHE_KEY = 'sa_eurusd_rate_v1';
+const EURUSD_TTL_MS = 30 * 60 * 1000;
+let _eurUsdRate = null;
+
+function getCurrencyMode() { return localStorage.getItem(CURRENCY_KEY) === 'EUR' ? 'EUR' : 'USD'; }
+
+function toggleCurrencyMode(enabled) {
+    trySave(CURRENCY_KEY, enabled ? 'EUR' : 'USD');
+
+    if (enabled && !_eurUsdRate) {
+        // Optimista: pintar ya con fallback
+        _eurUsdRate = 1.08;
+        renderAllMoney();
+        updateCurrencyRateInfo();
+        // Y en background, traer el tipo real
+        refreshEurUsdRate(false).then(() => {
+            renderAllMoney();
+            updateCurrencyRateInfo();
+        });
+        return;
+    }
+
+    renderAllMoney();
+    updateCurrencyRateInfo();
+    if (enabled && !_eurUsdRate) {
+        refreshEurUsdRate(false).then(() => { renderAllMoney(); updateCurrencyRateInfo(); });
+    }
+}
+async function refreshEurUsdRate(force = false) {
+    if (!force) {
+        try {
+            const raw = localStorage.getItem(EURUSD_CACHE_KEY);
+            if (raw) {
+                const p = JSON.parse(raw);
+                if (Date.now() - p.time < EURUSD_TTL_MS && p.rate > 0) { _eurUsdRate = p.rate; return _eurUsdRate; }
+            }
+        } catch(_) {}
+        if (_eurUsdRate != null) return _eurUsdRate;
+    }
+    const key = localStorage.getItem('td_key') || (document.getElementById('apikey') || {}).value;
+    if (key) {
+        try {
+            if (typeof apiGate === 'function') await apiGate();
+            const r = await fetch(`https://api.twelvedata.com/price?symbol=EUR/USD&apikey=${key}`);
+            const d = await r.json();
+            const rate = parseFloat(d && d.price);
+            if (isFinite(rate) && rate > 0) {
+                _eurUsdRate = rate;
+                trySave(EURUSD_CACHE_KEY, JSON.stringify({ time: Date.now(), rate }));
+                return rate;
+            }
+        } catch(e) { console.warn('[EUR/USD]', e); }
+    }
+    try {
+        const raw = localStorage.getItem(EURUSD_CACHE_KEY);
+        if (raw) { const p = JSON.parse(raw); if (p.rate > 0) { _eurUsdRate = p.rate; return _eurUsdRate; } }
+    } catch(_) {}
+    _eurUsdRate = 1.08;
+    return _eurUsdRate;
+}
+function fmtMoney(usd, decimals = 2) {
+    if (usd == null || !isFinite(usd)) return '—';
+    if (getCurrencyMode() === 'EUR' && _eurUsdRate > 0) return '€' + (usd / _eurUsdRate).toFixed(decimals);
+    return '$' + usd.toFixed(decimals);
+}
+function fmtMoney0(usd) { return fmtMoney(usd, 0); }
+function fmtMoneySigned(usd, decimals = 2) {
+    if (usd == null || !isFinite(usd)) return '—';
+    const s = usd >= 0 ? '+' : '−', a = Math.abs(usd);
+    if (getCurrencyMode() === 'EUR' && _eurUsdRate > 0) return s + '€' + (a / _eurUsdRate).toFixed(decimals);
+    return s + '$' + a.toFixed(decimals);
+}
+function convertForAxis(usd) {
+    if (getCurrencyMode() === 'EUR' && _eurUsdRate > 0) return usd / _eurUsdRate;
+    return usd;
+}
+function axisSymbol() { return getCurrencyMode() === 'EUR' && _eurUsdRate > 0 ? '€' : '$'; }
+
+function renderAllMoney() {
+    try { if (window.currentResults) renderResultCards(window.currentResults); } catch(_) {}
+    try { if (currentChartSymbol) renderPriceChart(currentChartSymbol); } catch(_) {}
+    try { renderManualPositions(); } catch(_) {}
+    try { renderPortfolioHeat(); } catch(_) {}   // incluye renderPortfolioBalance
+    try { renderClosedHistory(); } catch(_) {}
+    // Home: solo repintar, NUNCA showHome() (que hace fetch + cambia pestaña)
+    try { if (typeof window.__homeRender === 'function') window.__homeRender(); } catch(_) {}
+}
+function updateCurrencyRateInfo() {
+    const el = document.getElementById('currencyRateInfo');
+    if (!el) return;
+    if (getCurrencyMode() === 'EUR') {
+        el.innerHTML = _eurUsdRate
+            ? `Tipo actual: <b>1 EUR = ${_eurUsdRate.toFixed(4)} USD</b>`
+            : 'Cargando tipo EUR/USD…';
+    } else {
+        el.textContent = 'Los precios se muestran en dólares estadounidenses.';
+    }
+}
+function loadCurrencyConfig() {
+    const el = document.getElementById('currencySwitch');
+    if (el) el.checked = getCurrencyMode() === 'EUR';
+    if (getCurrencyMode() === 'EUR') refreshEurUsdRate(false).then(updateCurrencyRateInfo);
+    updateCurrencyRateInfo();
 }
 
 const CHECK_WEIGHTS = {
@@ -3538,7 +3666,7 @@ function renderRecommendation(symbol, entries, accountSize) {
     const badges = renderContextBadges(symbol, metaBadges);
     const softFilterHtml = (best.softFilters && best.softFilters.length)
         ? `<div class="gate-note soft" style="margin-top:8px;"><b>⚠ Filtros no óptimos (soft):</b> ${best.softFilters.map(escapeHtml).join(' · ')}</div>` : '';
-const macroWarningHtml = buildMacroWarning(symbol);
+    const macroWarningHtml = buildMacroWarning(symbol);
     const expiredHtml = isExpired
         ? `<div class="confirmation-strip expired"><b>⏱ EXPIRADO:</b> ${escapeHtml(best.lifecycle?.reason || 'setup fuera de su ventana operativa')}</div>` : '';
     const checksHtml = (best.checks || []).map(c => `
@@ -3551,7 +3679,12 @@ const macroWarningHtml = buildMacroWarning(symbol);
         ? `<div class="entry-exit-plan"><b>Plan:</b> ${best.exitPlan.partials} · Trailing: ${best.exitPlan.trailing} · Time stop: ${best.exitPlan.timeStop} · Invalidación: ${best.exitPlan.invalidation}</div>` : '';
     const entryLabel = best.entryType === 'limit' ? 'Entrada límite' : 'Entrada';
     const entrySub = (best.entryType === 'limit' && best.currentPrice && Math.abs(best.currentPrice - best.entry) > 0.01)
-        ? `<div class="sub">actual $${best.currentPrice.toFixed(2)} · esperar retroceso</div>` : '';
+        ? `<div class="sub">actual ${fmtMoney(best.currentPrice)} · esperar retroceso</div>` : '';
+    const canOpen = !isExpired;
+    const openBtnClass = best.entryType === 'limit' ? 'open-pos-btn limit' : 'open-pos-btn';
+    const openBtnLabel = best.entryType === 'limit'
+        ? 'Registrar orden límite'
+        : 'Abrir posición desde este setup';
 
     return `
         <div class="rec-card">
@@ -3564,11 +3697,11 @@ const macroWarningHtml = buildMacroWarning(symbol);
             </div>
             ${badges}
             ${softFilterHtml}
-	${macroWarningHtml}
+            ${macroWarningHtml}
             ${expiredHtml}
             ${!isExpired ? `<div class="confirmation-strip ${conf.state}"><b>Confirmación:</b> ${conf.icon} ${escapeHtml(conf.label)} · ${escapeHtml(conf.note)}</div>` : ''}
             ${renderEntryQualityPanel(best.entryQuality, 'Calidad de entrada actual')}
-	    ${renderQualityBreakdown(best.quality)} 
+            ${renderQualityBreakdown(best.quality)}
             ${checksHtml ? `<div class="rec-checks-section">
                 <div class="rec-checks-label">Condiciones del setup</div>
                 <div class="entry-checks">${checksHtml}</div>
@@ -3577,27 +3710,27 @@ const macroWarningHtml = buildMacroWarning(symbol);
             <div class="rec-prices">
                 <div class="rec-price entry">
                     <div class="lbl">${entryLabel}</div>
-                    <div class="val">$${best.entry.toFixed(2)}</div>
+                    <div class="val">${fmtMoney(best.entry)}</div>
                     ${entrySub}
                 </div>
                 <div class="rec-price stop">
                     <div class="lbl">Stop</div>
-                    <div class="val">$${best.stop.toFixed(2)}</div>
+                    <div class="val">${fmtMoney(best.stop)}</div>
                     <div class="sub">${sourceLabel(best.stopSource)} · ${((best.entry - best.stop) / best.entry * 100).toFixed(2)}%</div>
                 </div>
                 <div class="rec-price t1">
                     <div class="lbl">T1</div>
-                    <div class="val">$${best.t1.toFixed(2)}</div>
+                    <div class="val">${fmtMoney(best.t1)}</div>
                     <div class="sub">${sourceLabel(best.t1Source)} · R:R ${best.rrT1.toFixed(1)}</div>
                 </div>
                 <div class="rec-price t2">
                     <div class="lbl">T2</div>
-                    <div class="val">$${best.t2.toFixed(2)}</div>
+                    <div class="val">${fmtMoney(best.t2)}</div>
                     <div class="sub">${sourceLabel(best.t2Source)} · R:R ${best.rrT2.toFixed(1)}</div>
                 </div>
             </div>
             <div class="rec-sizing">
-                <span><b>${shares}</b> acc · <b>$${cost.toFixed(0)}</b> (${(cost / accountSize * 100).toFixed(1)}% cuenta) · riesgo <b>$${(shares * best.risk).toFixed(0)}</b> (${sizing.effectivePct}% de $${accountSize.toLocaleString()})</span>
+                <span><b>${shares}</b> acc · <b>${fmtMoney0(cost)}</b> (${(cost / accountSize * 100).toFixed(1)}% cuenta) · riesgo <b>${fmtMoney0(shares * best.risk)}</b> (${sizing.effectivePct}% de ${fmtMoney0(accountSize)})</span>
             </div>
             <div class="rec-riskbar">
                 <div class="rec-riskcell"><div class="k">Riesgo/trade</div><div class="v">${sizing.effectivePct}%</div></div>
@@ -3606,6 +3739,12 @@ const macroWarningHtml = buildMacroWarning(symbol);
                 <div class="rec-riskcell"><div class="k">R:R T1</div><div class="v">${best.rrT1.toFixed(1)}R</div></div>
             </div>
             ${renderSizingBreakdown(sizing)}
+            ${canOpen ? `
+                <button class="${openBtnClass}"
+                    onclick="event.stopPropagation(); openPositionFromSetup('${escapeHtml(symbol)}', 0)">
+                    <span class="opb-icon">⚡</span>
+                    <span>${openBtnLabel}</span>
+                </button>` : ''}
         </div>
     `;
 }
@@ -3632,7 +3771,10 @@ function renderEntries(symbol) {
     const recHtml = showRec ? renderRecommendation(symbol, entries, accountSize) : '';
     const setupsToRender = showRec ? entries.slice(1) : entries;
 
-    const setupsHtml = setupsToRender.map(e => {
+    const setupsHtml = setupsToRender.map((e, i) => {
+        // Índice real dentro de `entries` (porque cuando showRec=true ya hemos consumido el [0])
+        const realIdx = showRec ? i + 1 : i;
+
         const isExpired = e.status === 'EXPIRED';
         const statusClass = isExpired ? 'expired' : e.status === 'READY' ? 'ready' : 'waiting';
         const statusText = isExpired ? 'EXPIRADO' : e.status === 'READY' ? 'LISTO' : 'FORMÁNDOSE';
@@ -3653,13 +3795,17 @@ function renderEntries(symbol) {
             </div>`).join('');
         const softFilterHtml = (e.softFilters && e.softFilters.length)
             ? `<div class="gate-note soft" style="margin-bottom:10px;"><b>⚠ Filtros no óptimos (soft):</b> ${e.softFilters.map(escapeHtml).join(' · ')}</div>` : '';
-const macroWarningHtml = buildMacroWarning(symbol);
+        const macroWarningHtml = buildMacroWarning(symbol);
         const lifecycleStrip = isExpired
             ? `<div class="confirmation-strip expired"><b>⏱ EXPIRADO:</b> ${escapeHtml(e.lifecycle?.reason || 'setup fuera de su ventana operativa')}</div>`
             : `<div class="confirmation-strip ${conf.state}"><b>Confirmación:</b> ${conf.icon} ${escapeHtml(conf.label)} · ${escapeHtml(conf.note)}</div>`;
         const entryLabel = e.entryType === 'limit' ? 'Entrada límite' : 'Entrada';
         const entrySub = (e.entryType === 'limit' && e.currentPrice && Math.abs(e.currentPrice - e.entry) > 0.01)
-            ? `<div class="ep-sub">actual $${e.currentPrice.toFixed(2)}</div>` : '';
+            ? `<div class="ep-sub">actual ${fmtMoney(e.currentPrice)}</div>` : '';
+        const openBtnClass = e.entryType === 'limit' ? 'open-pos-btn limit' : 'open-pos-btn';
+        const openBtnLabel = e.entryType === 'limit'
+            ? 'Registrar orden límite'
+            : 'Abrir posición desde este setup';
 
         return `
             <div class="entry-card ${statusClass}">
@@ -3675,29 +3821,29 @@ const macroWarningHtml = buildMacroWarning(symbol);
                     </div>
                 </div>
                 ${softFilterHtml}
-		${macroWarningHtml}
+                ${macroWarningHtml}
                 ${lifecycleStrip}
                 ${renderEntryQualityPanel(e.entryQuality)}
- 		${renderQualityBreakdown(e.quality)} 
+                ${renderQualityBreakdown(e.quality)}
                 <div class="entry-prices">
                     <div class="entry-price-item">
                         <div class="ep-label">${entryLabel}</div>
-                        <div class="ep-value">$${e.entry.toFixed(2)}</div>
+                        <div class="ep-value">${fmtMoney(e.entry)}</div>
                         ${entrySub}
                     </div>
                     <div class="entry-price-item stop">
                         <div class="ep-label">Stop</div>
-                        <div class="ep-value">$${e.stop.toFixed(2)}</div>
+                        <div class="ep-value">${fmtMoney(e.stop)}</div>
                         <div class="ep-sub">−${stopPct}%<br>${sourceLabel(e.stopSource)}</div>
                     </div>
                     <div class="entry-price-item target">
                         <div class="ep-label">T1</div>
-                        <div class="ep-value">$${e.t1.toFixed(2)}</div>
+                        <div class="ep-value">${fmtMoney(e.t1)}</div>
                         <div class="ep-sub">R:R ${e.rrT1.toFixed(1)}<br>${sourceLabel(e.t1Source)}</div>
                     </div>
                     <div class="entry-price-item target">
                         <div class="ep-label">T2</div>
-                        <div class="ep-value">$${e.t2.toFixed(2)}</div>
+                        <div class="ep-value">${fmtMoney(e.t2)}</div>
                         <div class="ep-sub">R:R ${e.rrT2.toFixed(1)}<br>${sourceLabel(e.t2Source)}</div>
                     </div>
                 </div>
@@ -3706,13 +3852,19 @@ const macroWarningHtml = buildMacroWarning(symbol);
                     <b>Plan:</b> ${e.exitPlan.partials} · Trailing: ${e.exitPlan.trailing} · Time stop: ${e.exitPlan.timeStop} · Invalidación: ${e.exitPlan.invalidation}
                 </div>
                 <div class="entry-sizing">
-                    <span><b>${shares}</b> acc · <b>$${cost.toFixed(0)}</b> (${costPct}%) · riesgo <b>$${(shares * e.risk).toFixed(0)}</b> · ${e.riskInAtr.toFixed(2)} ATR · <span style="color:var(--text-3);">${sizing.effectivePct}%</span></span>
+                    <span><b>${shares}</b> acc · <b>${fmtMoney0(cost)}</b> (${costPct}%) · riesgo <b>${fmtMoney0(shares * e.risk)}</b> · ${e.riskInAtr.toFixed(2)} ATR · <span style="color:var(--text-3);">${sizing.effectivePct}%</span></span>
                 </div>
+                ${!isExpired ? `
+                    <button class="${openBtnClass}"
+                        onclick="event.stopPropagation(); openPositionFromSetup('${escapeHtml(symbol)}', ${realIdx})">
+                        <span class="opb-icon">⚡</span>
+                        <span>${openBtnLabel}</span>
+                    </button>` : ''}
             </div>`;
     }).join('');
+
     container.innerHTML = recHtml + setupsHtml;
 }
-
 /* CARTERA */
 function saveManualPositions() { return trySave("sa_manual_positions", JSON.stringify(manualPositions)); }
 function loadManualPositions() {
@@ -3953,6 +4105,138 @@ function addManualPosition() {
         toast(`${symbol} añadido a cartera`, "success");
     }
 }
+/* ══════════════════════════════════════════════════════════════════════════
+   ABRIR POSICIÓN DESDE UN SETUP ACTIVO
+   ══════════════════════════════════════════════════════════════════════════ */
+function openPositionFromSetup(symbol, setupIdx) {
+    const live = lastSymbolsData?.[symbol];
+    if (!live) { toast('Analiza ' + symbol + ' primero', 'error'); return; }
+
+    const entries = live.entries || [];
+    const setup = entries[setupIdx];
+    if (!setup) { toast('Setup no encontrado', 'error'); return; }
+    if (setup.status === 'EXPIRED') { toast('Este setup está expirado', 'warn'); return; }
+
+    // Aviso si ya hay posición abierta en el mismo símbolo
+    if (manualPositions.some(p => p.symbol === symbol)) {
+        if (!confirm(`Ya tienes una posición abierta en ${symbol}. ¿Añadir otra?`)) return;
+    }
+
+    // Bloqueos por régimen / racha / correlación
+    const sizing = getEffectiveRiskPct(symbol, setup.entryQuality?.score);
+    if (sizing.blocked) {
+        const reasons = [
+            sizing.components.regime.stop ? sizing.components.regime.reason : null,
+            sizing.components.streak.stop ? sizing.components.streak.reason : null,
+            sizing.components.correlation.stop ? sizing.components.correlation.reason : null
+        ].filter(Boolean).join(' · ');
+        toast(`🚫 Entrada bloqueada: ${reasons}`, 'error', 7000);
+        return;
+    }
+
+    // Heat máximo cartera
+    const heatCheck = computePortfolioHeat();
+    if (heatCheck.totalHeatR + 1 > heatCheck.cfg.maxHeatR) {
+        toast(`Heat ${heatCheck.totalHeatR.toFixed(2)}R + 1R excede ${heatCheck.cfg.maxHeatR}R. Bloqueado.`, 'error', 6000);
+        return;
+    }
+
+    // Sizing sugerido
+    const { size: accountSize } = getRiskConfig();
+    const dollarRisk = accountSize * sizing.effectivePct / 100;
+    const rawShares  = Math.max(0, Math.floor(dollarRisk / setup.risk));
+    const maxShares  = Math.max(0, Math.floor((accountSize * getRiskConfig().maxPositionPct / 100) / setup.entry));
+    const suggestedShares = Math.min(rawShares, maxShares);
+
+    if (suggestedShares <= 0) {
+        toast('Sizing calculado < 1 acción. Revisa configuración de riesgo.', 'error');
+        return;
+    }
+
+    // Precio de entrada: si es límite, el del setup; si market, el actual
+    const entryPrice = setup.entryType === 'limit'
+        ? setup.entry
+        : (live.price ?? setup.entry);
+
+    // Confirmación con todo el detalle
+    const msg =
+        `Abrir posición desde setup\n\n` +
+        `${symbol} · ${setup.name}\n` +
+        `Tipo: ${setup.entryType === 'limit' ? 'ORDEN LÍMITE' : 'MARKET'}\n\n` +
+        `Entrada: $${entryPrice.toFixed(2)}` +
+        (setup.entryType === 'limit' && live.price ? ` (actual $${live.price.toFixed(2)})` : '') + `\n` +
+        `Stop: $${setup.stop.toFixed(2)} (${sourceLabel(setup.stopSource)})\n` +
+        `T1: $${setup.t1.toFixed(2)} · T2: $${setup.t2.toFixed(2)}\n` +
+        `R:R T1: ${setup.rrT1.toFixed(2)}\n` +
+        `Riesgo ATR: ${setup.riskInAtr.toFixed(2)}×\n\n` +
+        `Acciones sugeridas: ${suggestedShares}\n` +
+        `Riesgo: $${(suggestedShares * setup.risk).toFixed(2)} (${sizing.effectivePct}% de $${accountSize})\n` +
+        `Coste: $${(suggestedShares * entryPrice).toFixed(2)}\n\n` +
+        `¿Confirmar apertura?`;
+
+    if (!confirm(msg)) return;
+
+    // Override opcional de cantidad
+    const sharesInput = prompt('Número de acciones:', String(suggestedShares));
+    if (sharesInput == null) return;
+    const shares = parseFloat(sharesInput);
+    if (!isFinite(shares) || shares <= 0) { toast('Cantidad inválida', 'error'); return; }
+
+    // Override opcional de precio
+    const entryInput = prompt('Precio de entrada:', entryPrice.toFixed(2));
+    if (entryInput == null) return;
+    const finalEntry = parseFloat(entryInput);
+    if (!isFinite(finalEntry) || finalEntry <= 0) { toast('Precio inválido', 'error'); return; }
+
+    _createPositionFromSetup(symbol, setup, live, shares, finalEntry);
+}
+
+function _createPositionFromSetup(symbol, setup, live, shares, entry) {
+    const id = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+
+    const regimeBadgeEl = document.getElementById('regimeBadge');
+    const regimeText = (regimeBadgeEl && regimeBadgeEl.style.display !== 'none')
+        ? regimeBadgeEl.textContent.replace('● ', '').trim()
+        : null;
+
+    const telemetry = buildEntryTelemetry(symbol, setup, live);
+
+    const setupQualityNum =
+        typeof setup.quality === 'object' && setup.quality !== null
+            ? (setup.quality.score ?? null)
+            : (typeof setup.quality === 'number' ? setup.quality : null);
+
+    manualPositions.push({
+        id, symbol, shares, entry,
+        entryDate: new Date().toISOString(),
+        setupId: setup.id || null,
+        setupName: setup.name || null,
+        setupQuality: setupQualityNum,
+        entryQualityScore: setup.entryQuality?.score ?? null,
+        entryQualityState: setup.entryQuality?.state || null,
+        entryType: setup.entryType || null,
+        t1: setup.t1 ?? null,
+        t2: setup.t2 ?? null,
+        regime: regimeText,
+        journal: '',
+        stopInitial: setup.stop ?? null,
+        note: '',
+        telemetry
+    });
+
+    saveManualPositions();
+    renderManualPositions();
+    renderPortfolioHeat();
+    if (typeof updateLastPriceUpdate === 'function') updateLastPriceUpdate();
+
+    const qTxt = setupQualityNum != null ? ` Q${setupQualityNum}` : '';
+    toast(
+        `✅ ${symbol} · ${shares} acc @ $${entry.toFixed(2)} · ${setup.name}${qTxt}`,
+        'success', 4500
+    );
+}
 function removeManualPosition(id) {
     manualPositions = manualPositions.filter(p => String(p.id) !== String(id));
     saveManualPositions(); renderManualPositions(); renderPortfolioHeat();
@@ -4099,7 +4383,7 @@ function computeExitSignal(position, live, fullData) {
     const price = live.price;
     const atr = live.atr;
     const stopInit = position.stopInitial;
-    if (stopInit && price <= stopInit) addReason(`Precio $${price.toFixed(2)} ≤ stop inicial $${stopInit.toFixed(2)}`, 3);
+    if (stopInit && price <= stopInit) addReason(`Precio ${fmtMoney(price)} ≤ stop inicial ${fmtMoney(stopInit)}`, 3);
     if (live.trend === 'BAJISTA') addReason('Tendencia diaria BAJISTA (precio < EMA20 < EMA50 < EMA200)', 2);
     const closes = fullData.map(d => d.close);
     const macdObj = macd(closes, 12, 26, 9);
@@ -4128,11 +4412,11 @@ function computeExitSignal(position, live, fullData) {
     }
     if (live.rsi != null && live.rsi > 80) addReason(`RSI ${live.rsi.toFixed(0)} en sobrecompra extrema`, 1);
     if (live.rsi != null && live.rsi < 50 && live.ema20 != null && price > live.ema20) addReason('RSI < 50 con precio aún sobre EMA20 (momentum débil)', 1);
-    if (reachedT1) addReason(`T1 $${t1.toFixed(2)} alcanzado — cerrar 50% y stop a BE`, 1);
+    if (reachedT1) addReason(`T1 ${fmtMoney(t1)} alcanzado — cerrar 50% y stop a BE`, 1);
     const trailing = computeTrailingStops(position);
     if (trailing) {
         const chandelier = trailing.chandelier;
-        if (chandelier != null && price <= chandelier) addReason(`Chandelier 22/3 violado: $${price.toFixed(2)} ≤ $${chandelier.toFixed(2)}`, 3);
+        if (chandelier != null && price <= chandelier) addReason(`Chandelier 22/3 violado: ${fmtMoney(price)} ≤ ${fmtMoney(chandelier)}`, 3);
     }
     let action = 'HOLD', severityLabel = 'ok';
     if (severity >= 3) { action = 'CLOSE'; severityLabel = 'critical'; }
@@ -4177,7 +4461,7 @@ function renderManualPositions() {
         const isExpanded = expandedPositionId === p.id;
         let state = "warn", statusText = "Sin análisis", statusDetail = "Analiza el ticker";
         if (live) {
-            if (liveStop && price <= liveStop) { state = "danger"; statusText = "STOP TÉCNICO"; statusDetail = `≤ $${liveStop.toFixed(2)}`; }
+            if (liveStop && price <= liveStop) { state = "danger"; statusText = "STOP TÉCNICO"; statusDetail = `≤ ${fmtMoney(liveStop)}`; }
             else if (live.trend === 'BAJISTA') { state = "danger"; statusText = "TENDENCIA BAJISTA"; statusDetail = `Score ${score}`; }
             else if (live.trend === 'LATERAL') { state = "warn"; statusText = "LATERAL"; statusDetail = `Score ${score}`; }
             else { state = "ok"; statusText = "TENDENCIA ALCISTA"; statusDetail = `Score ${score}`; }
@@ -4190,9 +4474,9 @@ function renderManualPositions() {
         const exitHtml = exitSignal ? renderExitSignalHTML(exitSignal, p.id) : '';
         const trailingHtml = trailing ? `
             <div class="pos-trailing">
-                <span class="k">Chandelier 22/3</span><span class="v">$${trailing.chandelier.toFixed(2)}</span>
-                ${trailing.ema20 ? `<span class="k">EMA20 trailing</span><span class="v">$${trailing.ema20.toFixed(2)}</span>` : ''}
-                ${trailing.swing10 ? `<span class="k">Swing low 10</span><span class="v">$${trailing.swing10.toFixed(2)}</span>` : ''}
+                <span class="k">Chandelier 22/3</span><span class="v">${fmtMoney(trailing.chandelier)}</span>
+                ${trailing.ema20 ? `<span class="k">EMA20 trailing</span><span class="v">${fmtMoney(trailing.ema20)}</span>` : ''}
+                ${trailing.swing10 ? `<span class="k">Swing low 10</span><span class="v">${fmtMoney(trailing.swing10)}</span>` : ''}
             </div>` : '';
         let setupHint = '';
         if (p.setupName) {
@@ -4208,17 +4492,17 @@ function renderManualPositions() {
             <div class="pos-item ${state} ${isExpanded ? 'expanded' : ''} ${signalClass}">
                 <div>
                     <div class="pos-symbol">${escapeHtml(p.symbol)}</div>
-                    <div class="pos-meta" style="margin-top:2px;"><span><b>${p.shares}</b> @ <b>$${p.entry.toFixed(2)}</b></span></div>
+                    <div class="pos-meta" style="margin-top:2px;"><span><b>${p.shares}</b> @ <b>${fmtMoney(p.entry)}</b></span></div>
                 </div>
                 <div style="display:flex;gap:4px;align-items:center;">
                     <button class="pos-expand-btn" onclick="togglePositionExpand('${escapeHtml(String(p.id))}')" title="Journaling">${isExpanded ? '▲' : '▼'}</button>
                     <button class="pos-remove" onclick="removeManualPosition('${escapeHtml(String(p.id))}')">×</button>
                 </div>
                 <div class="pos-meta">
-                    <span>Actual: <b>$${price.toFixed(2)}</b></span>
-                    <span class="${pnlClass}" style="font-weight:600;">${fmtPct(pnlPct)} · ${pnlDollar >= 0 ? '+' : ''}$${pnlDollar.toFixed(2)}</span>
+                    <span>Actual: <b>${fmtMoney(price)}</b></span>
+                    <span class="${pnlClass}" style="font-weight:600;">${fmtPct(pnlPct)} · ${fmtMoneySigned(pnlDollar)}</span>
                     ${rMult != null ? `<span class="pos-r-badge ${rClass}">${rMult >= 0 ? '+' : ''}${rMult.toFixed(2)}R<small>múltiplo</small></span>` : ''}
-                    ${initialStop ? `<span>Stop: <b style="color:${state==='danger'?'var(--red)':'var(--text)'}">$${initialStop.toFixed(2)}</b></span>` : ''}
+                    ${initialStop ? `<span>Stop: <b style="color:${state==='danger'?'var(--red)':'var(--text)'}">${fmtMoney(initialStop)}</b></span>` : ''}
                 </div>
                 ${trailingHtml}
                 ${setupHint}
@@ -4429,7 +4713,7 @@ function renderClosedHistory() {
                 <div><div class="ch-symbol">${escapeHtml(h.symbol)}</div>
                 <div class="ch-meta" style="margin-top:2px;">
                     <span>${h.shares} acc</span>
-                    <span>$${h.entry.toFixed(2)} → $${h.exit.toFixed(2)}</span>
+                    <span>${fmtMoney(h.entry)} → ${fmtMoney(h.exit)}</span>
                     <span style="color:${h.pnlPct >= 0 ? 'var(--green)' : 'var(--red)'};font-weight:600;">${h.pnlPct >= 0 ? '+' : ''}${h.pnlPct.toFixed(2)}%</span>
                 </div></div>
                 <div class="ch-r ${rClass}">${h.rMult != null ? `${h.rMult >= 0 ? '+' : ''}${h.rMult.toFixed(2)}R` : '—'}</div>
@@ -4531,7 +4815,11 @@ function renderPortfolioBalance() {
     }
 
     const sign = v => v >= 0 ? '+' : '−';
-    const fmtD = v => `${sign(v)}$${Math.abs(v).toFixed(2)}`;
+    const fmtD = v => {
+        const a = Math.abs(v);
+        if (getCurrencyMode() === 'EUR' && _eurUsdRate > 0) return `${sign(v)}€${(a / _eurUsdRate).toFixed(2)}`;
+        return `${sign(v)}$${a.toFixed(2)}`;
+    };
     const fmtP = v => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)}%`;
 
     const totalColor = bal.totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
@@ -4564,11 +4852,11 @@ function renderPortfolioBalance() {
                 </div>
                 <div class="heat-row" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);">
                     <span>Coste en posiciones</span>
-                    <b>$${bal.openCost.toFixed(2)}</b>
+                    <b>${fmtMoney(bal.openCost)}</b>
                 </div>
                 <div class="heat-row">
                     <span>Valor actual</span>
-                    <b>$${bal.openValue.toFixed(2)}</b>
+                    <b>${fmtMoney(bal.openValue)}</b>
                 </div>
                 ${bal.closedCount > 0 ? `
                 <div class="heat-row">
@@ -4603,9 +4891,9 @@ function renderPortfolioHeat() {
             </div>
             <div class="heat-bar"><div class="heat-bar-fill ${cls}" style="width:${pct}%"></div></div>
             <div class="heat-rows">
-                <div class="heat-row"><span>Riesgo total abierto ($)</span><b>$${totalDollarRisk.toFixed(0)}</b></div>
+                <div class="heat-row"><span>Riesgo total abierto</span><b>${fmtMoney0(totalDollarRisk)}</b></div>
                 <div class="heat-row"><span>% de cuenta en riesgo</span><b>${(totalDollarRisk / cfg.size * 100).toFixed(2)}%</b></div>
-                <div class="heat-row"><span>1R objetivo por trade</span><b>$${oneR.toFixed(0)} (${cfg.pct}%)</b></div>
+                <div class="heat-row"><span>1R objetivo por trade</span><b>${fmtMoney0(oneR)} (${cfg.pct}%)</b></div>
                 <div class="heat-row"><span>Posiciones abiertas</span><b>${positions.length}</b></div>
             </div>
             ${warnings.length ? `<div class="corr-warning"><b>⚠ Correlación alta detectada:</b> ${warnings.map(w => `${escapeHtml(w.a)}↔${escapeHtml(w.b)} (${w.c.toFixed(2)})`).join(' · ')} — considera reducir tamaño o tratar como una sola apuesta.</div>` : ''}
@@ -4769,7 +5057,7 @@ function renderResultCards(results) {
             <div class="result-card" data-idx="${i}">
                 <div class="head">
                     <span class="sym">${escapeHtml(r.symbol)}</span>
-                    <span class="price">$${r.price.toFixed(2)}</span>
+                    <span class="price">${fmtMoney(r.price)}</span>
                 </div>
                 <div class="grid">
                     <div class="field"><div class="lbl">Score</div><div class="val" style="color:${cls.color};">${r.score}</div></div>
@@ -4851,7 +5139,7 @@ function renderPriceChart(symbol) {
     const first = closes[0];
     const changePct = ((last - first) / first) * 100;
     document.getElementById("chartSymbol").textContent = symbol;
-    document.getElementById("chartPrice").textContent = `$${last.toFixed(2)}`;
+    document.getElementById("chartPrice").textContent = fmtMoney(last);
     const changeEl = document.getElementById("chartChange");
     changeEl.textContent = `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%`;
     changeEl.className = `change ${changePct >= 0 ? 'pos' : 'neg'}`;
@@ -4873,13 +5161,13 @@ document.getElementById("chartPeriod").innerHTML =
     const lastEma200 = ema200[ema200.length - 1];
     const lastRsi = rsiS[rsiS.length - 1];
     const lastAdx = adxFull.adx[adxFull.adx.length - 1];
-    document.getElementById("csPrice").textContent = `$${last.toFixed(2)}`;
-    document.getElementById("csEma20").textContent = lastEma20 != null ? `$${lastEma20.toFixed(2)}` : '—';
-    document.getElementById("csEma50").textContent = lastEma50 != null ? `$${lastEma50.toFixed(2)}` : '—';
-    document.getElementById("csEma200").textContent = lastEma200 != null ? `$${lastEma200.toFixed(2)}` : '—';
+    document.getElementById("csPrice").textContent = fmtMoney(last);
+    document.getElementById("csEma20").textContent = fmtMoney(lastEma20);
+    document.getElementById("csEma50").textContent = fmtMoney(lastEma50);
+    document.getElementById("csEma200").textContent = fmtMoney(lastEma200);
     document.getElementById("csRsi").textContent = lastRsi != null ? lastRsi.toFixed(1) : '—';
     document.getElementById("csAdx").textContent = lastAdx != null ? lastAdx.toFixed(1) : '—';
-    document.getElementById("csAtr").textContent = atr != null ? `$${atr.toFixed(2)}` : '—';
+    document.getElementById("csAtr").textContent = fmtMoney(atr);
     document.getElementById("csScore").textContent = live?.score ?? '—';
     document.getElementById("csRvol").textContent = live?.rvol != null ? `${live.rvol.toFixed(2)}×` : '—';
     document.getElementById("csRs").textContent = live?.rsRating != null ? `${live.rsRating >= 0 ? '+' : ''}${live.rsRating.toFixed(1)}%` : '—';
@@ -4981,14 +5269,14 @@ document.getElementById("chartPeriod").innerHTML =
     const yMax = priceMax + yPad;
     const scales = {
         x: { grid: { color: "rgba(255,255,255,0.03)" }, ticks: { color: "#636366", font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
-        y: { position: "right", beginAtZero: false, min: yMin, max: yMax, grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#636366", font: { size: 9 }, callback: v => `$${v.toFixed(0)}` } }
+        y: { position: "right", beginAtZero: false, min: yMin, max: yMax, grid: { color: "rgba(255,255,255,0.04)" }, ticks: { color: "#636366", font: { size: 9 }, callback: v => `${axisSymbol()}${convertForAxis(v).toFixed(0)}` } }
     };
     if (seriesVisibility.volume) {
         const maxVol = volumes.reduce((a, b) => Math.max(a, b), 0);
         scales.yVol = { position: "left", display: false, min: 0, max: maxVol * 4, grid: { display: false } };
         datasets.push({ type: "bar", label: "Volumen", data: volumes, backgroundColor: "rgba(142,142,147,0.35)", borderWidth: 0, yAxisID: "yVol", order: 8, grouped: false, categoryPercentage: 1.0, barPercentage: 0.7 });
     }
-    const structureKey = `${symbol}|${chartStyle}|${seriesVisibility.volume}|${seriesVisibility.ema20}|${seriesVisibility.ema50}|${seriesVisibility.ema200}|${seriesVisibility.sma200}|${seriesVisibility.bb}|${seriesVisibility.donchian}|${seriesVisibility.channel}|${visibleWindow}`;
+    const structureKey = `${symbol}|${chartStyle}|${seriesVisibility.volume}|${seriesVisibility.ema20}|${seriesVisibility.ema50}|${seriesVisibility.ema200}|${seriesVisibility.sma200}|${seriesVisibility.bb}|${seriesVisibility.donchian}|${seriesVisibility.channel}|${visibleWindow}|${getCurrencyMode()}`;
     if (priceChart && priceChartStructureKey === structureKey) {
         priceChart.data.labels = dates;
         priceChart.data.datasets = datasets;
@@ -5009,7 +5297,7 @@ document.getElementById("chartPeriod").innerHTML =
                             titleColor: "#8e8e93", bodyColor: "#fff", padding: 10,
                             titleFont: { size: 11 }, bodyFont: { size: 11 },
                             filter: (item) => item.dataset.label !== 'Mechas' && item.dataset.label !== 'Velas',
-                            callbacks: { label: c => c.dataset.label === "Volumen" ? `Vol: ${(c.parsed.y/1000).toFixed(0)}k` : `${c.dataset.label}: $${c.parsed.y.toFixed(2)}` }
+                            callbacks: { label: c => c.dataset.label === "Volumen" ? `Vol: ${(c.parsed.y/1000).toFixed(0)}k` : `${c.dataset.label}: ${fmtMoney(c.parsed.y)}` }
                         }
                     },
                     scales
@@ -5692,12 +5980,12 @@ function renderCompanyCard(symbol, info) {
                 <div class="range-bar-track">
                     <div class="range-bar-fill"></div>
                     <div class="range-bar-marker" style="left:${pc}%;">
-                        <div class="range-bar-marker-label">$${price.toFixed(2)}</div>
+                        <div class="range-bar-marker-label">${fmtMoney(price)}</div>
                     </div>
                 </div>
                 <div class="range-bar-limits">
-                    <span>Low $${low.toFixed(2)}</span>
-                    <span>High $${high.toFixed(2)}</span>
+                    <span>Low ${fmtMoney(low)}</span>
+                    <span>High ${fmtMoney(high)}</span>
                 </div>
             </div>
         `;
@@ -6031,6 +6319,9 @@ async function run() {
         }
         if (getGeminiAuto() && getGeminiKey() && results.length > 0) {
             setTimeout(() => { generateAIInsight().catch(() => {}); }, 800);
+        }
+        if (getCurrencyMode() === 'EUR') {
+            refreshEurUsdRate(false).then(() => { renderAllMoney(); updateCurrencyRateInfo(); });
         }
     } finally {
         setAnalyzing(false);
@@ -6903,6 +7194,7 @@ function initApp() {
     try { loadContextConfig(); } catch(e) { console.warn(e); }
     try { loadThresholds(); } catch(e) { console.warn(e); }
     try { loadMicroFilterConfig(); } catch(e) { console.warn(e); }
+    try { loadCurrencyConfig(); } catch(e) { console.warn(e); } 
     try { renderCalibrationStatus(); } catch(e) { console.warn(e); } 
     try { updateLastPriceUpdate(); } catch(e) { console.warn(e); }
     document.querySelectorAll('[data-series]').forEach(b => {
@@ -6993,6 +7285,35 @@ function injectCSS(){
     .home-metric:last-child{border-bottom:none}
     .home-metric b{color:#fff;font-weight:700}
     @keyframes home-spin{to{transform:rotate(360deg)}}
+    /* ─── Loading state ─── */
+    .home-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 16px 20px;gap:14px;animation:home-fadein .3s ease-out}
+    .home-spinner{width:46px;height:46px;position:relative;flex-shrink:0;display:grid;place-items:center}
+    .home-spinner::before,
+    .home-spinner::after{content:'';position:absolute;border-radius:50%;box-sizing:border-box}
+    .home-spinner::before{inset:0;border:3px solid rgba(50,212,224,.12);border-top-color:#32d4e0;animation:home-spin .9s linear infinite}
+    .home-spinner::after{inset:11px;border:2px solid rgba(50,212,224,.08);border-bottom-color:rgba(50,212,224,.65);animation:home-spin 1.5s linear infinite reverse}
+    .home-loading-label{font-size:12.5px;color:#8e8e93;font-weight:500;letter-spacing:.02em;animation:home-pulse 1.8s ease-in-out infinite}
+    .home-loading-hint{font-size:10.5px;color:#48484a;font-weight:500;letter-spacing:.04em;text-transform:uppercase;margin-top:-6px}
+    @keyframes home-pulse{0%,100%{opacity:.6}50%{opacity:1}}
+    .home-skeleton{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;animation:home-fadein .35s ease-out}
+    .home-skeleton-card{background:#1c1c1e;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+    .home-skeleton-card.wide{grid-column:1/-1;padding:16px;gap:11px}
+    .home-skel-line{height:10px;border-radius:6px;background:linear-gradient(90deg,rgba(255,255,255,.035) 25%,rgba(50,212,224,.10) 50%,rgba(255,255,255,.035) 75%);background-size:200% 100%;animation:home-shimmer 1.7s ease-in-out infinite}
+    .home-skel-line.lbl{height:8px;width:38%;opacity:.85}
+    .home-skel-line.big{height:24px;width:62%;margin-top:2px;border-radius:8px}
+    .home-skel-line.med{height:12px;width:82%}
+    .home-skel-line.full{height:12px;width:100%}
+    .home-skel-line.short{width:25%}
+    .home-skel-line.half{width:52%}
+    @keyframes home-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    @keyframes home-fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+    @media (max-width:520px){
+        .home-value{font-size:21px}
+        .home-hero{padding:14px}
+        .home-loading{padding:32px 16px 16px}
+        .home-spinner{width:40px;height:40px}
+        .home-spinner::after{inset:9px}
+    }
     @media (max-width:520px){.home-value{font-size:21px}.home-hero{padding:14px}}
     `;
     document.head.appendChild(s);
@@ -7078,12 +7399,8 @@ async function showHome(){
     busy = true;
 
     // Spinner
-    const el = document.getElementById('homeDashboard');
-    if (el) {
-        el.innerHTML = '<div class="empty-state" style="padding:48px 16px;text-align:center;color:#8e8e93;">'
-            + '<span class="icon" style="display:inline-block;animation:home-spin 1s linear infinite;font-size:28px;">⟳</span>'
-            + '<br>Cargando precios actuales…</div>';
-    }
+        const el = document.getElementById('homeDashboard');
+    if (el) el.innerHTML = renderHomeSkeleton();
 
     const key = localStorage.getItem('td_key') || (document.getElementById('apikey') || {}).value;
     if (!key) {
@@ -7130,6 +7447,7 @@ async function showHome(){
     busy = false;
 }
 /* ─── 6. Render del Home ─── */
+/* ─── 6. Render del Home ─── */
 function renderHome(){
     const el = document.getElementById('homeDashboard');
     if (!el) return;
@@ -7155,9 +7473,18 @@ function renderHome(){
     const cR  = bal.realizedPnl >= 0 ? '#30d158' : '#ff453a';
     const cRR = bal.realizedR   >= 0 ? '#30d158' : '#ff453a';
 
-    function sgnD(v){ return (v >= 0 ? '+' : '−') + '$' + Math.abs(v).toFixed(2); }
+    function sgnD(v){
+        const a = Math.abs(v);
+        if (typeof getCurrencyMode === 'function' && getCurrencyMode() === 'EUR' && _eurUsdRate > 0)
+            return (v >= 0 ? '+' : '−') + '€' + (a / _eurUsdRate).toFixed(2);
+        return (v >= 0 ? '+' : '−') + '$' + a.toFixed(2);
+    }
     function sgnP(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + '%'; }
     function sgnR(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + 'R'; }
+    function money(v){
+        if (typeof fmtMoney === 'function') return fmtMoney(v);
+        return '$' + (v || 0).toFixed(2);
+    }
 
     const g = (typeof window.getGreeting === 'function') ? window.getGreeting() : 'Hola';
     const todayStr = new Date().toLocaleDateString('es-ES', { weekday:'long', day:'2-digit', month:'long' });
@@ -7190,9 +7517,9 @@ function renderHome(){
     h += '<div class="home-card"><div class="home-label">SPY · S&P 500</div>';
     if (spy) {
         const cls = spy.change >= 0 ? 'pos' : 'neg';
-        h += '<div class="home-value">$' + spy.price.toFixed(2) + '</div>';
-        h += '<div class="home-change ' + cls + '">' + (spy.change >= 0 ? '+' : '') + spy.change.toFixed(2) + '% <span style="color:#636366;font-weight:500;">· ' + (spy.changeAbs >= 0 ? '+' : '') + '$' + spy.changeAbs.toFixed(2) + '</span></div>';
-        h += '<div class="home-sub">H $' + (spy.dayHigh != null ? spy.dayHigh.toFixed(2) : '—') + ' · L $' + (spy.dayLow != null ? spy.dayLow.toFixed(2) : '—') + '</div>';
+        h += '<div class="home-value">' + money(spy.price) + '</div>';
+        h += '<div class="home-change ' + cls + '">' + (spy.change >= 0 ? '+' : '') + spy.change.toFixed(2) + '% <span style="color:#636366;font-weight:500;">· ' + (spy.changeAbs >= 0 ? '+' : '') + money(spy.changeAbs) + '</span></div>';
+        h += '<div class="home-sub">H ' + (spy.dayHigh != null ? money(spy.dayHigh) : '—') + ' · L ' + (spy.dayLow != null ? money(spy.dayLow) : '—') + '</div>';
     } else {
         h += '<div class="home-value" style="color:#636366;">—</div><div class="home-sub">Sin datos</div>';
     }
@@ -7224,8 +7551,8 @@ function renderHome(){
     h += '<div style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:' + cO + ';font-variant-numeric:tabular-nums;">' + sgnD(bal.openPnl) + '</div>';
     if (bal.openCost > 0) h += '<div style="font-size:14px;font-weight:600;color:' + cO + ';font-variant-numeric:tabular-nums;">' + sgnP(bal.openPnlPct) + '</div>';
     h += '</div>';
-    h += '<div class="home-metric"><span>Coste en posiciones</span><b>$' + bal.openCost.toFixed(2) + '</b></div>';
-    h += '<div class="home-metric"><span>Valor actual</span><b>$' + bal.openValue.toFixed(2) + '</b></div>';
+    h += '<div class="home-metric"><span>Coste en posiciones</span><b>' + money(bal.openCost) + '</b></div>';
+    h += '<div class="home-metric"><span>Valor actual</span><b>' + money(bal.openValue) + '</b></div>';
     if (bal.positionsCount > 0) {
         h += '<div class="home-metric"><span>Ver cartera</span><b id="goPortfolio" style="color:#32d4e0;cursor:pointer;font-weight:600;">Abrir →</b></div>';
     }
@@ -7254,7 +7581,10 @@ function renderHome(){
     h += '<button id="goAnalysis" style="margin:0;font-size:13px;border:none;border-radius:10px;padding:12px;min-height:44px;background:#2c2c2e;color:#fff;cursor:pointer;">Ir a Análisis →</button>';
     h += '</div>';
 
-    el.innerHTML = h;
+       el.innerHTML = h;
+    el.style.animation = 'none';
+    void el.offsetWidth;                 // force reflow
+    el.style.animation = 'home-fadein .35s ease-out';
 
     ['homeRefreshBtn','homeRefreshBtn2'].forEach(function(id){
         const b = document.getElementById(id);
@@ -7268,7 +7598,45 @@ function renderHome(){
     if (ga) ga.addEventListener('click', function(){ if (window.showMobileTab) window.showMobileTab('analysis'); });
 }
 
+function renderHomeSkeleton(){
+    return `
+        <div class="home-loading">
+            <div class="home-spinner"></div>
+            <div class="home-loading-label">Cargando precios actuales…</div>
+            <div class="home-loading-hint">TwelveData · SPY · EUR/USD · cartera</div>
+        </div>
+        <div class="home-skeleton">
+            <div class="home-skeleton-card wide">
+                <div class="home-skel-line lbl"></div>
+                <div class="home-skel-line big"></div>
+                <div class="home-skel-line med"></div>
+            </div>
+            <div class="home-skeleton-card">
+                <div class="home-skel-line lbl"></div>
+                <div class="home-skel-line big"></div>
+                <div class="home-skel-line med"></div>
+            </div>
+            <div class="home-skeleton-card">
+                <div class="home-skel-line lbl"></div>
+                <div class="home-skel-line big"></div>
+                <div class="home-skel-line med"></div>
+            </div>
+            <div class="home-skeleton-card wide">
+                <div class="home-skel-line lbl"></div>
+                <div class="home-skel-line big"></div>
+                <div class="home-skel-line full"></div>
+                <div class="home-skel-line half"></div>
+            </div>
+            <div class="home-skeleton-card wide">
+                <div class="home-skel-line lbl"></div>
+                <div class="home-skel-line big"></div>
+                <div class="home-skel-line half"></div>
+            </div>
+        </div>
+    `;
+}
 window.__homeShow = showHome;
+window.__homeRender = renderHome;  
 
 /* ─── 7. Interceptar showMobileTab: la llamada a "analysis" → home ─── */
 function interceptShow(){
